@@ -195,8 +195,17 @@ app.on('before-quit', (event) => {
   if (!backend || cleaning) return;
   cleaning = true;
   event.preventDefault();
+
+  // Si el cierre ordenado se atascara, la aplicacion debe terminar de todas
+  // formas: un proceso que no muere impide volver a abrirla, porque el bloqueo
+  // de instancia unica sigue tomado.
+  const forzar = setTimeout(() => app.exit(0), 5000);
+
   backend
     .close()
     .catch((err) => console.error('[codemind] error al cerrar el backend:', err.message))
-    .finally(() => app.quit());
+    .finally(() => {
+      clearTimeout(forzar);
+      app.exit(0);
+    });
 });

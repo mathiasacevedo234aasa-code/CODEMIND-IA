@@ -82,10 +82,21 @@ export async function startServer({ port = 0, host = '127.0.0.1' } = {}) {
     server,
     port: actualPort,
     url: `http://${host}:${actualPort}`,
-    /** Cierra el servidor y detiene los procesos que se hubieran arrancado. */
-    async close() {
+    /**
+     * Cierra el servidor y detiene los procesos que se hubieran arrancado.
+     *
+     * server.close() solo resuelve cuando se cierran TODAS las conexiones, y la
+     * ventana mantiene conexiones keep-alive abiertas: sin cerrarlas a mano, la
+     * aplicacion de escritorio se quedaba viva para siempre al cerrar la
+     * ventana. El plazo maximo es la ultima red de seguridad.
+     */
+    async close({ timeoutMs = 3000 } = {}) {
       stopAll();
-      await new Promise((resolve) => server.close(resolve));
+      server.closeAllConnections?.();
+      await Promise.race([
+        new Promise((resolve) => server.close(resolve)),
+        new Promise((resolve) => setTimeout(resolve, timeoutMs)),
+      ]);
     },
   };
 }

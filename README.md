@@ -65,6 +65,7 @@ relativas `/api` que en el navegador y no existen dos versiones del código.
 | Datos del usuario | En la app instalada van a `%APPDATA%\codemind-ai\data`, porque la carpeta de instalación es de solo lectura. En desarrollo se usa `server/data`, para compartir proyectos con `npm run dev` |
 | Clave de Groq | En la app instalada no hay `.env`: se guarda desde **Configuración**, en la carpeta de datos |
 | Dependencias | `scripts/pack-runtime.mjs` instala un árbol limpio con solo `express`, `cors` y `dotenv`. Electron, Vite y Monaco no viajan en el paquete |
+| Comprobación del paquete | `scripts/verify-package.mjs` compara el número de archivos empaquetados con el origen, exige los archivos imprescindibles y mide el margen de longitud de ruta. El build falla si algo no cuadra |
 | Permisos de la ventana | Sin acceso a Node (`contextIsolation`, sin `nodeIntegration`): solo habla con el backend por HTTP |
 | Enlaces externos | Se abren en el navegador del sistema, nunca en una ventana de Electron sin barra de direcciones |
 | Al cerrar | Los servidores de desarrollo que hubieras arrancado se detienen: no quedan procesos huérfanos ocupando puertos |
@@ -81,6 +82,25 @@ node_modules/7zip-bin/win/x64/7za.exe x -y -snld "-x!darwin*"   -o"$LOCALAPPDATA
 
 La otra vía es activar el Modo de desarrollador de Windows, que permite crear enlaces simbólicos sin
 elevar privilegios.
+
+### El límite de rutas de Windows
+
+Las dependencias se instalan **fuera del monorepo** y se copian después. No es un capricho: dentro,
+npm ve el `node_modules` del padre y acaba anidando las dependencias transitivas unas dentro de
+otras, generando rutas de casi 200 caracteres. Sumadas al prefijo de instalación real
+(`C:\Program Files\CodeMind AIesourcespp
+ode_modules\`) rebasan el límite de 260 caracteres
+de Windows, y entonces **algunos archivos simplemente no se copian, sin ningún error**.
+
+Eso ocurrió de verdad: el instalador se generaba correctamente y la aplicación instalada fallaba al
+arrancar con `Cannot find module './implementation'`, porque a `function-bind` le faltaban
+`implementation.js` y `package.json`. Instalando fuera del monorepo npm reparte plano y la ruta más
+larga baja de 191 a 50 caracteres, con 154 de margen.
+
+Por eso hay dos guardas automáticas en el proceso de empaquetado, y ambas **abortan el build**:
+
+- `pack-runtime.mjs` calcula cuánto ocuparía la ruta más larga instalada en `Program Files`.
+- `verify-package.mjs` cuenta los archivos del paquete y los compara con el origen.
 
 ### Lo que el instalador no hace
 
