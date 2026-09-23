@@ -38,6 +38,56 @@ npm run dev
 
 Para producción: `npm run build` y después `npm start` (el backend sirve el build de `web/dist`).
 
+## Aplicación de escritorio
+
+CodeMind AI es local por naturaleza — lee tu disco, ejecuta tus servidores, usa tu git — así que su
+forma de distribución natural es una aplicación instalable, no un sitio web.
+
+```bash
+npm run desktop         # compila el frontend y abre la ventana
+npm run desktop:build   # genera el instalador y el ejecutable portable en release/
+```
+
+El resultado son dos archivos en `release/`:
+
+- `CodeMind-AI-Instalador-<versión>-x64.exe` — instalador con atajos y desinstalador
+- `CodeMind-AI-Portable-<versión>-x64.exe` — un solo ejecutable, sin instalar nada
+
+### Cómo está montada
+
+El backend **no** es un segundo proceso: el proceso principal de Electron ya es Node, así que
+`desktop/main.cjs` importa el propio backend, lo pone a escuchar en `127.0.0.1` con un puerto libre
+que elige el sistema, y la ventana carga esa dirección. De este modo el frontend usa las mismas rutas
+relativas `/api` que en el navegador y no existen dos versiones del código.
+
+| Detalle | Cómo se resuelve |
+|---|---|
+| Datos del usuario | En la app instalada van a `%APPDATA%\codemind-ai\data`, porque la carpeta de instalación es de solo lectura. En desarrollo se usa `server/data`, para compartir proyectos con `npm run dev` |
+| Clave de Groq | En la app instalada no hay `.env`: se guarda desde **Configuración**, en la carpeta de datos |
+| Dependencias | `scripts/pack-runtime.mjs` instala un árbol limpio con solo `express`, `cors` y `dotenv`. Electron, Vite y Monaco no viajan en el paquete |
+| Permisos de la ventana | Sin acceso a Node (`contextIsolation`, sin `nodeIntegration`): solo habla con el backend por HTTP |
+| Enlaces externos | Se abren en el navegador del sistema, nunca en una ventana de Electron sin barra de direcciones |
+| Al cerrar | Los servidores de desarrollo que hubieras arrancado se detienen: no quedan procesos huérfanos ocupando puertos |
+
+### Si el empaquetado falla en Windows
+
+`electron-builder` descarga unas herramientas de firma cuyo archivo contiene enlaces simbólicos de
+macOS, y Windows no los crea sin permisos elevados. No hacen falta para firmar (no firmamos), pero la
+extracción aborta el proceso. Se resuelve extrayendo ese archivo a mano sin la carpeta `darwin`:
+
+```bash
+node_modules/7zip-bin/win/x64/7za.exe x -y -snld "-x!darwin*"   -o"$LOCALAPPDATA/electron-builder/Cache/winCodeSign/winCodeSign-2.6.0"   "$LOCALAPPDATA/electron-builder/Cache/winCodeSign/"*.7z
+```
+
+La otra vía es activar el Modo de desarrollador de Windows, que permite crear enlaces simbólicos sin
+elevar privilegios.
+
+### Lo que el instalador no hace
+
+No está **firmado digitalmente**. Windows mostrará el aviso de SmartScreen la primera vez y habrá que
+pulsar "Más información → Ejecutar de todas formas". Firmarlo exige un certificado de pago; mientras
+no lo tengas, es el comportamiento esperado y conviene advertirlo a quien se lo pases.
+
 ### Nota importante sobre `GROQ_API_KEY`
 
 Si tu sistema ya tiene una variable de entorno `GROQ_API_KEY` exportada, **el `.env` del proyecto

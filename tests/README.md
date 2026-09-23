@@ -31,4 +31,22 @@ parseo de renombrados y de rutas con espacios, que cambiar de rama con cambios s
 **bloquea** en vez de descartar trabajo, que un script inexistente se rechaza, el sondeo de URLs y
 —lo más importante— que **eliminar un proyecto no borra la carpeta del usuario**.
 
+## `escritorio.mjs`
+
+Arranca la aplicación de escritorio, comprueba contra su backend interno y la cierra. Todo en un
+único proceso, porque Electron no sobrevive si se lanza en segundo plano y se consulta después.
+
+```bash
+npm run build          # el frontend compilado es lo que carga la ventana
+node tests/escritorio.mjs
+```
+
+Verifica que el backend arranca dentro de Electron con un puerto libre, que la ventana carga la
+aplicación, que el paquete del frontend se sirve, y que el explorador de disco responde.
+
+Para comprobar el **paquete ya construido** en lugar del código, cambia la constante `electron` del
+archivo por `release/win-unpacked/CodeMind AI.exe` y quita el argumento de la carpeta `desktop`.
+
+---
+
 Los resultados de la última ejecución están en `docs/PRUEBAS.md` y `docs/FASES-5-6.md`.

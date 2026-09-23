@@ -1,0 +1,59 @@
+appId: com.codemind.ai
+productName: CodeMind AI
+copyright: Copyright (c) 2026 Mathias Acevedo
+
+directories:
+  output: release
+  buildResources: build
+
+# Solo el proceso principal va dentro del asar. El backend y el frontend
+# compilado se copian fuera: Node necesita importar modulos ESM desde rutas
+# reales, y git y los servidores de desarrollo trabajan con el disco.
+files:
+  - desktop/main.cjs
+  - desktop/package.json
+  - package.json
+
+extraResources:
+  - from: server
+    to: app/server
+    filter:
+      - '**/*'
+      - '!data/**'
+      - '!node_modules/**'
+  - from: web/dist
+    to: app/web/dist
+  # Arbol de dependencias limpio generado por scripts/pack-runtime.mjs:
+  # solo lo que el backend necesita en ejecucion, sin Electron ni Vite.
+  - from: desktop/runtime/node_modules
+    to: app/node_modules
+
+asar: true
+
+win:
+  target:
+    - target: nsis
+      arch: [x64]
+    - target: portable
+      arch: [x64]
+
+nsis:
+  # Nombres distintos por objetivo: los dos generan .exe y con un solo patron
+  # el portable sobrescribia al instalador.
+  artifactName: CodeMind-AI-Instalador-${version}-${arch}.${ext}
+  oneClick: false
+  allowToChangeInstallationDirectory: true
+  createDesktopShortcut: true
+  createStartMenuShortcut: true
+  shortcutName: CodeMind AI
+
+portable:
+  artifactName: CodeMind-AI-Portable-${version}-${arch}.${ext}
+
+linux:
+  target: [AppImage]
+  category: Development
+
+mac:
+  target: [dmg]
+  category: public.app-category.developer-tools
