@@ -1,0 +1,21 @@
+{
+  "name": "codemind-ai",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Entorno de desarrollo web con documentacion asistida por IA (Groq). La IA explica; el usuario decide.",
+  "workspaces": [
+    "server",
+    "web"
+  ],
+  "scripts": {
+    "dev": "node scripts/dev.mjs",
+    "dev:server": "npm --workspace server run dev",
+    "dev:web": "npm --workspace web run dev",
+    "build": "npm --workspace web run build",
+    "start": "npm --workspace server run start"
+  },
+  "allowScripts": {
+    "esbuild@0.25.12": true
+  },
+  "license": "MIT"
+}

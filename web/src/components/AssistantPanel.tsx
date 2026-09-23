@@ -1,0 +1,141 @@
+import { useMemo, useState } from 'react';
+import { useStore } from '../state/useStore';
+import { api } from '../lib/api';
+import { Icon } from './Icon';
+
+type Mode = 'comprehension' | 'context' | 'technical' | 'documentation';
+
+const MODES: { id: Mode; label: string; hint: string }[] = [
+  { id: 'comprehension', label: 'Comprension', hint: 'Preguntas sobre el codigo abierto o seleccionado. No lo modifica.' },
+  { id: 'context', label: 'Contexto', hint: 'Objetivo, arquitectura, progreso y decisiones registradas del proyecto.' },
+  { id: 'technical', label: 'Consulta tecnica', hint: 'Dudas generales de HTML, CSS, JavaScript, TypeScript y frameworks.' },
+  { id: 'documentation', label: 'Documentacion', hint: 'Para documentar una funcion usa el boton del panel de funciones.' },
+];
+
+interface Message { who: 'user' | 'ai'; text: string; model?: string }
+
+export function AssistantPanel() {
+  const project = useStore((s) => s.project);
+  const files = useStore((s) => s.files);
+  const tabs = useStore((s) => s.tabs);
+  const activeTabId = useStore((s) => s.activeTabId);
+  const apiKeyConfigured = useStore((s) => s.apiKeyConfigured);
+  const setError = useStore((s) => s.setError);
+  const functionsFn = useStore((s) => s.functions);
+  const analysis = useStore((s) => s.analysis);
+  const statusOf = useStore((s) => s.statusOf);
+
+  const [mode, setMode] = useState<Mode>('comprehension');
+  const [includeFile, setIncludeFile] = useState(true);
+  const [question, setQuestion] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [messages, setMessages] = useState<Message[]>([]);
+
+  // Solo se ofrece como contexto el archivo de codigo abierto, no una pestana web.
+  const activeTab = tabs.find((t) => t.id === activeTabId);
+  const activePath = activeTab?.kind === 'file' ? activeTab.path : null;
+  const active = activePath ? { path: activePath, content: files[activePath]?.content ?? '' } : undefined;
+
+  /**
+   * Inventario real de funciones detectadas con su estado de documentacion.
+   * Sin esto el asistente no puede responder "que me falta por documentar"
+   * sin inventarselo, y preferimos darle hechos antes que dejarle suponer.
+   */
+  const inventory = useMemo(() => {
+    const list = functionsFn();
+    if (!list.length) return '';
+    const lines = list.map((f) => `- ${f.qualifiedName} (${f.filePath}:${f.line}, ${f.kind}) — ${statusOf(f)}`);
+    return `Funciones detectadas en el codigo actual (${list.length}), con su estado de documentacion:\n${lines.join('\n')}`;
+  }, [functionsFn, analysis, statusOf]);
+
+  const send = async () => {
+    if (!question.trim() || busy) return;
+    const text = question.trim();
+    setQuestion('');
+    setMessages((m) => [...m, { who: 'user', text }]);
+    setBusy(true);
+    try {
+      const parts: string[] = [];
+      if (mode !== 'technical' && inventory) parts.push(inventory);
+      if (includeFile && active && mode !== 'technical') {
+        parts.push(`Archivo actualmente abierto (${active.path}):\n\`\`\`\n${active.content.slice(0, 12000)}\n\`\`\``);
+      }
+      const contextText = parts.join('\n\n');
+      const res = await api.chat({ projectId: project?.id, mode, question: text, contextText });
+      setMessages((m) => [...m, { who: 'ai', text: res.answer, model: res.model }]);
+    } catch (err) {
+      setError((err as Error).message);
+      setMessages((m) => [...m, { who: 'ai', text: `No se pudo obtener respuesta: ${(err as Error).message}` }]);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <div className="chat">
+      <div className="chat-log">
+        {messages.length === 0 && (
+          <div className="empty" style={{ height: 'auto', paddingTop: 30 }}>
+            <Icon name="brain" size={22} />
+            <h3>Asistente de CodeMind</h3>
+            <p>
+              Pregunta por tu propio codigo o por el estado del proyecto. El asistente explica y documenta;
+              no corrige, no reescribe y no toca tus archivos.
+            </p>
+            <p className="hint">
+              Ejemplos: "Que estoy construyendo en este proyecto?", "Para que sirve calcularTotal?",
+              "Que funciones me faltan por documentar?"
+            </p>
+          </div>
+        )}
+        {messages.map((m, i) => (
+          <div key={i} className={`msg ${m.who}`}>
+            <div className="who">{m.who === 'user' ? 'Tu' : `Asistente${m.model ? ` · ${m.model}` : ''}`}</div>
+            {m.text}
+          </div>
+        ))}
+        {busy && <div className="msg ai"><span className="spinner" /> Consultando a Groq...</div>}
+      </div>
+
+      <div className="chat-input">
+        <div className="mode-row">
+          {MODES.map((m) => (
+            <button
+              key={m.id}
+              className={`mode-chip ${mode === m.id ? 'active' : ''}`}
+              onClick={() => setMode(m.id)}
+              title={m.hint}
+            >
+              {m.label}
+            </button>
+          ))}
+        </div>
+        <p className="hint">{MODES.find((m) => m.id === mode)?.hint}</p>
+        {active && mode !== 'technical' && (
+          <label className="hint" style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+            <input
+              type="checkbox"
+              style={{ width: 'auto' }}
+              checked={includeFile}
+              onChange={(e) => setIncludeFile(e.target.checked)}
+            />
+            Enviar el contenido de {active.path} como contexto
+          </label>
+        )}
+        <textarea
+          placeholder={apiKeyConfigured ? 'Escribe tu pregunta...' : 'Configura la API key de Groq para usar el asistente'}
+          value={question}
+          disabled={!apiKeyConfigured}
+          onChange={(e) => setQuestion(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) void send();
+          }}
+          style={{ minHeight: 60 }}
+        />
+        <button className="btn primary" onClick={() => void send()} disabled={busy || !question.trim() || !apiKeyConfigured}>
+          {busy ? <span className="spinner" /> : <Icon name="brain" size={13} />} Preguntar (Ctrl+Enter)
+        </button>
+      </div>
+    </div>
+  );
+}

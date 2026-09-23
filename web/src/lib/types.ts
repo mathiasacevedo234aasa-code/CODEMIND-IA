@@ -1,0 +1,328 @@
+export interface Project {
+  id: string;
+  name: string;
+  objective: string;
+  createdAt: string;
+  updatedAt: string;
+  /** Carpeta real del disco cuando el proyecto vive fuera del espacio gestionado. */
+  root: string | null;
+  mode: 'interno' | 'carpeta';
+}
+
+export type TreeNode =
+  | { type: 'dir'; name: string; path: string; children: TreeNode[] }
+  | { type: 'file'; name: string; path: string; size: number; mtime: number };
+
+// ------------------------------------------------- explorador del disco real
+
+export interface DiskRoot {
+  path: string;
+  label: string;
+  kind: 'unidad' | 'carpeta';
+}
+
+export interface DiskEntry {
+  name: string;
+  path: string;
+  type: 'dir' | 'file';
+  size: number;
+  mtime: number;
+  hidden: boolean;
+}
+
+export interface DiskListing {
+  path: string;
+  parent: string | null;
+  entries: DiskEntry[];
+  truncated: boolean;
+}
+
+export interface DiskProbe {
+  path: string;
+  exists: boolean;
+  isDir: boolean;
+  readable: boolean;
+  writable: boolean;
+  isGitRepo: boolean;
+  hasPackageJson: boolean;
+  entryCount: number;
+  suggestedName: string;
+}
+
+// ------------------------------------------------------------------- Git
+
+/** Clasificación del cambio, para distinguir codigo de documentacion y configuracion. */
+export type ChangeKind = 'codigo' | 'documentacion' | 'configuracion' | 'otro';
+
+export interface GitChange {
+  path: string;
+  /** Codigo XY de `git status --porcelain=v1`. */
+  code: string;
+  label: string;
+  kind: ChangeKind;
+  renamedFrom?: string;
+}
+
+export interface GitStatus {
+  /** false si el ejecutable `git` no está disponible en el sistema. */
+  available: boolean;
+  version: string | null;
+  isRepo: boolean;
+  root: string | null;
+  branch: string | null;
+  detached: boolean;
+  upstream: string | null;
+  ahead: number;
+  behind: number;
+  staged: GitChange[];
+  unstaged: GitChange[];
+  untracked: GitChange[];
+  conflicts: GitChange[];
+  clean: boolean;
+  remotes: { name: string; url: string }[];
+  message?: string;
+}
+
+export interface GitCommit {
+  hash: string;
+  short: string;
+  author: string;
+  email: string;
+  date: string;
+  subject: string;
+  body: string;
+}
+
+export interface GitBranches {
+  current: string | null;
+  local: string[];
+  remote: string[];
+}
+
+// ---------------------------------------------------------------- GitHub
+
+export interface GitHubStatus {
+  configured: boolean;
+  user: { login: string; name: string | null; avatarUrl: string | null; htmlUrl: string } | null;
+  scopes: string[];
+  error?: string;
+}
+
+export interface GitHubRepo {
+  fullName: string;
+  name: string;
+  owner: string;
+  private: boolean;
+  defaultBranch: string;
+  htmlUrl: string;
+  cloneUrl: string;
+  canPush: boolean;
+  updatedAt: string;
+}
+
+/** Vista previa obligatoria antes de sincronizar: qué sube, a dónde y con qué riesgos. */
+export interface SyncPreview {
+  linked: boolean;
+  remote: string | null;
+  remoteUrl: string | null;
+  branch: string | null;
+  upstream: string | null;
+  ahead: number;
+  behind: number;
+  commitsToPush: GitCommit[];
+  filesToPush: { path: string; change: 'añadido' | 'modificado' | 'eliminado'; kind: ChangeKind }[];
+  uncommitted: number;
+  conflicts: string[];
+  warnings: string[];
+  canPush: boolean;
+}
+
+// ------------------------------------------------- ejecucion de proyectos
+
+export interface RunScript {
+  name: string;
+  command: string;
+}
+
+export interface RunScriptsInfo {
+  hasPackageJson: boolean;
+  packageManager: 'npm' | 'pnpm' | 'yarn' | null;
+  scripts: RunScript[];
+  hasNodeModules: boolean;
+  framework: string | null;
+  notes: string[];
+}
+
+export interface RunProcess {
+  id: string;
+  label: string;
+  command: string;
+  cwd: string;
+  status: 'iniciando' | 'activo' | 'terminado' | 'error';
+  url: string | null;
+  port: number | null;
+  startedAt: string;
+  endedAt: string | null;
+  exitCode: number | null;
+}
+
+export interface RunLogLine {
+  seq: number;
+  at: string;
+  stream: 'stdout' | 'stderr' | 'sistema';
+  text: string;
+}
+
+/** Resultado de comprobar si una URL se puede mostrar incrustada. */
+export interface UrlProbe {
+  url: string;
+  reachable: boolean;
+  status: number | null;
+  embeddable: boolean;
+  reason: string | null;
+}
+
+export type FunctionKind =
+  | 'funcion'
+  | 'funcion flecha'
+  | 'expresion de funcion'
+  | 'metodo de clase'
+  | 'metodo de objeto'
+  | 'componente React'
+  | 'hook personalizado'
+  | 'funcion exportada por defecto';
+
+export interface DetectedFunction {
+  /** Identidad estable: archivo + nombre cualificado + ocurrencia. No solo el nombre. */
+  id: string;
+  name: string;
+  qualifiedName: string;
+  kind: FunctionKind;
+  filePath: string;
+  line: number;
+  endLine: number;
+  isAsync: boolean;
+  isGenerator: boolean;
+  params: string[];
+  code: string;
+  codeHash: string;
+  language: string;
+}
+
+export interface DocParam {
+  nombre: string;
+  tipo: string | null;
+  descripcion: string;
+  certeza: 'confirmado' | 'inferido';
+}
+
+export interface DocDependency {
+  nombre: string;
+  clase: string;
+  certeza: 'confirmado' | 'inferido';
+}
+
+export interface FunctionDoc {
+  nombre: string;
+  proposito: string;
+  explicacion: string;
+  parametros: DocParam[];
+  retorno: { descripcion: string; tipo: string | null; certeza: 'confirmado' | 'inferido' };
+  flujo: string[];
+  dependencias: DocDependency[];
+  ejemplo: string;
+  observaciones: string;
+  incertidumbres?: string[];
+}
+
+export interface ApprovedDoc {
+  versionId: string;
+  functionId: string;
+  name: string;
+  filePath: string;
+  codeHash: string | null;
+  code: string;
+  doc: FunctionDoc;
+  approvedAt: string;
+  model: string | null;
+  edited: boolean;
+  relinkedAt?: string;
+}
+
+export interface Proposal {
+  id: string;
+  functionId: string;
+  name: string;
+  filePath: string;
+  codeHash: string | null;
+  code: string;
+  doc: FunctionDoc;
+  model: string | null;
+  createdAt: string;
+  edited: boolean;
+  editedAt?: string;
+}
+
+export interface Decision {
+  id: string;
+  title: string;
+  rationale: string;
+  tags: string[];
+  createdAt: string;
+}
+
+export interface ProgressEntry {
+  id: string;
+  title: string;
+  detail: string;
+  state: 'pendiente' | 'en progreso' | 'hecho';
+  createdAt: string;
+}
+
+export interface ProjectMemory {
+  overview: {
+    objective: string;
+    problem: string;
+    audience: string;
+    technologies: string;
+    status: string;
+    implemented: string;
+    pending: string;
+  };
+  architectureNotes: string;
+  decisions: Decision[];
+  progress: ProgressEntry[];
+  updatedAt: string | null;
+}
+
+export interface EditorSettings {
+  theme: 'dark' | 'light';
+  fontSize: number;
+  tabSize: number;
+  wordWrap: boolean;
+  minimap: boolean;
+}
+
+export interface AppSettings {
+  model: string | null;
+  temperature: number;
+  maxTokens: number;
+  editor: EditorSettings;
+}
+
+export type DocStatus = 'sin-documentar' | 'documentada' | 'revisar';
+
+export type LogChannel = 'console' | 'errores' | 'documentacion' | 'sistema' | 'git' | 'procesos';
+
+export interface LogEntry {
+  id: string;
+  at: string;
+  channel: LogChannel;
+  level: 'info' | 'warn' | 'error';
+  message: string;
+}
+
+/** Una pestaña del área central: un archivo del proyecto o una página web. */
+export type CenterTab =
+  | { kind: 'file'; id: string; path: string }
+  | { kind: 'web'; id: string; url: string; title: string };
