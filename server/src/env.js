@@ -39,6 +39,9 @@ export const WEB_DIST = process.env.CODEMIND_WEB_DIST
  */
 const fileEnv = dotenv.config({ path: path.join(ROOT, '.env'), processEnv: {} }).parsed ?? {};
 
+/** Solo el valor del archivo .env, sin mirar el entorno del sistema. */
+export const fileEnvValue = (name) => fileEnv[name] || null;
+
 /** Orden de prioridad: .env del proyecto, luego variable del sistema. */
 export const fromEnv = (name) => fileEnv[name] || process.env[name] || null;
 

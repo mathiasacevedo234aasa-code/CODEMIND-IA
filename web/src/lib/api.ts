@@ -155,6 +155,10 @@ export const api = {
   chat: (payload: Record<string, unknown>) =>
     request<{ answer: string; model: string }>('/api/ai/chat', { method: 'POST', ...json(payload) }),
   models: () => request<{ models: { id: string }[] }>('/api/ai/models'),
+  testGroq: () =>
+    request<{ ok: boolean; source: string | null; model?: string; modelAvailable?: boolean; message: string }>(
+      '/api/ai/test',
+    ),
 
   // ajustes
   settings: () =>

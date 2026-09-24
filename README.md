@@ -63,7 +63,7 @@ relativas `/api` que en el navegador y no existen dos versiones del código.
 | Detalle | Cómo se resuelve |
 |---|---|
 | Datos del usuario | En la app instalada van a `%APPDATA%\codemind-ai\data`, porque la carpeta de instalación es de solo lectura. En desarrollo se usa `server/data`, para compartir proyectos con `npm run dev` |
-| Clave de Groq | En la app instalada no hay `.env`: se guarda desde **Configuración**, en la carpeta de datos |
+| Clave de Groq | En la app instalada no hay `.env`: se guarda desde **Configuración**, en la carpeta de datos. Si tu equipo tiene una variable de entorno `GROQ_API_KEY`, la app la usará como último recurso — y si está caducada verás un 401. La clave guardada desde Configuración siempre tiene prioridad |
 | Dependencias | `scripts/pack-runtime.mjs` instala un árbol limpio con solo `express`, `cors` y `dotenv`. Electron, Vite y Monaco no viajan en el paquete |
 | Comprobación del paquete | `scripts/verify-package.mjs` compara el número de archivos empaquetados con el origen, exige los archivos imprescindibles y mide el margen de longitud de ruta. El build falla si algo no cuadra |
 | Permisos de la ventana | Sin acceso a Node (`contextIsolation`, sin `nodeIntegration`): solo habla con el backend por HTTP |
@@ -109,12 +109,20 @@ No está **firmado digitalmente**. Windows mostrará el aviso de SmartScreen la 
 pulsar "Más información → Ejecutar de todas formas". Firmarlo exige un certificado de pago; mientras
 no lo tengas, es el comportamiento esperado y conviene advertirlo a quien se lo pases.
 
-### Nota importante sobre `GROQ_API_KEY`
+### De dónde sale la clave de Groq
 
-Si tu sistema ya tiene una variable de entorno `GROQ_API_KEY` exportada, **el `.env` del proyecto
-tiene prioridad** sobre ella. Esto es deliberado: en esta máquina existe una variable de sistema con
-un valor antiguo, y sin esa prioridad editar el `.env` no habría tenido efecto y Groq respondería 401
-sin explicación aparente.
+Se busca en este orden, y **el primero que exista gana**:
+
+1. La guardada desde **Configuración** (en la carpeta de datos)
+2. El archivo `.env` del proyecto
+3. La variable de entorno `GROQ_API_KEY` del equipo
+
+El tercer punto es una trampa conocida: si tu sistema tiene una `GROQ_API_KEY` antigua, la aplicación
+**instalada** la usará, porque no lleva `.env` dentro. Verás "Groq ✓" y después un 401 al documentar.
+Por eso el mensaje de error dice de dónde salió la clave, y **Configuración → Probar conexión** llama
+de verdad a Groq en lugar de limitarse a comprobar que hay algo escrito.
+
+La solución: guarda tu clave desde Configuración. Tiene prioridad sobre todo lo demás.
 
 ---
 

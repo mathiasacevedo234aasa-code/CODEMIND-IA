@@ -90,7 +90,7 @@ async function postCompletion({ key, model, messages, temperature, maxTokens, js
   }
 }
 
-function describeError(status, raw, model) {
+function describeError(status, raw, model, source) {
   let detail = raw.slice(0, 600);
   let code = null;
   try {
@@ -100,7 +100,21 @@ function describeError(status, raw, model) {
   } catch {
     /* respuesta no JSON */
   }
-  if (status === 401) return { code, error: new HttpError(401, 'Groq rechazo la API key (401). Revisa la clave configurada.') };
+  if (status === 401) {
+    // Decir de DONDE salio la clave es la diferencia entre resolverlo en un
+    // minuto y no entender nada: una variable de sistema antigua puede estar
+    // tapando la buena, y en la aplicacion instalada no hay ningun .env.
+    const origen = {
+      guardada: 'Es la clave que guardaste desde Configuracion.',
+      'archivo .env': 'Es la clave del archivo .env del proyecto.',
+      'variable del sistema':
+        'Esa clave NO es de la aplicacion: viene de la variable de entorno GROQ_API_KEY de tu equipo. Guarda tu clave desde Configuracion y tendra prioridad sobre ella.',
+    }[source] ?? '';
+    return {
+      code,
+      error: new HttpError(401, `Groq rechazo la API key. ${origen} Comprueba que sigue activa en console.groq.com.`),
+    };
+  }
   if (status === 404) {
     return {
       code,
@@ -116,23 +130,23 @@ function describeError(status, raw, model) {
 
 /** Llamada a Groq (API compatible con OpenAI chat/completions). */
 async function callGroq({ messages, model, temperature, maxTokens, jsonMode }) {
-  const { key } = await getApiKey();
+  const { key, source } = await getApiKey();
   if (!key) {
     throw new HttpError(
       400,
-      'No hay una API key de Groq configurada. Anade GROQ_API_KEY al archivo .env o guardala desde Configuracion.',
+      'No hay una API key de Groq configurada. Guardala desde Configuracion o anade GROQ_API_KEY al archivo .env.',
     );
   }
 
   let { res, raw } = await postCompletion({ key, model, messages, temperature, maxTokens, jsonMode });
 
   if (!res.ok) {
-    const { code, error } = describeError(res.status, raw, model);
+    const { code, error } = describeError(res.status, raw, model, source);
     // Algunos modelos fallan la validacion estricta de JSON del propio Groq.
     // Reintentamos en modo texto y validamos nosotros la estructura.
     if (jsonMode && code === 'json_validate_failed') {
       ({ res, raw } = await postCompletion({ key, model, messages, temperature, maxTokens, jsonMode: false }));
-      if (!res.ok) throw describeError(res.status, raw, model).error;
+      if (!res.ok) throw describeError(res.status, raw, model, source).error;
     } else {
       throw error;
     }
@@ -263,6 +277,48 @@ export async function chat({ mode = 'comprehension', question, contextText, mode
   const resolved = await resolveModel(model);
   const result = await callGroq({ messages, model: resolved, temperature, maxTokens, jsonMode: false });
   return { answer: result.content, model: result.model, usage: result.usage };
+}
+
+/**
+ * Comprueba de verdad si la clave configurada funciona.
+ *
+ * Existe porque saber que "hay una clave" no sirve de nada: la aplicacion
+ * decia "Groq configurado" mientras usaba una clave caducada del entorno del
+ * sistema, y el fallo solo aparecia al intentar documentar una funcion.
+ */
+export async function testConnection() {
+  const { key, source } = await getApiKey();
+  if (!key) return { ok: false, source: null, message: 'No hay ninguna API key configurada.' };
+
+  let res;
+  try {
+    res = await fetch(`${GROQ_BASE_URL}/models`, {
+      headers: { Authorization: `Bearer ${key}` },
+      signal: AbortSignal.timeout(15000),
+    });
+  } catch (err) {
+    return { ok: false, source, message: `No se pudo contactar con Groq: ${err.message}` };
+  }
+
+  if (!res.ok) {
+    const { error } = describeError(res.status, await res.text(), await resolveModel(null), source);
+    return { ok: false, source, message: error.message };
+  }
+
+  const data = await res.json();
+  const model = await resolveModel(null);
+  const disponibles = (data?.data ?? []).map((m) => m.id);
+  const tieneModelo = disponibles.includes(model);
+
+  return {
+    ok: true,
+    source,
+    model,
+    modelAvailable: tieneModelo,
+    message: tieneModelo
+      ? `Conexion correcta. El modelo "${model}" esta disponible en tu cuenta.`
+      : `La clave funciona, pero tu cuenta no tiene acceso al modelo "${model}". Elige otro de la lista.`,
+  };
 }
 
 export async function listModels() {

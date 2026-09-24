@@ -18,8 +18,23 @@ export function SettingsDialog() {
   const [key, setKey] = useState('');
   const [models, setModels] = useState<string[]>([]);
   const [loadingModels, setLoadingModels] = useState(false);
+  const [prueba, setPrueba] = useState<{ ok: boolean; message: string; source: string | null } | null>(null);
+  const [probando, setProbando] = useState(false);
 
   if (!open) return null;
+
+  /** Llama a Groq de verdad: saber que "hay una clave" no garantiza que sirva. */
+  const probarConexion = async () => {
+    setProbando(true);
+    setPrueba(null);
+    try {
+      setPrueba(await api.testGroq());
+    } catch (err) {
+      setPrueba({ ok: false, message: (err as Error).message, source: null });
+    } finally {
+      setProbando(false);
+    }
+  };
 
   const loadModels = async () => {
     setLoadingModels(true);
@@ -46,12 +61,35 @@ export function SettingsDialog() {
           <div className="field">
             <label>API key</label>
             {apiKeyConfigured ? (
-              <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                <span className="tag ok"><Icon name="check" size={11} /> Configurada en el backend</span>
+              <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+                <span className="tag ok"><Icon name="check" size={11} /> Hay una clave configurada</span>
+                <button className="btn sm outline" disabled={probando} onClick={() => void probarConexion()}>
+                  {probando ? <span className="spinner" /> : <Icon name="check" size={12} />} Probar conexión
+                </button>
                 <button className="btn sm danger" onClick={() => void clearApiKey()}>Eliminar clave guardada</button>
               </div>
             ) : (
               <p className="hint">No hay ninguna clave configurada.</p>
+            )}
+
+            {prueba && (
+              <div
+                className="review-banner"
+                style={{ marginTop: 8, borderColor: prueba.ok ? 'var(--ok)' : 'var(--danger)' }}
+              >
+                {prueba.message}
+                {prueba.source && (
+                  <div className="hint" style={{ marginTop: 4 }}>
+                    Origen de la clave en uso: <strong>{prueba.source}</strong>.
+                  </div>
+                )}
+                {prueba.source === 'variable del sistema' && (
+                  <div className="hint" style={{ marginTop: 4, color: 'var(--warn)' }}>
+                    Cuidado: esa clave no es de la aplicación, viene del entorno de tu equipo. Si guardas aquí la tuya,
+                    tendrá prioridad sobre ella.
+                  </div>
+                )}
+              </div>
             )}
             <input
               type="password"

@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { generateFunctionDoc, chat, listModels } from '../services/groq.js';
+import { generateFunctionDoc, chat, listModels, testConnection } from '../services/groq.js';
 import { getProject, readDocs, readMemory, readSettings } from '../services/store.js';
 
 const router = Router();
@@ -72,6 +72,15 @@ router.post('/chat', async (req, res, next) => {
       maxTokens: settings.maxTokens,
     });
     res.json(result);
+  } catch (err) {
+    next(err);
+  }
+});
+
+/** Comprueba de verdad la conexion con Groq, no solo que exista una clave. */
+router.get('/test', async (_req, res, next) => {
+  try {
+    res.json(await testConnection());
   } catch (err) {
     next(err);
   }

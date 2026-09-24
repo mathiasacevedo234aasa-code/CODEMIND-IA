@@ -1,7 +1,7 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import crypto from 'node:crypto';
-import { DATA_DIR, PROJECTS_DIR, fromEnv } from '../env.js';
+import { DATA_DIR, PROJECTS_DIR, fileEnvValue } from '../env.js';
 
 /** Error con codigo HTTP, para que las rutas devuelvan mensajes claros. */
 export class HttpError extends Error {
@@ -366,10 +366,22 @@ export async function clearStoredApiKey() {
   await fs.rm(secretsFile, { force: true });
 }
 
+/**
+ * Devuelve la clave de Groq y, sobre todo, DE DONDE sale.
+ *
+ * El origen importa: una variable de sistema caducada tapaba la clave buena y
+ * la aplicacion decia "Groq configurado" para despues fallar con un 401 sin
+ * explicacion. La aplicacion de escritorio no lleva .env dentro, asi que ahi
+ * la variable del sistema es justo la trampa mas probable.
+ *
+ * Prioridad: la guardada desde Configuracion, luego el .env del proyecto y por
+ * ultimo la variable del sistema.
+ */
 export async function getApiKey() {
   const stored = await readJson(secretsFile, null);
-  if (stored?.groqApiKey) return { key: stored.groqApiKey, source: 'stored' };
-  const fileKey = fromEnv('GROQ_API_KEY');
-  if (fileKey) return { key: fileKey, source: 'env' };
+  if (stored?.groqApiKey) return { key: stored.groqApiKey, source: 'guardada' };
+  const fileKey = fileEnvValue('GROQ_API_KEY');
+  if (fileKey) return { key: fileKey, source: 'archivo .env' };
+  if (process.env.GROQ_API_KEY) return { key: process.env.GROQ_API_KEY, source: 'variable del sistema' };
   return { key: null, source: null };
 }
