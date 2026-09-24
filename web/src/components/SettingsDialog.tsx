@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useStore } from '../state/useStore';
 import { api } from '../lib/api';
 import { Icon } from './Icon';
+import { EditorAppearance } from './EditorAppearance';
 
 export function SettingsDialog() {
   const open = useStore((s) => s.settingsOpen);
@@ -118,53 +119,19 @@ export function SettingsDialog() {
           </div>
 
           <h3 style={{ fontSize: 13, margin: '18px 0 10px' }}>Editor</h3>
-          <div className="grid2">
-            <div className="field">
-              <label>Tema</label>
-              <select
-                value={settings.editor.theme}
-                onChange={(e) => void saveSettings({ editor: { ...settings.editor, theme: e.target.value as 'dark' | 'light' } })}
-              >
-                <option value="dark">Oscuro</option>
-                <option value="light">Claro</option>
-              </select>
-            </div>
-            <div className="field">
-              <label>Tamano de fuente</label>
-              <input
-                type="number" min={10} max={24}
-                value={settings.editor.fontSize}
-                onChange={(e) => void saveSettings({ editor: { ...settings.editor, fontSize: Number(e.target.value) } })}
-              />
-            </div>
-            <div className="field">
-              <label>Tabulacion</label>
-              <input
-                type="number" min={1} max={8}
-                value={settings.editor.tabSize}
-                onChange={(e) => void saveSettings({ editor: { ...settings.editor, tabSize: Number(e.target.value) } })}
-              />
-            </div>
-            <div className="field">
-              <label>Opciones</label>
-              <label className="hint" style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
-                <input
-                  type="checkbox" style={{ width: 'auto' }}
-                  checked={settings.editor.wordWrap}
-                  onChange={(e) => void saveSettings({ editor: { ...settings.editor, wordWrap: e.target.checked } })}
-                />
-                Ajuste de linea
-              </label>
-              <label className="hint" style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
-                <input
-                  type="checkbox" style={{ width: 'auto' }}
-                  checked={settings.editor.minimap}
-                  onChange={(e) => void saveSettings({ editor: { ...settings.editor, minimap: e.target.checked } })}
-                />
-                Minimapa
-              </label>
-            </div>
+
+          <div className="field">
+            <label>Tema</label>
+            <select
+              value={settings.editor.theme}
+              onChange={(e) => void saveSettings({ editor: { ...settings.editor, theme: e.target.value as 'dark' | 'light' } })}
+            >
+              <option value="dark">Oscuro</option>
+              <option value="light">Claro</option>
+            </select>
           </div>
+
+          <EditorAppearance />
         </div>
         <div className="modal-foot">
           <button className="btn primary" onClick={() => setOpen(false)}>Cerrar</button>

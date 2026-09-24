@@ -301,6 +301,17 @@ export interface EditorSettings {
   tabSize: number;
   wordWrap: boolean;
   minimap: boolean;
+  /** Clave de FONT_STACKS, o 'default' para la del sistema. */
+  fontFamily: string;
+  /** Altura de linea en pixeles. 0 = proporcional al tamano de fuente. */
+  lineHeight: number;
+  letterSpacing: number;
+  fontLigatures: boolean;
+  lineNumbers: 'on' | 'off' | 'relative';
+  indentGuides: boolean;
+  highlightCurrentLine: boolean;
+  stickyScroll: boolean;
+  bracketPairColorization: boolean;
 }
 
 export interface AppSettings {

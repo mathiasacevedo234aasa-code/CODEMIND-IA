@@ -2,6 +2,7 @@ import { useEffect, useRef } from 'react';
 import Editor, { type OnMount } from '@monaco-editor/react';
 import { useStore } from '../state/useStore';
 import { languageOf } from '../lib/analyzer';
+import { fontStackOf } from '../lib/editorFonts';
 import { WebView } from './WebView';
 import { Icon } from './Icon';
 
@@ -119,15 +120,23 @@ export function EditorArea() {
             onMount={onMount}
             options={{
               fontSize: settings.editor.fontSize,
+              fontFamily: fontStackOf(settings.editor.fontFamily).stack,
+              // 0 deja que Monaco calcule la altura proporcional al tamaño.
+              lineHeight: settings.editor.lineHeight || undefined,
+              letterSpacing: settings.editor.letterSpacing,
+              fontLigatures: settings.editor.fontLigatures,
               tabSize: settings.editor.tabSize,
               wordWrap: settings.editor.wordWrap ? 'on' : 'off',
               minimap: { enabled: settings.editor.minimap },
+              lineNumbers: settings.editor.lineNumbers,
+              guides: { indentation: settings.editor.indentGuides },
+              renderLineHighlight: settings.editor.highlightCurrentLine ? 'line' : 'none',
+              stickyScroll: { enabled: settings.editor.stickyScroll },
+              bracketPairColorization: { enabled: settings.editor.bracketPairColorization },
               automaticLayout: true,
               scrollBeyondLastLine: false,
               smoothScrolling: true,
-              renderLineHighlight: 'line',
               cursorBlinking: 'smooth',
-              fontLigatures: true,
               padding: { top: 10 },
               // El editor no interrumpe: sin sugerencias automáticas de IA.
               quickSuggestions: { other: true, comments: false, strings: false },

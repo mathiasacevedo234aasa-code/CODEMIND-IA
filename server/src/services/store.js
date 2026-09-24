@@ -328,7 +328,24 @@ export const DEFAULT_SETTINGS = {
   model: null, // null = usar GROQ_MODEL del .env
   temperature: 0.2,
   maxTokens: 4096,
-  editor: { theme: 'dark', fontSize: 14, tabSize: 2, wordWrap: true, minimap: false },
+  editor: {
+    theme: 'dark',
+    fontSize: 14,
+    tabSize: 2,
+    wordWrap: true,
+    minimap: false,
+    // Apariencia: lo que cada persona necesita para leer codigo comodo durante
+    // horas. Se guarda en disco, asi que sobrevive a reinstalar el navegador.
+    fontFamily: 'default',
+    lineHeight: 0, // 0 = proporcional al tamano de fuente
+    letterSpacing: 0,
+    fontLigatures: true,
+    lineNumbers: 'on', // 'on' | 'off' | 'relative'
+    indentGuides: true,
+    highlightCurrentLine: true,
+    stickyScroll: false,
+    bracketPairColorization: true,
+  },
 };
 
 export const readSettings = () => readJson(settingsFile, DEFAULT_SETTINGS);

@@ -21,17 +21,23 @@ export function FolderPicker({ open, onClose, onChoose, title = 'Abrir una carpe
   const [loading, setLoading] = useState(false);
   const [problem, setProblem] = useState<string | null>(null);
 
+  // Creación de carpeta: null = no se está creando ninguna.
+  const [nuevaCarpeta, setNuevaCarpeta] = useState<string | null>(null);
+  const [creando, setCreando] = useState(false);
+
   const inputRef = useRef<HTMLInputElement | null>(null);
+  const nuevaRef = useRef<HTMLInputElement | null>(null);
   const listRef = useRef<HTMLDivElement | null>(null);
 
-  const navigate = useCallback(async (target: string) => {
+  const navigate = useCallback(async (target: string, mantenerSeleccion?: string) => {
     setLoading(true);
     setProblem(null);
+    setNuevaCarpeta(null);
     try {
       const res = await api.diskList(target, showHidden);
       setListing(res);
       setPathInput(res.path);
-      setSelected(null);
+      setSelected(mantenerSeleccion ?? null);
     } catch (err) {
       // Un error de navegación no debe cerrar el diálogo ni sacar al usuario.
       setProblem((err as Error).message);
@@ -39,6 +45,23 @@ export function FolderPicker({ open, onClose, onChoose, title = 'Abrir una carpe
       setLoading(false);
     }
   }, [showHidden]);
+
+  /** Crea la carpeta dentro de la que se está viendo y la deja seleccionada. */
+  const crearCarpeta = async () => {
+    const nombre = (nuevaCarpeta ?? '').trim();
+    if (!listing || !nombre || creando) return;
+    setCreando(true);
+    setProblem(null);
+    try {
+      const { path: creada } = await api.createDiskFolder(listing.path, nombre);
+      await navigate(listing.path, creada);
+    } catch (err) {
+      setProblem((err as Error).message);
+      requestAnimationFrame(() => nuevaRef.current?.focus());
+    } finally {
+      setCreando(false);
+    }
+  };
 
   useEffect(() => {
     if (!open) return;
@@ -124,6 +147,17 @@ export function FolderPicker({ open, onClose, onChoose, title = 'Abrir una carpe
             placeholder="Escribe o pega una ruta y pulsa Enter"
             style={{ fontFamily: 'var(--mono)', fontSize: 12.5 }}
           />
+          <button
+            className="btn outline"
+            disabled={loading || !listing}
+            title="Crear una carpeta aquí"
+            onClick={() => {
+              setNuevaCarpeta('');
+              requestAnimationFrame(() => nuevaRef.current?.focus());
+            }}
+          >
+            <Icon name="folder" size={13} /> Nueva carpeta
+          </button>
           <button className="btn icon" disabled={loading} onClick={() => listing && void navigate(listing.path)} title="Recargar">
             {loading ? <span className="spinner" /> : <Icon name="refresh" size={14} />}
           </button>
@@ -153,6 +187,33 @@ export function FolderPicker({ open, onClose, onChoose, title = 'Abrir una carpe
               onKeyDown={onListKeyDown}
               style={{ flex: 1, overflow: 'auto', outline: 'none', maxHeight: 300 }}
             >
+              {nuevaCarpeta !== null && (
+                <div className="tree-row" style={{ gap: 6, cursor: 'default' }}>
+                  <Icon name="folder" size={13} />
+                  <input
+                    ref={nuevaRef}
+                    type="text"
+                    value={nuevaCarpeta}
+                    placeholder="Nombre de la carpeta"
+                    disabled={creando}
+                    onChange={(e) => setNuevaCarpeta(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') void crearCarpeta();
+                      if (e.key === 'Escape') {
+                        e.stopPropagation(); // Escape aquí cancela el nombre, no cierra el diálogo
+                        setNuevaCarpeta(null);
+                      }
+                    }}
+                    style={{ height: 24, padding: '0 6px', fontSize: 12.5 }}
+                  />
+                  <button className="btn icon sm" disabled={creando || !nuevaCarpeta.trim()} onClick={() => void crearCarpeta()} title="Crear">
+                    {creando ? <span className="spinner" /> : <Icon name="check" size={12} />}
+                  </button>
+                  <button className="btn icon sm" disabled={creando} onClick={() => setNuevaCarpeta(null)} title="Cancelar">
+                    <Icon name="close" size={12} />
+                  </button>
+                </div>
+              )}
               {dirs.map((entry) => (
                 <div
                   key={entry.path}

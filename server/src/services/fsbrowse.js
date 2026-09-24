@@ -157,6 +157,67 @@ export async function probe(absPath) {
   return base;
 }
 
+// Nombres que Windows reserva para dispositivos: una carpeta con uno de estos
+// nombres no se puede crear ni borrar con normalidad.
+const RESERVADOS = new Set([
+  'con', 'prn', 'aux', 'nul',
+  ...Array.from({ length: 9 }, (_, i) => `com${i + 1}`),
+  ...Array.from({ length: 9 }, (_, i) => `lpt${i + 1}`),
+]);
+
+/** Valida el nombre de una carpeta nueva. Devuelve el motivo si no sirve. */
+export function validarNombreCarpeta(name) {
+  const clean = String(name ?? '').trim();
+  if (!clean) return 'Escribe un nombre para la carpeta.';
+  if (clean === '.' || clean === '..') return 'Ese nombre no es valido.';
+  if (/[\\/:*?"<>|]/.test(clean)) return 'El nombre no puede contener \\ / : * ? " < > |';
+  if (RESERVADOS.has(clean.toLowerCase().split('.')[0])) {
+    return `"${clean}" es un nombre reservado por Windows.`;
+  }
+  if (clean.endsWith('.') || clean.endsWith(' ')) return 'El nombre no puede terminar en punto ni en espacio.';
+  if (clean.length > 120) return 'El nombre es demasiado largo.';
+  return null;
+}
+
+/**
+ * Crea una carpeta dentro de otra. Es lo que permite montar el proyecto en una
+ * carpeta nueva sin tener que salir a crearla en el explorador de Windows.
+ */
+export async function createFolder(parentAbs, name) {
+  const parent = assertAbsolute(parentAbs);
+
+  const problema = validarNombreCarpeta(name);
+  if (problema) throw new HttpError(400, problema);
+  const clean = String(name).trim();
+
+  const stat = await fs.stat(parent).catch(() => null);
+  if (!stat) throw new HttpError(404, `No existe la carpeta "${parent}".`);
+  if (!stat.isDirectory()) throw new HttpError(400, 'La ruta indicada no es una carpeta.');
+  if (!(await canAccess(parent, constants.W_OK))) {
+    throw new HttpError(403, `No tienes permiso para crear carpetas dentro de "${parent}".`);
+  }
+
+  const target = path.join(parent, clean);
+  // path.join normaliza: si el nombre trajera separadores, el resultado se
+  // saldria de la carpeta padre. Ya se rechazan arriba, pero se comprueba.
+  if (path.dirname(target) !== parent) throw new HttpError(400, 'El nombre no puede contener rutas.');
+
+  if (await canAccess(target, constants.F_OK)) {
+    throw new HttpError(409, `Ya existe "${clean}" en esa carpeta.`);
+  }
+
+  try {
+    await fs.mkdir(target);
+  } catch (err) {
+    if (err.code === 'EACCES' || err.code === 'EPERM') {
+      throw new HttpError(403, `Windows no permitio crear la carpeta en "${parent}".`);
+    }
+    throw new HttpError(500, `No se pudo crear la carpeta: ${err.code ?? err.message}`);
+  }
+
+  return { path: target, name: clean };
+}
+
 /** Evita abrir como proyecto carpetas del sistema, donde escribir seria un accidente. */
 export function isSafeProjectRoot(absPath) {
   const target = assertAbsolute(absPath);

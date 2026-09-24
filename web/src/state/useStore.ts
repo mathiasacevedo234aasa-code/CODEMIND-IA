@@ -144,7 +144,22 @@ const DEFAULT_SETTINGS: AppSettings = {
   model: null,
   temperature: 0.2,
   maxTokens: 4096,
-  editor: { theme: 'dark', fontSize: 14, tabSize: 2, wordWrap: true, minimap: false },
+  editor: {
+    theme: 'dark',
+    fontSize: 14,
+    tabSize: 2,
+    wordWrap: true,
+    minimap: false,
+    fontFamily: 'default',
+    lineHeight: 0,
+    letterSpacing: 0,
+    fontLigatures: true,
+    lineNumbers: 'on',
+    indentGuides: true,
+    highlightCurrentLine: true,
+    stickyScroll: false,
+    bracketPairColorization: true,
+  },
 };
 
 const MAX_SCAN_FILES = 250;

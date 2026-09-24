@@ -32,6 +32,11 @@ router.get('/fs/list', wrap(async (req, res) => {
   res.json(await fsbrowse.list(req.query.path, req.query.hidden === '1'));
 }));
 
+router.post('/fs/folder', wrap(async (req, res) => {
+  const { parent, name } = req.body ?? {};
+  res.status(201).json(await fsbrowse.createFolder(parent, name));
+}));
+
 router.get('/fs/probe', wrap(async (req, res) => {
   const probe = await fsbrowse.probe(req.query.path);
   const safety = probe.isDir ? fsbrowse.isSafeProjectRoot(probe.path) : { ok: false };

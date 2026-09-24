@@ -17,7 +17,10 @@ router.get('/', async (_req, res, next) => {
     const settings = await readSettings();
     const { key, source } = await getApiKey();
     res.json({
-      settings: { ...DEFAULT_SETTINGS, ...settings },
+      // La fusion tiene que entrar en "editor": con una superficial, unos
+      // ajustes guardados antes de anadir una preferencia nueva la dejarian
+      // sin valor, y la interfaz mostraria campos vacios.
+      settings: { ...DEFAULT_SETTINGS, ...settings, editor: { ...DEFAULT_SETTINGS.editor, ...(settings.editor ?? {}) } },
       defaultModel: DEFAULT_MODEL,
       apiKey: { configured: Boolean(key), source },
     });

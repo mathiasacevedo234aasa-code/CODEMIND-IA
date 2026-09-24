@@ -88,7 +88,8 @@ elevar privilegios.
 Las dependencias se instalan **fuera del monorepo** y se copian después. No es un capricho: dentro,
 npm ve el `node_modules` del padre y acaba anidando las dependencias transitivas unas dentro de
 otras, generando rutas de casi 200 caracteres. Sumadas al prefijo de instalación real
-(`C:\Program Files\CodeMind AIesourcespp
+(`C:\Program Files\CodeMind AI
+esourcespp
 ode_modules\`) rebasan el límite de 260 caracteres
 de Windows, y entonces **algunos archivos simplemente no se copian, sin ningún error**.
 
@@ -222,7 +223,10 @@ Implementado y verificado (fases 1 a 6):
 - Editor Monaco con pestañas, temas, atajos e indicadores de cambios sin guardar
 - Explorador con crear, renombrar, eliminar y carpetas anidadas
 - Proyectos en el espacio gestionado **o sobre cualquier carpeta real de tu equipo**
-- Selector de carpetas que navega por las unidades y carpetas del disco
+- Selector que navega por las unidades del disco y **crea carpetas nuevas** sin salir de la aplicación
+- Apariencia del editor configurable: tipografía, tamaño, interlineado, espaciado, ligaduras,
+  números de línea, guías de indentación, corchetes de colores, encabezado fijo y minimapa,
+  con una muestra que se actualiza mientras eliges
 
 **Comprensión y documentación**
 - Detección de funciones por AST en `.js .jsx .ts .tsx .mjs .cjs` y el `<script>` de `.vue` y `.svelte`

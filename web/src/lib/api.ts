@@ -56,7 +56,12 @@ export const api = {
   diskRoots: () => request<{ roots: DiskRoot[] }>('/api/fs/roots'),
   diskList: (path: string, showHidden = false) =>
     request<DiskListing>(`/api/fs/list?path=${encodeURIComponent(path)}&hidden=${showHidden ? '1' : '0'}`),
-  diskProbe: (path: string) => request<DiskProbe>(`/api/fs/probe?path=${encodeURIComponent(path)}`),
+  diskProbe: (path: string) =>
+    request<DiskProbe & { safe: boolean; unsafeReason: string | null }>(
+      `/api/fs/probe?path=${encodeURIComponent(path)}`,
+    ),
+  createDiskFolder: (parent: string, name: string) =>
+    request<{ path: string; name: string }>('/api/fs/folder', { method: 'POST', ...json({ parent, name }) }),
 
   // proyectos
   listProjects: () => request<{ projects: Project[] }>('/api/projects'),
