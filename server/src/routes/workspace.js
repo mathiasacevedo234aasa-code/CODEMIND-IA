@@ -1,4 +1,5 @@
 import { Router } from 'express';
+import { randomUUID } from 'node:crypto';
 import { getProject, projectRootDir } from '../services/store.js';
 import * as fsbrowse from '../services/fsbrowse.js';
 import * as git from '../services/git.js';
@@ -152,6 +153,37 @@ router.get('/projects/:id/run/processes/:processId/logs', wrap(async (req, res) 
 
 router.post('/projects/:id/run/processes/:processId/stop', wrap(async (req, res) => {
   res.json({ process: await runner.stop(req.params.id, req.params.processId) });
+}));
+
+/*
+ * Vista previa accesible por URL.
+ *
+ * El boton "abrir en otra pestana" usaba window.open + document.write, que en
+ * la aplicacion de escritorio no funciona: Electron deniega las ventanas
+ * nuevas y el boton se quedaba muerto. Guardando el HTML aqui y sirviendolo en
+ * una URL, la pagina se puede abrir tanto en una pestana interna como en el
+ * navegador del sistema, y funciona igual en los dos modos.
+ */
+const previews = new Map();
+const PREVIEW_TTL = 30 * 60 * 1000;
+
+router.post('/preview', wrap(async (req, res) => {
+  const html = String(req.body?.html ?? '');
+  if (!html) return res.status(400).json({ error: 'No se recibio el contenido de la vista previa.' });
+
+  // Se descartan las caducadas para no acumular HTML en memoria.
+  const ahora = Date.now();
+  for (const [key, value] of previews) if (ahora - value.at > PREVIEW_TTL) previews.delete(key);
+
+  const id = randomUUID();
+  previews.set(id, { html, at: ahora });
+  res.status(201).json({ id, url: `/api/preview/${id}` });
+}));
+
+router.get('/preview/:id', wrap(async (req, res) => {
+  const entry = previews.get(req.params.id);
+  if (!entry) return res.status(404).type('html').send('<h1>La vista previa ha caducado</h1><p>Vuelve a generarla desde CodeMind AI.</p>');
+  res.type('html').send(entry.html);
 }));
 
 router.get('/net/probe', wrap(async (req, res) => {

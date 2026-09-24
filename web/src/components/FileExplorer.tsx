@@ -3,6 +3,7 @@ import { useStore } from '../state/useStore';
 import type { TreeNode } from '../lib/types';
 import { extensionOf } from '../lib/analyzer';
 import { Icon } from './Icon';
+import { ask, validarRutaRelativa } from '../lib/dialogs';
 
 const EXT_COLOR: Record<string, string> = {
   html: '#e2724a', css: '#4a8fe2', scss: '#cf649a', js: '#e0b341', mjs: '#e0b341',
@@ -23,9 +24,16 @@ function Row({ node, depth }: { node: TreeNode; depth: number }) {
   const isDir = node.type === 'dir';
   const active = tabs.some((t) => t.kind === 'file' && t.path === node.path && t.id === activeTabId);
 
-  const onRename = (e: React.MouseEvent) => {
+  const onRename = async (e: React.MouseEvent) => {
     e.stopPropagation();
-    const next = window.prompt('Nueva ruta (relativa al proyecto):', node.path);
+    const next = await ask({
+      title: isDir ? 'Renombrar carpeta' : 'Renombrar archivo',
+      label: 'Ruta dentro del proyecto',
+      value: node.path,
+      hint: 'Puedes moverlo a otra carpeta cambiando la ruta.',
+      confirmText: 'Renombrar',
+      validate: validarRutaRelativa,
+    });
     if (next && next !== node.path) void renameEntry(node.path, next);
   };
 
@@ -37,9 +45,15 @@ function Row({ node, depth }: { node: TreeNode; depth: number }) {
     }
   };
 
-  const onAdd = (kind: 'file' | 'dir') => (e: React.MouseEvent) => {
+  const onAdd = (kind: 'file' | 'dir') => async (e: React.MouseEvent) => {
     e.stopPropagation();
-    const name = window.prompt(kind === 'dir' ? 'Nombre de la carpeta:' : 'Nombre del archivo:');
+    const name = await ask({
+      title: kind === 'dir' ? 'Nueva carpeta' : 'Nuevo archivo',
+      label: `Dentro de ${node.path}`,
+      placeholder: kind === 'dir' ? 'componentes' : 'utilidades.js',
+      confirmText: 'Crear',
+      validate: validarRutaRelativa,
+    });
     if (name) {
       void createEntry(`${node.path}/${name}`, kind);
       setOpen(true);
@@ -65,11 +79,11 @@ function Row({ node, depth }: { node: TreeNode; depth: number }) {
         <span className="row-actions">
           {isDir && (
             <>
-              <button className="btn icon sm" onClick={onAdd('file')} title="Nuevo archivo aquí"><Icon name="file" size={12} /></button>
-              <button className="btn icon sm" onClick={onAdd('dir')} title="Nueva carpeta aquí"><Icon name="folder" size={12} /></button>
+              <button className="btn icon sm" onClick={(e) => void onAdd('file')(e)} title="Nuevo archivo aquí"><Icon name="file" size={12} /></button>
+              <button className="btn icon sm" onClick={(e) => void onAdd('dir')(e)} title="Nueva carpeta aquí"><Icon name="folder" size={12} /></button>
             </>
           )}
-          <button className="btn icon sm" onClick={onRename} title="Renombrar"><Icon name="edit" size={12} /></button>
+          <button className="btn icon sm" onClick={(e) => void onRename(e)} title="Renombrar"><Icon name="edit" size={12} /></button>
           <button className="btn icon sm danger" onClick={onDelete} title="Eliminar"><Icon name="trash" size={12} /></button>
         </span>
       </div>
@@ -88,10 +102,15 @@ export function FileExplorer() {
   const scanning = useStore((s) => s.scanning);
   const setFolderPickerOpen = useStore((s) => s.setFolderPickerOpen);
 
-  const add = (kind: 'file' | 'dir') => {
-    const name = window.prompt(
-      kind === 'dir' ? 'Nombre de la carpeta (puedes usar rutas como css/temas):' : 'Nombre del archivo (por ejemplo js/app.js):',
-    );
+  const add = async (kind: 'file' | 'dir') => {
+    const name = await ask({
+      title: kind === 'dir' ? 'Nueva carpeta' : 'Nuevo archivo',
+      label: 'Ruta dentro del proyecto',
+      placeholder: kind === 'dir' ? 'css/temas' : 'js/app.js',
+      hint: 'Puedes escribir una ruta con carpetas: se crearán las que falten.',
+      confirmText: 'Crear',
+      validate: validarRutaRelativa,
+    });
     if (name) void createEntry(name, kind);
   };
 
@@ -100,8 +119,8 @@ export function FileExplorer() {
       <div className="panel-head">
         <span className="panel-title">Explorador</span>
         <span style={{ display: 'flex', gap: 2 }}>
-          <button className="btn icon sm" onClick={() => add('file')} title="Nuevo archivo"><Icon name="file" size={13} /></button>
-          <button className="btn icon sm" onClick={() => add('dir')} title="Nueva carpeta"><Icon name="folder" size={13} /></button>
+          <button className="btn icon sm" onClick={() => void add('file')} title="Nuevo archivo"><Icon name="file" size={13} /></button>
+          <button className="btn icon sm" onClick={() => void add('dir')} title="Nueva carpeta"><Icon name="folder" size={13} /></button>
           <button className="btn icon sm" onClick={() => setFolderPickerOpen(true)} title="Abrir otra carpeta del equipo">
             <Icon name="folderOpen" size={13} />
           </button>

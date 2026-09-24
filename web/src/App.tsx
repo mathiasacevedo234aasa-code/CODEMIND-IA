@@ -15,6 +15,7 @@ import { DocCenter } from './components/DocCenter';
 import { SettingsDialog } from './components/SettingsDialog';
 import { FolderPicker } from './components/FolderPicker';
 import { Welcome } from './components/Welcome';
+import { DialogHost } from './components/DialogHost';
 import { Icon } from './components/Icon';
 
 const LEFT_TITLE: Record<string, string> = {
@@ -165,6 +166,7 @@ export default function App() {
 
       <DocCenter />
       <SettingsDialog />
+      <DialogHost />
 
       <FolderPicker
         open={folderPickerOpen}

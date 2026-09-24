@@ -1,7 +1,7 @@
 {
   "name": "codemind-ai",
   "private": true,
-  "version": "0.1.5",
+  "version": "0.2.0",
   "description": "Entorno de desarrollo web con documentacion asistida por IA (Groq). La IA explica; el usuario decide.",
   "workspaces": [
     "server",

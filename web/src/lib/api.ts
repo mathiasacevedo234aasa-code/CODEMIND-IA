@@ -233,4 +233,6 @@ export const api = {
   runStop: (id: string, processId: string) =>
     request<{ process: RunProcess }>(`/api/projects/${id}/run/processes/${processId}/stop`, { method: 'POST' }),
   probeUrl: (url: string) => request<UrlProbe>(`/api/net/probe?url=${encodeURIComponent(url)}`),
+  hostPreview: (html: string) =>
+    request<{ id: string; url: string }>('/api/preview', { method: 'POST', ...json({ html }) }),
 };

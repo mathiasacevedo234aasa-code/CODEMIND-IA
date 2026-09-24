@@ -3,6 +3,7 @@ import { useStore } from '../state/useStore';
 import { api } from '../lib/api';
 import type { ChangeKind, GitBranches, GitChange, GitCommit, GitStatus } from '../lib/types';
 import { Icon } from './Icon';
+import { ask, validarNombreRama } from '../lib/dialogs';
 
 const KIND_TAG: Record<ChangeKind, string> = {
   codigo: 'info',
@@ -238,10 +239,16 @@ export function GitPanel() {
           className="btn icon sm"
           title="Crear una rama nueva"
           disabled={busy}
-          onClick={() => {
-            const name = window.prompt('Nombre de la rama nueva:');
-            if (name?.trim()) void guard(() => api.gitCheckout(project.id, name.trim(), true));
-          }}
+          onClick={() => void (async () => {
+            const name = await ask({
+              title: 'Nueva rama',
+              label: `Se creará a partir de ${status.branch ?? 'la rama actual'}`,
+              placeholder: 'arreglo/carrito',
+              confirmText: 'Crear rama',
+              validate: validarNombreRama,
+            });
+            if (name) void guard(() => api.gitCheckout(project.id, name, true));
+          })()}
         >
           <Icon name="plus" size={13} />
         </button>

@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useStore } from '../state/useStore';
 import { buildPreview, findHtmlEntries } from '../lib/preview';
+import { api } from '../lib/api';
 import type { BottomTab } from '../state/useStore';
 import type { LogChannel } from '../lib/types';
 import { Icon } from './Icon';
@@ -36,6 +37,7 @@ function Preview() {
   const [html, setHtml] = useState('');
   const [warnings, setWarnings] = useState<string[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [abriendo, setAbriendo] = useState(false);
 
   useEffect(() => {
     if (!entry && entries.length) setEntry(entries[0]);
@@ -92,16 +94,27 @@ function Preview() {
         </button>
         <button
           className="btn sm outline"
-          onClick={() => {
-            const w = window.open('', '_blank');
-            if (w) { w.document.write(html); w.document.close(); }
-          }}
+          disabled={!html || abriendo}
+          title="Ver la página a tamaño completo en una pestaña del editor"
+          onClick={() => void (async () => {
+            // Se aloja en el backend y se abre por URL: window.open con
+            // document.write no funciona en la aplicación de escritorio.
+            setAbriendo(true);
+            try {
+              const { url } = await api.hostPreview(html);
+              openWebTab(new URL(url, window.location.origin).href, `Vista previa · ${entry}`);
+            } catch (err) {
+              setError((err as Error).message);
+            } finally {
+              setAbriendo(false);
+            }
+          })()}
         >
-          Abrir en pestaña nueva
+          {abriendo ? <span className="spinner" /> : <Icon name="play" size={12} />} Abrir a tamaño completo
         </button>
         {warnings.length > 0 && <span className="tag warn">{warnings.length} aviso(s)</span>}
         <span style={{ flex: 1 }} />
-        <button className="btn sm outline" onClick={() => openWebTab('http://localhost:5173', 'Navegador')} title="Abrir el navegador integrado">
+        <button className="btn sm outline" onClick={() => openWebTab(window.location.origin, 'Navegador')} title="Abrir el navegador integrado">
           <Icon name="link" size={12} /> Navegador
         </button>
       </div>

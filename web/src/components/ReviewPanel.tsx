@@ -3,6 +3,7 @@ import { useStore } from '../state/useStore';
 import type { FunctionDoc } from '../lib/types';
 import { DocView } from './DocView';
 import { Icon } from './Icon';
+import { ask } from '../lib/dialogs';
 
 /**
  * Panel de revision humana. Nada llega a la documentacion oficial sin pasar
@@ -65,9 +66,19 @@ export function ReviewPanel() {
     }
   };
 
-  const regenerate = () => {
+  const regenerate = async () => {
     if (!liveFunction) return;
-    const extra = window.prompt('Indicacion opcional para la nueva explicacion (deja vacio para regenerar sin mas):') ?? undefined;
+    const extra = await ask({
+      title: 'Regenerar explicación',
+      label: 'Indicación para la nueva propuesta (opcional)',
+      placeholder: 'Por ejemplo: explica con más detalle el manejo de errores',
+      hint: 'Déjalo vacío para regenerar sin indicaciones. La versión aprobada no se toca.',
+      confirmText: 'Regenerar',
+      allowEmpty: true,
+      multiline: true,
+    });
+    // null = canceló; cadena vacía = regenerar sin indicación.
+    if (extra === null) return;
     void generateDoc(liveFunction, extra || undefined);
   };
 
@@ -134,7 +145,7 @@ export function ReviewPanel() {
             <button className="btn outline" onClick={startEditing}>
               <Icon name="edit" size={13} /> Editar documentacion
             </button>
-            <button className="btn outline" onClick={regenerate} disabled={generating || !liveFunction}>
+            <button className="btn outline" onClick={() => void regenerate()} disabled={generating || !liveFunction}>
               {generating ? <span className="spinner" /> : <Icon name="refresh" size={13} />} Regenerar explicacion
             </button>
             <button

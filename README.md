@@ -68,6 +68,7 @@ relativas `/api` que en el navegador y no existen dos versiones del código.
 | Comprobación del paquete | `scripts/verify-package.mjs` compara el número de archivos empaquetados con el origen, exige los archivos imprescindibles y mide el margen de longitud de ruta. El build falla si algo no cuadra |
 | Permisos de la ventana | Sin acceso a Node (`contextIsolation`, sin `nodeIntegration`): solo habla con el backend por HTTP |
 | Enlaces externos | Se abren en el navegador del sistema, nunca en una ventana de Electron sin barra de direcciones |
+| Diálogos de texto | Electron **no implementa `window.prompt`**: lanza "prompt() is not supported" y el botón se queda muerto. CodeMind AI usa su propio diálogo, que además valida antes de aceptar |
 | Al cerrar | Los servidores de desarrollo que hubieras arrancado se detienen: no quedan procesos huérfanos ocupando puertos |
 
 ### Si el empaquetado falla en Windows
