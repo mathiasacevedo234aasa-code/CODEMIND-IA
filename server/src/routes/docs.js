@@ -25,7 +25,7 @@ router.get('/:id/docs', async (req, res, next) => {
 router.post('/:id/proposals', async (req, res, next) => {
   try {
     await getProject(req.params.id);
-    const { functionId, name, filePath, codeHash, code, doc, model } = req.body ?? {};
+    const { functionId, name, filePath, codeHash, code, doc, model, kind } = req.body ?? {};
     if (!functionId || !doc) return res.status(400).json({ error: 'Faltan functionId o doc.' });
 
     const store = await readDocs(req.params.id);
@@ -36,6 +36,7 @@ router.post('/:id/proposals', async (req, res, next) => {
       filePath: filePath ?? '',
       codeHash: codeHash ?? null,
       code: code ?? '',
+      kind: kind ?? 'funcion',
       doc,
       model: model ?? null,
       createdAt: new Date().toISOString(),
@@ -94,7 +95,7 @@ router.post('/:id/proposals/:proposalId/approve', async (req, res, next) => {
     const proposal = store.proposals.find((p) => p.id === req.params.proposalId);
     if (!proposal) return res.status(404).json({ error: 'Propuesta no encontrada.' });
 
-    const validation = validateDoc(proposal.doc);
+    const validation = validateDoc(proposal.doc, proposal.kind);
     if (!validation.ok) {
       return res.status(422).json({
         error: 'La propuesta esta incompleta y no puede aprobarse.',
@@ -113,6 +114,7 @@ router.post('/:id/proposals/:proposalId/approve', async (req, res, next) => {
       filePath: proposal.filePath,
       codeHash: proposal.codeHash,
       code: proposal.code,
+      kind: proposal.kind ?? 'funcion',
       doc: proposal.doc,
       approvedAt: new Date().toISOString(),
       model: proposal.model,

@@ -101,7 +101,7 @@ function ArchitectureSection() {
 
   const rows = Object.entries(analysis).map(([path, a]) => ({
     path,
-    functions: a.functions.length,
+    symbols: a.symbols.length,
     classes: a.classes,
     imports: a.imports,
   }));
@@ -123,7 +123,7 @@ function ArchitectureSection() {
         <div className="card" key={r.path}>
           <h4 style={{ fontFamily: 'var(--mono)', fontSize: 12.5 }}>{r.path}</h4>
           <p className="meta">
-            {r.functions} funcion(es){r.classes.length ? ` · clases: ${r.classes.join(', ')}` : ''}
+            {r.symbols} elemento(s){r.classes.length ? ` · clases: ${r.classes.join(', ')}` : ''}
           </p>
           {r.imports.length > 0 && (
             <p className="meta">Depende de (confirmado por import): {r.imports.join(', ')}</p>
@@ -144,15 +144,15 @@ function ArchitectureSection() {
 function FunctionsSection() {
   const approved = useStore((s) => s.approved);
   const deleteDoc = useStore((s) => s.deleteDoc);
-  const goToFunction = useStore((s) => s.goToFunction);
-  const functionsFn = useStore((s) => s.functions);
+  const goToSymbol = useStore((s) => s.goToSymbol);
+  const symbolsFn = useStore((s) => s.symbols);
   const analysis = useStore((s) => s.analysis);
   const statusOf = useStore((s) => s.statusOf);
   const [query, setQuery] = useState('');
   const [file, setFile] = useState('');
   const [open, setOpen] = useState<string | null>(null);
 
-  const live = useMemo(() => functionsFn(), [functionsFn, analysis]);
+  const live = useMemo(() => symbolsFn(), [symbolsFn, analysis]);
   const docs = Object.values(approved);
   const files = [...new Set(docs.map((d) => d.filePath))].sort();
 
@@ -191,7 +191,7 @@ function FunctionsSection() {
               <button className="btn sm outline" onClick={() => setOpen(open === d.functionId ? null : d.functionId)}>
                 {open === d.functionId ? 'Ocultar' : 'Ver documentacion'}
               </button>
-              {fn && <button className="btn sm outline" onClick={() => void goToFunction(fn)}>Ir al codigo</button>}
+              {fn && <button className="btn sm outline" onClick={() => void goToSymbol(fn)}>Ir al codigo</button>}
               <button
                 className="btn sm danger"
                 onClick={() => {
@@ -268,7 +268,7 @@ function ProgressSection() {
   const updateProgress = useStore((s) => s.updateProgress);
   const removeProgress = useStore((s) => s.removeProgress);
   const approved = useStore((s) => s.approved);
-  const functionsFn = useStore((s) => s.functions);
+  const symbolsFn = useStore((s) => s.symbols);
   const analysis = useStore((s) => s.analysis);
   const statusOf = useStore((s) => s.statusOf);
 
@@ -276,7 +276,7 @@ function ProgressSection() {
   const [detail, setDetail] = useState('');
   const [state, setState] = useState('pendiente');
 
-  const live = useMemo(() => functionsFn(), [functionsFn, analysis]);
+  const live = useMemo(() => symbolsFn(), [symbolsFn, analysis]);
   const undocumented = live.filter((f) => statusOf(f) === 'sin-documentar');
   const stale = live.filter((f) => statusOf(f) === 'revisar');
 

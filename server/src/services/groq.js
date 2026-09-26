@@ -40,6 +40,27 @@ const REQUIRED_FIELDS = [
   'observaciones',
 ];
 
+/**
+ * Tipos de elemento que reciben argumentos y devuelven algo. Solo en estos
+ * tiene sentido exigir parametros y valor de retorno: pedirselos a una regla
+ * CSS o a una seccion de HTML obligaria al modelo a inventar.
+ */
+const INVOCABLES = new Set([
+  'funcion', 'funcion flecha', 'expresion de funcion', 'metodo de clase', 'metodo de objeto',
+  'componente React', 'hook personalizado', 'funcion exportada por defecto', 'manejador en linea',
+]);
+
+/** Que se le pide al modelo segun lo que esta mirando. */
+const GUIA_POR_TIPO = {
+  codigo: 'Es codigo ejecutable. Explica su logica paso a paso.',
+  estructura:
+    'Es un elemento de la estructura de una pagina HTML. Explica que papel cumple dentro de la pagina, que contiene, con que se relaciona (sus clases, su id, los estilos o scripts que lo usan) y que veria el usuario final. En "flujo" describe su composicion de fuera hacia dentro, no una ejecucion.',
+  estilo:
+    'Es una regla de estilo CSS. Explica a que elementos afecta el selector, que consigue visualmente cada propiedad y en que situaciones se aplica. En "flujo" describe el efecto de las propiedades por orden de importancia, no una ejecucion.',
+  contenido:
+    'Es una seccion de un documento. Explica de que trata, que informacion aporta y a quien va dirigida. En "flujo" resume su contenido por partes.',
+};
+
 const DOC_SCHEMA_HINT = `Devuelve EXCLUSIVAMENTE un objeto JSON valido con esta forma exacta:
 {
   "nombre": "string",
@@ -185,9 +206,10 @@ function extractJson(text) {
 }
 
 /** Valida la propuesta. Una respuesta incompleta nunca se guarda como documentacion. */
-export function validateDoc(value) {
+export function validateDoc(value, kind = 'funcion') {
   const problems = [];
   if (!value || typeof value !== 'object') return { ok: false, problems: ['La respuesta no es un objeto JSON.'] };
+  const invocable = INVOCABLES.has(kind);
 
   for (const field of REQUIRED_FIELDS) {
     if (!(field in value)) problems.push(`Falta el campo "${field}".`);
@@ -198,6 +220,10 @@ export function validateDoc(value) {
     }
   }
   if ('parametros' in value && !Array.isArray(value.parametros)) problems.push('"parametros" debe ser una lista.');
+  // A un elemento que no se invoca no se le exige que declare parametros.
+  if (!invocable && Array.isArray(value.parametros) && value.parametros.length > 0) {
+    value.parametros = [];
+  }
   if ('flujo' in value && !Array.isArray(value.flujo)) problems.push('"flujo" debe ser una lista de pasos.');
   if ('dependencias' in value && !Array.isArray(value.dependencias)) problems.push('"dependencias" debe ser una lista.');
   if ('retorno' in value && (typeof value.retorno !== 'object' || value.retorno === null)) {
@@ -212,8 +238,10 @@ function buildContextBlock(context = {}) {
   if (context.projectObjective) lines.push(`Objetivo del proyecto: ${context.projectObjective}`);
   if (context.filePath) lines.push(`Archivo: ${context.filePath}`);
   if (context.language) lines.push(`Lenguaje detectado: ${context.language}`);
+  if (context.kind) lines.push(`Tipo de elemento: ${context.kind}`);
+  if (context.detail) lines.push(`Detalle del analizador: ${context.detail}`);
   if (context.lineStart) lines.push(`Linea de inicio: ${context.lineStart}`);
-  if (context.relatedFunctions?.length) lines.push(`Otras funciones del mismo archivo: ${context.relatedFunctions.join(', ')}`);
+  if (context.relatedFunctions?.length) lines.push(`Otros elementos del mismo archivo: ${context.relatedFunctions.slice(0, 40).join(', ')}`);
   if (context.imports?.length) lines.push(`Importaciones del archivo: ${context.imports.join(', ')}`);
   if (context.classes?.length) lines.push(`Clases del archivo: ${context.classes.join(', ')}`);
   if (context.previousDoc) lines.push(`Documentacion aprobada anterior (referencia, puede estar desactualizada):\n${context.previousDoc}`);
@@ -221,21 +249,35 @@ function buildContextBlock(context = {}) {
 }
 
 export async function generateFunctionDoc({ code, context, model, temperature, maxTokens, extraInstruction }) {
-  if (!code || !code.trim()) throw new HttpError(400, 'No se recibio el codigo de la funcion.');
+  if (!code || !code.trim()) throw new HttpError(400, 'No se recibio el codigo que hay que explicar.');
+
+  // Lo que se documenta ya no es siempre una funcion: puede ser una regla CSS,
+  // una seccion de una pagina o un encabezado. Lo que se le pide al modelo
+  // cambia segun el caso, y a lo que no se invoca no se le exigen parametros.
+  const kind = context?.kind ?? 'funcion';
+  const category = context?.category ?? 'codigo';
+  const invocable = INVOCABLES.has(kind);
+
+  const guia = [
+    `Lo que vas a explicar es de tipo "${kind}". ${GUIA_POR_TIPO[category] ?? GUIA_POR_TIPO.codigo}`,
+    invocable
+      ? 'Rellena "parametros" y "retorno" con lo que de verdad recibe y devuelve.'
+      : 'Este elemento NO recibe parametros ni devuelve nada: deja "parametros" como lista vacia y en "retorno" pon descripcion "No aplica a este tipo de elemento", tipo null y certeza "confirmado". No inventes argumentos.',
+  ].join(' ');
 
   const messages = [
-    { role: 'system', content: `${BASE_RULES}\n\n${MODE_RULES.documentation}\n\n${DOC_SCHEMA_HINT}` },
+    { role: 'system', content: `${BASE_RULES}\n\n${MODE_RULES.documentation}\n\n${guia}\n\n${DOC_SCHEMA_HINT}` },
     {
       role: 'user',
       content: [
         'Contexto disponible:',
         buildContextBlock(context) || '(sin contexto adicional)',
         '',
-        'Codigo de la funcion a documentar:',
+        `Elemento a documentar (tipo: ${kind}):`,
         '```',
         code,
         '```',
-        context?.surrounding ? `\nFragmento del archivo alrededor de la funcion (solo como referencia):\n\`\`\`\n${context.surrounding}\n\`\`\`` : '',
+        context?.surrounding ? `\nFragmento del archivo alrededor (solo como referencia):\n\`\`\`\n${context.surrounding}\n\`\`\`` : '',
         extraInstruction ? `\nIndicacion adicional del usuario para esta regeneracion: ${extraInstruction}` : '',
         '',
         'Genera la propuesta de documentacion en el JSON indicado. No corrijas ni reescribas el codigo.',
@@ -246,7 +288,7 @@ export async function generateFunctionDoc({ code, context, model, temperature, m
   const resolved = await resolveModel(model);
   const result = await callGroq({ messages, model: resolved, temperature, maxTokens, jsonMode: true });
   const parsed = extractJson(result.content);
-  const validation = validateDoc(parsed);
+  const validation = validateDoc(parsed, kind);
 
   return {
     ok: validation.ok,

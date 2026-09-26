@@ -31,6 +31,18 @@ parseo de renombrados y de rutas con espacios, que cambiar de rama con cambios s
 **bloquea** en vez de descartar trabajo, que un script inexistente se rechaza, el sondeo de URLs y
 —lo más importante— que **eliminar un proyecto no borra la carpeta del usuario**.
 
+## `analizador.mjs`
+
+No necesita el backend: prueba el analizador directamente. Comprueba que una página HTML produce a
+la vez elementos de **estructura** (secciones, formularios, tablas, componentes personalizados),
+**estilo** (las reglas de su `<style>`, incluidas variables CSS y `@media`) y **código** (las
+funciones y clases de su `<script>`), y —lo más delicado— que las líneas del código incrustado
+apuntan a la posición real dentro del archivo completo, no a la del fragmento.
+
+```bash
+node tests/analizador.mjs
+```
+
 ## `escritorio.mjs`
 
 Arranca la aplicación de escritorio, comprueba contra su backend interno y la cierra. Todo en un

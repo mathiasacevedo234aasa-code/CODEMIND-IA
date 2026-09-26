@@ -5,7 +5,7 @@ import type {
   AppSettings,
   ApprovedDoc,
   CenterTab,
-  DetectedFunction,
+  DetectedSymbol,
   DocStatus,
   FunctionDoc,
   LogEntry,
@@ -46,7 +46,7 @@ interface State {
   files: Record<string, OpenFile>;
   saving: boolean;
 
-  analysis: Record<string, { functions: DetectedFunction[]; imports: string[]; classes: string[]; error: string | null }>;
+  analysis: Record<string, { symbols: DetectedSymbol[]; imports: string[]; classes: string[]; error: string | null }>;
   scanning: boolean;
 
   approved: Record<string, ApprovedDoc>;
@@ -75,6 +75,8 @@ interface State {
   logs: LogEntry[];
   error: string | null;
   jumpTo: { path: string; line: number } | null;
+  /** Pregunta que el asistente debe lanzar en cuanto se monte. */
+  pendingAsk: { question: string; contextText: string } | null;
 }
 
 interface Actions {
@@ -89,6 +91,8 @@ interface Actions {
   saveProjectMeta: (patch: Partial<Project>) => Promise<void>;
 
   refreshTree: () => Promise<void>;
+  restoreSession: (session: { tabs: CenterTab[]; activeTabId: string | null; leftView: string }) => Promise<void>;
+  persistSession: () => void;
   openFile: (path: string) => Promise<void>;
   openWebTab: (url: string, title?: string) => void;
   closeTab: (id: string) => void;
@@ -102,12 +106,12 @@ interface Actions {
   deleteEntry: (path: string) => Promise<void>;
 
   scanProject: () => Promise<void>;
-  functions: () => DetectedFunction[];
-  statusOf: (fn: DetectedFunction) => DocStatus;
-  goToFunction: (fn: DetectedFunction) => Promise<void>;
+  symbols: () => DetectedSymbol[];
+  statusOf: (sym: DetectedSymbol) => DocStatus;
+  goToSymbol: (sym: DetectedSymbol) => Promise<void>;
   clearJump: () => void;
 
-  generateDoc: (fn: DetectedFunction, extraInstruction?: string) => Promise<void>;
+  generateDoc: (sym: DetectedSymbol, extraInstruction?: string) => Promise<void>;
   approveProposal: (proposalId: string) => Promise<void>;
   editProposal: (proposalId: string, doc: FunctionDoc) => Promise<void>;
   discardProposal: (proposalId: string) => Promise<void>;
@@ -138,6 +142,8 @@ interface Actions {
   setFolderPickerOpen: (open: boolean) => void;
   refreshPreview: () => void;
   setActiveProposal: (id: string | null) => void;
+  askAssistant: (question: string, contextText: string) => void;
+  clearPendingAsk: () => void;
 }
 
 const DEFAULT_SETTINGS: AppSettings = {
@@ -159,8 +165,18 @@ const DEFAULT_SETTINGS: AppSettings = {
     highlightCurrentLine: true,
     stickyScroll: false,
     bracketPairColorization: true,
+    autoSave: false,
+    autoSaveDelay: 1500,
+    emmet: true,
   },
 };
+
+/**
+ * Temporizadores de autoguardado, uno por archivo. Viven fuera del estado:
+ * son detalles de ejecucion, no informacion que la interfaz deba pintar.
+ */
+const autoSaveTimers = new Map<string, number>();
+let sessionTimer: number | null = null;
 
 const MAX_SCAN_FILES = 250;
 const fileTabId = (path: string) => `file:${path}`;
@@ -201,6 +217,7 @@ export const useStore = create<State & Actions>((set, get) => ({
   logs: [],
   error: null,
   jumpTo: null,
+  pendingAsk: null,
 
   log: (channel, level, message) =>
     set((s) => ({
@@ -264,11 +281,12 @@ export const useStore = create<State & Actions>((set, get) => ({
   async openProject(id) {
     set({ loadingProject: true, error: null });
     try {
-      const [{ project }, treeRes, docs, { memory }] = await Promise.all([
+      const [{ project }, treeRes, docs, { memory }, sessionRes] = await Promise.all([
         api.updateProject(id, {}),
         api.tree(id),
         api.docs(id),
         api.memory(id),
+        api.session(id).catch(() => ({ session: { tabs: [], activeTabId: null, leftView: 'explorador' } })),
       ]);
       set({
         project,
@@ -283,7 +301,7 @@ export const useStore = create<State & Actions>((set, get) => ({
         analysis: {},
         relinks: [],
         activeProposalId: docs.proposals[0]?.id ?? null,
-        leftView: 'explorador',
+        leftView: (sessionRes.session.leftView as LeftView) || 'explorador',
       });
       get().log('sistema', 'info', `Proyecto abierto: ${project.name}${project.root ? ` (${project.root})` : ''}`);
       if (treeRes.truncated) {
@@ -291,11 +309,44 @@ export const useStore = create<State & Actions>((set, get) => ({
       }
       await get().scanProject();
       await get().refreshConnections();
+      await get().restoreSession(sessionRes.session);
     } catch (err) {
       set({ error: (err as Error).message });
     } finally {
       set({ loadingProject: false });
     }
+  },
+
+  /** Reabre las pestanas de la ultima vez, descartando lo que ya no exista. */
+  async restoreSession(session) {
+    const guardadas = session?.tabs ?? [];
+    if (!guardadas.length) return;
+
+    for (const tab of guardadas) {
+      if (tab.kind === 'file') await get().openFile(tab.path);
+      else if (tab.kind === 'web') get().openWebTab(tab.url, tab.title);
+    }
+    // El id guardado puede ya no existir si ese archivo se borro fuera.
+    const existe = get().tabs.some((t) => t.id === session.activeTabId);
+    if (session.activeTabId && existe) set({ activeTabId: session.activeTabId });
+
+    const recuperadas = get().tabs.length;
+    if (recuperadas) {
+      get().log('sistema', 'info', `Sesion recuperada: ${recuperadas} pestana(s) reabiertas.`);
+    }
+  },
+
+  /** Guarda que pestanas hay abiertas, con retardo para no escribir en cada clic. */
+  persistSession() {
+    const project = get().project;
+    if (!project) return;
+    if (sessionTimer) window.clearTimeout(sessionTimer);
+    sessionTimer = window.setTimeout(() => {
+      const { tabs, activeTabId, leftView } = get();
+      void api.saveSession(project.id, { tabs, activeTabId, leftView }).catch(() => {
+        /* perder la sesion de la interfaz no merece molestar al usuario */
+      });
+    }, 800);
   },
 
   closeProject() {
@@ -355,6 +406,7 @@ export const useStore = create<State & Actions>((set, get) => ({
       if (isAnalyzable(path)) {
         set((s) => ({ analysis: { ...s.analysis, [path]: analyzeFile(path, content) } }));
       }
+      get().persistSession();
     } catch (err) {
       set({ error: (err as Error).message });
     }
@@ -371,6 +423,7 @@ export const useStore = create<State & Actions>((set, get) => ({
       };
     });
     get().log('procesos', 'info', `Abierto en el navegador integrado: ${url}`);
+    get().persistSession();
   },
 
   updateWebTab(id, url) {
@@ -391,9 +444,10 @@ export const useStore = create<State & Actions>((set, get) => ({
         activeTabId: s.activeTabId === id ? tabs[tabs.length - 1]?.id ?? null : s.activeTabId,
       };
     });
+    get().persistSession();
   },
 
-  setActiveTab: (id) => set({ activeTabId: id }),
+  setActiveTab: (id) => { set({ activeTabId: id }); get().persistSession(); },
 
   editFile(path, content) {
     set((s) => ({ files: { ...s.files, [path]: { ...s.files[path], content } } }));
@@ -401,6 +455,21 @@ export const useStore = create<State & Actions>((set, get) => ({
       // El análisis corre en local, en segundo plano: no se envía código a la IA.
       set((s) => ({ analysis: { ...s.analysis, [path]: analyzeFile(path, content) } }));
     }
+
+    // Autoguardado: se reinicia la cuenta con cada pulsacion, asi que solo
+    // escribe cuando el usuario hace una pausa.
+    const { autoSave, autoSaveDelay } = get().settings.editor;
+    const previo = autoSaveTimers.get(path);
+    if (previo) window.clearTimeout(previo);
+    if (!autoSave) return;
+    autoSaveTimers.set(
+      path,
+      window.setTimeout(() => {
+        autoSaveTimers.delete(path);
+        const actual = get().files[path];
+        if (actual && actual.content !== actual.saved) void get().saveFile(path);
+      }, Math.max(400, autoSaveDelay)),
+    );
   },
 
   async saveFile(path) {
@@ -526,7 +595,7 @@ export const useStore = create<State & Actions>((set, get) => ({
       }
       set({ analysis });
 
-      const current = Object.values(analysis).flatMap((a) => a.functions);
+      const current = Object.values(analysis).flatMap((a) => a.symbols);
       const approvedList = Object.values(get().approved).map((a) => ({
         functionId: a.functionId,
         codeHash: a.codeHash,
@@ -540,51 +609,54 @@ export const useStore = create<State & Actions>((set, get) => ({
     }
   },
 
-  functions() {
+  symbols() {
     const analysis = get().analysis;
     return Object.keys(analysis)
       .sort()
-      .flatMap((path) => analysis[path].functions)
+      .flatMap((path) => analysis[path].symbols)
       .sort((a, b) => a.filePath.localeCompare(b.filePath) || a.line - b.line);
   },
 
-  statusOf(fn) {
-    const approved = get().approved[fn.id];
+  statusOf(sym) {
+    const approved = get().approved[sym.id];
     if (!approved) return 'sin-documentar';
-    return approved.codeHash === fn.codeHash ? 'documentada' : 'revisar';
+    return approved.codeHash === sym.codeHash ? 'documentada' : 'revisar';
   },
 
-  async goToFunction(fn) {
-    await get().openFile(fn.filePath);
-    set({ jumpTo: { path: fn.filePath, line: fn.line } });
+  async goToSymbol(sym) {
+    await get().openFile(sym.filePath);
+    set({ jumpTo: { path: sym.filePath, line: sym.line } });
   },
 
   clearJump: () => set({ jumpTo: null }),
 
   // ---------------------------------------------------------- documentación
 
-  async generateDoc(fn, extraInstruction) {
+  async generateDoc(sym, extraInstruction) {
     const project = get().project;
     if (!project) return;
     set({ generating: true, error: null });
-    get().log('documentacion', 'info', `Solicitando explicación de ${fn.name} (${fn.filePath})...`);
+    get().log('documentacion', 'info', `Solicitando explicación de ${sym.name} (${sym.filePath})...`);
     try {
-      const fileAnalysis = get().analysis[fn.filePath];
-      const open = get().files[fn.filePath];
+      const fileAnalysis = get().analysis[sym.filePath];
+      const open = get().files[sym.filePath];
       const surrounding = open
-        ? open.content.split('\n').slice(Math.max(0, fn.line - 16), fn.endLine + 10).join('\n').slice(0, 4000)
+        ? open.content.split('\n').slice(Math.max(0, sym.line - 16), sym.endLine + 10).join('\n').slice(0, 4000)
         : undefined;
 
       const result = await api.document({
         projectId: project.id,
-        code: fn.code,
+        code: sym.code,
         extraInstruction,
         context: {
-          functionId: fn.id,
-          filePath: fn.filePath,
-          language: fn.language,
-          lineStart: fn.line,
-          relatedFunctions: fileAnalysis?.functions.filter((f) => f.id !== fn.id).map((f) => f.qualifiedName) ?? [],
+          functionId: sym.id,
+          filePath: sym.filePath,
+          language: sym.language,
+          lineStart: sym.line,
+          kind: sym.kind,
+          category: sym.category,
+          detail: sym.detail,
+          relatedFunctions: fileAnalysis?.symbols.filter((f) => f.id !== sym.id).map((f) => f.qualifiedName) ?? [],
           imports: fileAnalysis?.imports ?? [],
           classes: fileAnalysis?.classes ?? [],
           surrounding,
@@ -593,27 +665,28 @@ export const useStore = create<State & Actions>((set, get) => ({
 
       if (!result.ok || !result.doc) {
         const detail = result.problems?.join(' ') || 'La respuesta no tiene el formato esperado.';
-        get().log('documentacion', 'error', `Respuesta inválida para ${fn.name}: ${detail}`);
+        get().log('documentacion', 'error', `Respuesta inválida para ${sym.name}: ${detail}`);
         set({ error: `La IA devolvió una respuesta incompleta y no se guardó. ${detail} Puedes volver a solicitarla.` });
         return;
       }
 
       const { proposals } = await api.saveProposal(project.id, {
-        functionId: fn.id,
-        name: fn.name,
-        filePath: fn.filePath,
-        codeHash: fn.codeHash,
-        code: fn.code,
+        functionId: sym.id,
+        name: sym.name,
+        filePath: sym.filePath,
+        codeHash: sym.codeHash,
+        code: sym.code,
+        kind: sym.kind,
         doc: result.doc,
         model: result.model,
       });
       set({
         proposals,
-        activeProposalId: proposals.find((p) => p.functionId === fn.id)?.id ?? null,
+        activeProposalId: proposals.find((p) => p.functionId === sym.id)?.id ?? null,
         rightTab: 'revision',
         rightOpen: true,
       });
-      get().log('documentacion', 'info', `Propuesta generada para ${fn.name}. Pendiente de tu aprobación.`);
+      get().log('documentacion', 'info', `Propuesta generada para ${sym.name}. Pendiente de tu aprobación.`);
     } catch (err) {
       set({ error: (err as Error).message });
       get().log('documentacion', 'error', (err as Error).message);
@@ -734,7 +807,7 @@ export const useStore = create<State & Actions>((set, get) => ({
 
   // ------------------------------------------------------------------ ui
 
-  setLeftView: (view) => set((s) => ({ leftView: view, leftOpen: s.leftView === view ? !s.leftOpen : true })),
+  setLeftView: (view) => { set((s) => ({ leftView: view, leftOpen: s.leftView === view ? !s.leftOpen : true })); get().persistSession(); },
   toggleLeft: () => set((s) => ({ leftOpen: !s.leftOpen })),
   setRightTab: (tab) => set({ rightTab: tab, rightOpen: true }),
   setRightOpen: (open) => set({ rightOpen: open }),
@@ -745,4 +818,9 @@ export const useStore = create<State & Actions>((set, get) => ({
   setFolderPickerOpen: (open) => set({ folderPickerOpen: open }),
   refreshPreview: () => set((s) => ({ previewKey: s.previewKey + 1 })),
   setActiveProposal: (id) => set({ activeProposalId: id }),
+
+  /** Envia una pregunta al asistente y abre su panel. */
+  askAssistant: (question, contextText) =>
+    set({ pendingAsk: { question, contextText }, rightTab: 'asistente', rightOpen: true }),
+  clearPendingAsk: () => set({ pendingAsk: null }),
 }));

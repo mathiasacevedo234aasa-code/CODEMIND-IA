@@ -1,6 +1,7 @@
 import type {
   AppSettings,
   ApprovedDoc,
+  CenterTab,
   DiskListing,
   DiskProbe,
   DiskRoot,
@@ -121,6 +122,14 @@ export const api = {
     request<{ versions: ApprovedDoc[] }>(
       `/api/projects/${id}/history${functionId ? `?functionId=${encodeURIComponent(functionId)}` : ''}`,
     ),
+
+  // sesion de trabajo
+  session: (id: string) =>
+    request<{ session: { tabs: CenterTab[]; activeTabId: string | null; leftView: string } }>(
+      `/api/projects/${id}/session`,
+    ),
+  saveSession: (id: string, session: { tabs: CenterTab[]; activeTabId: string | null; leftView: string }) =>
+    request<{ ok: true }>(`/api/projects/${id}/session`, { method: 'PUT', ...json({ session }) }),
 
   // memoria
   memory: (id: string) => request<{ memory: ProjectMemory }>(`/api/projects/${id}/memory`),

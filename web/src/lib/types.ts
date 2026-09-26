@@ -182,7 +182,14 @@ export interface UrlProbe {
   reason: string | null;
 }
 
-export type FunctionKind =
+/**
+ * Familias de elementos que el analizador reconoce. No solo funciones: un
+ * proyecto web se entiende mirando también su estructura HTML y sus estilos.
+ */
+export type SymbolCategory = 'codigo' | 'estructura' | 'estilo' | 'contenido';
+
+export type SymbolKind =
+  // Código ejecutable
   | 'funcion'
   | 'funcion flecha'
   | 'expresion de funcion'
@@ -190,14 +197,81 @@ export type FunctionKind =
   | 'metodo de objeto'
   | 'componente React'
   | 'hook personalizado'
-  | 'funcion exportada por defecto';
+  | 'funcion exportada por defecto'
+  | 'clase'
+  | 'interfaz'
+  | 'tipo'
+  | 'enumeracion'
+  | 'constante'
+  | 'manejador en linea'
+  // Estructura de la página
+  | 'bloque de script'
+  | 'bloque de estilo'
+  | 'seccion'
+  | 'elemento con id'
+  | 'formulario'
+  | 'tabla'
+  | 'lista'
+  | 'componente personalizado'
+  // Estilos
+  | 'regla CSS'
+  | 'consulta de medios'
+  | 'animacion'
+  | 'variable CSS'
+  // Contenido
+  | 'encabezado';
 
-export interface DetectedFunction {
+/** A qué familia pertenece cada tipo, para agrupar y filtrar en el panel. */
+export const CATEGORIA_DE: Record<SymbolKind, SymbolCategory> = {
+  funcion: 'codigo',
+  'funcion flecha': 'codigo',
+  'expresion de funcion': 'codigo',
+  'metodo de clase': 'codigo',
+  'metodo de objeto': 'codigo',
+  'componente React': 'codigo',
+  'hook personalizado': 'codigo',
+  'funcion exportada por defecto': 'codigo',
+  clase: 'codigo',
+  interfaz: 'codigo',
+  tipo: 'codigo',
+  enumeracion: 'codigo',
+  constante: 'codigo',
+  'manejador en linea': 'codigo',
+  'bloque de script': 'estructura',
+  'bloque de estilo': 'estructura',
+  seccion: 'estructura',
+  'elemento con id': 'estructura',
+  formulario: 'estructura',
+  tabla: 'estructura',
+  lista: 'estructura',
+  'componente personalizado': 'estructura',
+  'regla CSS': 'estilo',
+  'consulta de medios': 'estilo',
+  animacion: 'estilo',
+  'variable CSS': 'estilo',
+  encabezado: 'contenido',
+};
+
+/** Tipos que reciben argumentos y devuelven algo: solo estos llevan parámetros. */
+export const ES_INVOCABLE: ReadonlySet<SymbolKind> = new Set<SymbolKind>([
+  'funcion',
+  'funcion flecha',
+  'expresion de funcion',
+  'metodo de clase',
+  'metodo de objeto',
+  'componente React',
+  'hook personalizado',
+  'funcion exportada por defecto',
+  'manejador en linea',
+]);
+
+export interface DetectedSymbol {
   /** Identidad estable: archivo + nombre cualificado + ocurrencia. No solo el nombre. */
   id: string;
   name: string;
   qualifiedName: string;
-  kind: FunctionKind;
+  kind: SymbolKind;
+  category: SymbolCategory;
   filePath: string;
   line: number;
   endLine: number;
@@ -207,6 +281,8 @@ export interface DetectedFunction {
   code: string;
   codeHash: string;
   language: string;
+  /** Resumen corto para la lista: atributos del elemento, propiedades de la regla... */
+  detail?: string;
 }
 
 export interface DocParam {
@@ -312,6 +388,11 @@ export interface EditorSettings {
   highlightCurrentLine: boolean;
   stickyScroll: boolean;
   bracketPairColorization: boolean;
+  /** Guardar solo, tras una pausa al escribir. */
+  autoSave: boolean;
+  autoSaveDelay: number;
+  /** Abreviaturas Emmet: html:5, ul>li*3, div.clase... */
+  emmet: boolean;
 }
 
 export interface AppSettings {

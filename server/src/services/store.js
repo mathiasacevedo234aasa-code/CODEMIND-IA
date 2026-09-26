@@ -15,12 +15,37 @@ export async function ensureDataDirs() {
   await fs.mkdir(PROJECTS_DIR, { recursive: true });
 }
 
-/** Escritura atomica: primero a un temporal, luego rename. Evita archivos a medias. */
+/**
+ * Escritura atomica: primero a un temporal, luego rename. Evita archivos a medias.
+ *
+ * El nombre del temporal lleva un identificador unico por escritura, no solo
+ * el pid: dos escrituras solapadas del mismo proceso sobre el mismo archivo
+ * compartian temporal y el rename fallaba con EPERM en Windows. Ocurria de
+ * verdad al guardar la sesion mientras se abria un proyecto.
+ *
+ * Ademas se reintenta el rename: en Windows el antivirus o el indexador
+ * pueden tener el archivo abierto un instante justo cuando se sustituye.
+ */
+let contadorEscrituras = 0;
+
 export async function writeJson(file, value) {
   await fs.mkdir(path.dirname(file), { recursive: true });
-  const tmp = `${file}.${process.pid}.tmp`;
+  const tmp = `${file}.${process.pid}.${++contadorEscrituras}.tmp`;
   await fs.writeFile(tmp, JSON.stringify(value, null, 2), 'utf8');
-  await fs.rename(tmp, file);
+
+  for (let intento = 0; ; intento++) {
+    try {
+      await fs.rename(tmp, file);
+      return;
+    } catch (err) {
+      const recuperable = err.code === 'EPERM' || err.code === 'EBUSY' || err.code === 'EACCES';
+      if (!recuperable || intento >= 4) {
+        await fs.rm(tmp, { force: true });
+        throw err;
+      }
+      await new Promise((resolve) => setTimeout(resolve, 40 * (intento + 1)));
+    }
+  }
 }
 
 export async function readJson(file, fallback) {
@@ -43,6 +68,7 @@ const metaFile = (id) => path.join(projectDir(id), 'meta.json');
 const docsFile = (id) => path.join(projectDir(id), 'docs.json');
 const memoryFile = (id) => path.join(projectDir(id), 'memory.json');
 const historyFile = (id) => path.join(projectDir(id), 'history.json');
+const sessionFile = (id) => path.join(projectDir(id), 'session.json');
 
 export const EMPTY_MEMORY = {
   overview: {
@@ -177,6 +203,15 @@ export const readDocs = (id) => readJson(docsFile(id), { approved: {}, proposals
 export const writeDocs = (id, value) => writeJson(docsFile(id), value);
 export const readMemory = (id) => readJson(memoryFile(id), EMPTY_MEMORY);
 export const writeMemory = (id, value) => writeJson(memoryFile(id), value);
+/**
+ * Sesion de trabajo: que pestanas estaban abiertas y cual era la activa.
+ * Se guarda aparte de la documentacion porque es estado de la interfaz, no
+ * conocimiento del proyecto, y borrarlo no deberia perder nada importante.
+ */
+export const EMPTY_SESSION = { tabs: [], activeTabId: null, leftView: 'explorador', updatedAt: null };
+export const readSession = (id) => readJson(sessionFile(id), EMPTY_SESSION);
+export const writeSession = (id, value) => writeJson(sessionFile(id), { ...value, updatedAt: new Date().toISOString() });
+
 export const readHistory = (id) => readJson(historyFile(id), { versions: [] });
 export const writeHistory = (id, value) => writeJson(historyFile(id), value);
 
@@ -345,6 +380,9 @@ export const DEFAULT_SETTINGS = {
     highlightCurrentLine: true,
     stickyScroll: false,
     bracketPairColorization: true,
+    autoSave: false,
+    autoSaveDelay: 1500,
+    emmet: true,
   },
 };
 

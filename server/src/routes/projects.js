@@ -13,6 +13,8 @@ import {
   deleteEntry,
   readMemory,
   writeMemory,
+  readSession,
+  writeSession,
   newId,
 } from '../services/store.js';
 
@@ -113,6 +115,28 @@ router.delete('/:id/entry', async (req, res, next) => {
   try {
     await getProject(req.params.id);
     res.json(await deleteEntry(req.params.id, req.query.path));
+  } catch (err) {
+    next(err);
+  }
+});
+
+// ------------------------------------------------------------------- sesion
+
+router.get('/:id/session', async (req, res, next) => {
+  try {
+    await getProject(req.params.id);
+    res.json({ session: await readSession(req.params.id) });
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.put('/:id/session', async (req, res, next) => {
+  try {
+    await getProject(req.params.id);
+    const { tabs = [], activeTabId = null, leftView = 'explorador' } = req.body?.session ?? {};
+    await writeSession(req.params.id, { tabs, activeTabId, leftView });
+    res.json({ ok: true });
   } catch (err) {
     next(err);
   }

@@ -3,6 +3,7 @@ import Editor, { type OnMount } from '@monaco-editor/react';
 import { useStore } from '../state/useStore';
 import { languageOf } from '../lib/analyzer';
 import { fontStackOf } from '../lib/editorFonts';
+import { activarEmmet } from '../lib/emmet';
 import { WebView } from './WebView';
 import { Icon } from './Icon';
 
@@ -20,6 +21,8 @@ export function EditorArea() {
   const clearJump = useStore((s) => s.clearJump);
   const log = useStore((s) => s.log);
   const setFolderPickerOpen = useStore((s) => s.setFolderPickerOpen);
+  const askAssistant = useStore((s) => s.askAssistant);
+  const emmetActivo = useStore((s) => s.settings.editor.emmet);
 
   const editorRef = useRef<Parameters<OnMount>[0] | null>(null);
 
@@ -29,6 +32,38 @@ export function EditorArea() {
   const onMount: OnMount = (editor, monaco) => {
     editorRef.current = editor;
     editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyS, () => void saveFile());
+
+    // Emmet: html:5, ul>li*3, div.clase... Se activa una sola vez por sesión.
+    if (emmetActivo) activarEmmet(monaco);
+
+    // "Explícame esto" sobre cualquier trozo de código, no solo funciones
+    // detectadas. Aparece en el menú contextual y tiene atajo propio.
+    editor.addAction({
+      id: 'codemind.explicar-seleccion',
+      label: 'Explicar esta selección con la IA',
+      contextMenuGroupId: 'navigation',
+      contextMenuOrder: 1.5,
+      keybindings: [monaco.KeyMod.CtrlCmd | monaco.KeyMod.Shift | monaco.KeyCode.KeyE],
+      run: (ed) => {
+        const seleccion = ed.getSelection();
+        const modelo = ed.getModel();
+        if (!seleccion || !modelo) return;
+
+        const texto = modelo.getValueInRange(seleccion);
+        if (!texto.trim()) {
+          useStore.getState().setError('Selecciona primero el código que quieres entender.');
+          return;
+        }
+        const ruta = modelo.uri.path.replace(/^\//, '');
+        askAssistant(
+          '¿Qué hace exactamente este fragmento? Explícalo paso a paso, sin proponer cambios.',
+          `Fragmento seleccionado de ${ruta} (líneas ${seleccion.startLineNumber} a ${seleccion.endLineNumber}):
+\`\`\`
+${texto.slice(0, 8000)}
+\`\`\``,
+        );
+      },
+    });
     monaco.editor.onDidChangeMarkers(() => {
       const model = editor.getModel();
       if (!model) return;

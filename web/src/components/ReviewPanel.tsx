@@ -20,15 +20,15 @@ export function ReviewPanel() {
   const generating = useStore((s) => s.generating);
   const approved = useStore((s) => s.approved);
   const analysis = useStore((s) => s.analysis);
-  const functionsFn = useStore((s) => s.functions);
-  const goToFunction = useStore((s) => s.goToFunction);
+  const symbolsFn = useStore((s) => s.symbols);
+  const goToSymbol = useStore((s) => s.goToSymbol);
 
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState('');
   const [editError, setEditError] = useState<string | null>(null);
 
   const proposal = proposals.find((p) => p.id === activeProposalId) ?? proposals[0] ?? null;
-  const allFunctions = useMemo(() => functionsFn(), [functionsFn, analysis]);
+  const allFunctions = useMemo(() => symbolsFn(), [symbolsFn, analysis]);
   const liveFunction = proposal ? allFunctions.find((f) => f.id === proposal.functionId) : undefined;
   const previous = proposal ? approved[proposal.functionId] : undefined;
 
@@ -117,7 +117,7 @@ export function ReviewPanel() {
       <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
         <span className="tag">{proposal.filePath}</span>
         {liveFunction && (
-          <button className="btn sm outline" onClick={() => void goToFunction(liveFunction)}>Ir al codigo</button>
+          <button className="btn sm outline" onClick={() => void goToSymbol(liveFunction)}>Ir al codigo</button>
         )}
       </div>
 

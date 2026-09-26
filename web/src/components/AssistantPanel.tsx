@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useStore } from '../state/useStore';
 import { api } from '../lib/api';
 import { Icon } from './Icon';
@@ -21,9 +21,11 @@ export function AssistantPanel() {
   const activeTabId = useStore((s) => s.activeTabId);
   const apiKeyConfigured = useStore((s) => s.apiKeyConfigured);
   const setError = useStore((s) => s.setError);
-  const functionsFn = useStore((s) => s.functions);
+  const symbolsFn = useStore((s) => s.symbols);
   const analysis = useStore((s) => s.analysis);
   const statusOf = useStore((s) => s.statusOf);
+  const pendingAsk = useStore((s) => s.pendingAsk);
+  const clearPendingAsk = useStore((s) => s.clearPendingAsk);
 
   const [mode, setMode] = useState<Mode>('comprehension');
   const [includeFile, setIncludeFile] = useState(true);
@@ -42,26 +44,39 @@ export function AssistantPanel() {
    * sin inventarselo, y preferimos darle hechos antes que dejarle suponer.
    */
   const inventory = useMemo(() => {
-    const list = functionsFn();
+    const list = symbolsFn();
     if (!list.length) return '';
     const lines = list.map((f) => `- ${f.qualifiedName} (${f.filePath}:${f.line}, ${f.kind}) — ${statusOf(f)}`);
     return `Funciones detectadas en el codigo actual (${list.length}), con su estado de documentacion:\n${lines.join('\n')}`;
-  }, [functionsFn, analysis, statusOf]);
+  }, [symbolsFn, analysis, statusOf]);
 
-  const send = async () => {
-    if (!question.trim() || busy) return;
-    const text = question.trim();
-    setQuestion('');
-    setMessages((m) => [...m, { who: 'user', text }]);
+  /**
+   * Envia una consulta. `contextoDirecto` permite lanzarla desde fuera (por
+   * ejemplo "explicar esta seleccion") sin depender del archivo abierto.
+   */
+  const enviar = async (texto: string, contextoDirecto?: string) => {
+    if (!texto.trim() || busy) return;
+    setMessages((m) => [...m, { who: 'user', text: texto }]);
     setBusy(true);
     try {
       const parts: string[] = [];
-      if (mode !== 'technical' && inventory) parts.push(inventory);
-      if (includeFile && active && mode !== 'technical') {
-        parts.push(`Archivo actualmente abierto (${active.path}):\n\`\`\`\n${active.content.slice(0, 12000)}\n\`\`\``);
+      if (contextoDirecto) {
+        // Viene del editor con su propio contexto: no se mezcla con el archivo
+        // abierto, que podría ser otro distinto del que el usuario seleccionó.
+        parts.push(contextoDirecto);
+      } else {
+        if (mode !== 'technical' && inventory) parts.push(inventory);
+        if (includeFile && active && mode !== 'technical') {
+          parts.push(`Archivo actualmente abierto (${active.path}):\n\`\`\`\n${active.content.slice(0, 12000)}\n\`\`\``);
+        }
       }
       const contextText = parts.join('\n\n');
-      const res = await api.chat({ projectId: project?.id, mode, question: text, contextText });
+      const res = await api.chat({
+        projectId: project?.id,
+        mode: contextoDirecto ? 'comprehension' : mode,
+        question: texto,
+        contextText,
+      });
       setMessages((m) => [...m, { who: 'ai', text: res.answer, model: res.model }]);
     } catch (err) {
       setError((err as Error).message);
@@ -71,9 +86,33 @@ export function AssistantPanel() {
     }
   };
 
+  const send = () => {
+    const texto = question.trim();
+    setQuestion('');
+    void enviar(texto);
+  };
+
+  // Peticiones que llegan desde el editor ("explicar esta seleccion").
+  const atendiendo = useRef(false);
+  useEffect(() => {
+    if (!pendingAsk || atendiendo.current) return;
+    atendiendo.current = true;
+    const { question: q, contextText } = pendingAsk;
+    clearPendingAsk();
+    void enviar(q, contextText).finally(() => { atendiendo.current = false; });
+    // enviar depende de estado que cambia en cada pulsacion; solo interesa
+    // reaccionar a la llegada de una peticion nueva.
+  }, [pendingAsk]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const chatRef = useRef<HTMLDivElement | null>(null);
+  useEffect(() => {
+    const box = chatRef.current;
+    if (box) box.scrollTop = box.scrollHeight;
+  }, [messages, busy]);
+
   return (
     <div className="chat">
-      <div className="chat-log">
+      <div className="chat-log" ref={chatRef}>
         {messages.length === 0 && (
           <div className="empty" style={{ height: 'auto', paddingTop: 30 }}>
             <Icon name="brain" size={22} />
@@ -128,11 +167,11 @@ export function AssistantPanel() {
           disabled={!apiKeyConfigured}
           onChange={(e) => setQuestion(e.target.value)}
           onKeyDown={(e) => {
-            if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) void send();
+            if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) send();
           }}
           style={{ minHeight: 60 }}
         />
-        <button className="btn primary" onClick={() => void send()} disabled={busy || !question.trim() || !apiKeyConfigured}>
+        <button className="btn primary" onClick={send} disabled={busy || !question.trim() || !apiKeyConfigured}>
           {busy ? <span className="spinner" /> : <Icon name="brain" size={13} />} Preguntar (Ctrl+Enter)
         </button>
       </div>

@@ -1,6 +1,7 @@
 import { useMemo } from 'react';
 import { useStore } from '../state/useStore';
 import { FONT_STACKS, fontStackOf, isFontAvailable } from '../lib/editorFonts';
+import { EJEMPLOS_EMMET } from '../lib/emmet';
 import type { EditorSettings } from '../lib/types';
 
 const MUESTRA = `function calcularTotal(items) {
@@ -130,6 +131,8 @@ export function EditorAppearance() {
             ['bracketPairColorization', 'Corchetes de colores', 'Cada pareja con su color, para no perderse.'],
             ['stickyScroll', 'Encabezado fijo', 'Mantiene arriba la función en la que estás al desplazarte.'],
             ['minimap', 'Minimapa', 'Vista reducida del archivo en el lateral.'],
+            ['emmet', 'Abreviaturas Emmet', 'Escribe html:5 y pulsa Tab para desplegar la página entera.'],
+            ['autoSave', 'Autoguardado', 'Guarda solo tras una pausa al escribir. Ctrl+S sigue funcionando.'],
           ] as const).map(([key, label, ayuda]) => (
             <label key={key} className="switch-row">
               <input
@@ -145,6 +148,32 @@ export function EditorAppearance() {
           ))}
         </div>
       </div>
+
+      {editor.autoSave && (
+        <div className="field">
+          <label>Guardar tras {(editor.autoSaveDelay / 1000).toFixed(1)} s sin escribir</label>
+          <input
+            type="range" min={400} max={5000} step={100}
+            value={editor.autoSaveDelay}
+            onChange={(e) => set({ autoSaveDelay: Number(e.target.value) })}
+          />
+        </div>
+      )}
+
+      {editor.emmet && (
+        <div className="card" style={{ marginTop: 4 }}>
+          <h4>Abreviaturas Emmet</h4>
+          <p className="hint" style={{ marginBottom: 8 }}>
+            Escribe la abreviatura y pulsa <strong>Tab</strong>. Funciona en archivos HTML, CSS y JSX.
+          </p>
+          {EJEMPLOS_EMMET.map((e) => (
+            <div key={e.abreviatura} className="emmet-row">
+              <code>{e.abreviatura}</code>
+              <span>{e.resultado}</span>
+            </div>
+          ))}
+        </div>
+      )}
     </>
   );
 }

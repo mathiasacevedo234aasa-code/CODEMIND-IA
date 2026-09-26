@@ -4,7 +4,7 @@ import { TopBar } from './components/TopBar';
 import { ActivityRail } from './components/ActivityRail';
 import { FileExplorer } from './components/FileExplorer';
 import { EditorArea } from './components/EditorArea';
-import { FunctionsPanel } from './components/FunctionsPanel';
+import { SymbolsPanel } from './components/SymbolsPanel';
 import { GitPanel } from './components/GitPanel';
 import { GitHubPanel } from './components/GitHubPanel';
 import { RunPanel } from './components/RunPanel';
@@ -20,7 +20,7 @@ import { Icon } from './components/Icon';
 
 const LEFT_TITLE: Record<string, string> = {
   explorador: 'Explorador',
-  funciones: 'Funciones del proyecto',
+  funciones: 'Elementos del proyecto',
   git: 'Control de versiones',
   github: 'GitHub',
   ejecutar: 'Ejecutar y previsualizar',
@@ -105,7 +105,7 @@ export default function App() {
                         <Icon name="close" size={13} />
                       </button>
                     </div>
-                    {leftView === 'funciones' && <FunctionsPanel />}
+                    {leftView === 'funciones' && <SymbolsPanel />}
                     {leftView === 'git' && <GitPanel />}
                     {leftView === 'github' && <GitHubPanel />}
                     {leftView === 'ejecutar' && <RunPanel />}

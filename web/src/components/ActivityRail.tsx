@@ -9,7 +9,7 @@ interface RailItem {
 
 const ITEMS: RailItem[] = [
   { id: 'explorador', icon: 'folderOpen', label: 'Explorador de archivos' },
-  { id: 'funciones', icon: 'fn', label: 'Funciones del proyecto' },
+  { id: 'funciones', icon: 'fn', label: 'Elementos del proyecto' },
   { id: 'git', icon: 'git', label: 'Control de versiones' },
   { id: 'github', icon: 'link', label: 'GitHub' },
   { id: 'ejecutar', icon: 'play', label: 'Ejecutar y previsualizar' },
@@ -22,14 +22,14 @@ export function ActivityRail() {
   const setLeftView = useStore((s) => s.setLeftView);
   const setDocCenterOpen = useStore((s) => s.setDocCenterOpen);
   const setSettingsOpen = useStore((s) => s.setSettingsOpen);
-  const functionsFn = useStore((s) => s.functions);
+  const symbolsFn = useStore((s) => s.symbols);
   const analysis = useStore((s) => s.analysis);
   const statusOf = useStore((s) => s.statusOf);
   const gitAvailable = useStore((s) => s.gitAvailable);
 
   // Recalcula con `analysis` para que el contador siga vivo mientras se escribe.
   void analysis;
-  const pendientes = functionsFn().filter((f) => statusOf(f) !== 'documentada').length;
+  const pendientes = symbolsFn().filter((f) => statusOf(f) !== 'documentada').length;
 
   return (
     <nav className="rail" aria-label="Secciones">
