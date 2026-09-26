@@ -1147,7 +1147,7 @@ textarea { resize: vertical; min-height: 64px; line-height: 1.5; }
 }
 .bottom-tab:hover { background: var(--bg-hover); color: var(--text-dim); }
 .bottom-tab.active { background: var(--bg-active); color: var(--text); }
-.bottom-body { height: 200px; overflow: auto; padding: 8px 12px; font-family: var(--mono); font-size: 12px; line-height: 1.65; }
+.bottom-body { position: relative; height: 200px; overflow: auto; padding: 8px 12px; font-family: var(--mono); font-size: 12px; line-height: 1.65; }
 .log-line { display: flex; gap: 8px; }
 .log-line .at { color: var(--text-faint); flex-shrink: 0; }
 .log-line.error .msg { color: var(--danger); }
@@ -1319,7 +1319,13 @@ textarea { resize: vertical; min-height: 64px; line-height: 1.5; }
 
 /* ------------------------------------------------------------- consola */
 
-.consola { display: flex; flex-direction: column; height: 100%; min-height: 0; }
+.consola-envoltura { display: flex; flex-direction: column; height: 100%; min-height: 0; }
+/* Apartada, pero conservando su tamaño: xterm necesita medir su hueco. */
+.consola-envoltura.apartada {
+  position: absolute; inset: 0; z-index: -1;
+  visibility: hidden; pointer-events: none;
+}
+.consola { display: flex; flex-direction: column; height: 100%; min-height: 0; flex: 1; }
 .consola-barra {
   display: flex; align-items: center; gap: 8px;
   padding: 6px 10px; border-bottom: 1px solid var(--border); flex-shrink: 0;

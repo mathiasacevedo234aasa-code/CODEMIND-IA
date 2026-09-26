@@ -19,6 +19,13 @@ import { Icon } from './Icon';
  * como funcionan ya los procesos del panel de ejecución. Para escribir a mano
  * es de sobra, y evita una vía de conexión más en una aplicación que solo
  * escucha en la propia máquina.
+ *
+ * Limitación conocida: con la ventana en segundo plano, xterm puede dejar un
+ * error suelto en la consola del navegador al recalcular su área de
+ * desplazamiento sin que la página se esté dibujando. Es interno de la
+ * librería, no rompe nada y el terminal sigue funcionando al volver. Por eso
+ * la lectura se detiene mientras nadie mira: además de no gastar de balde,
+ * evita casi todas esas ocasiones. Se deja escrito en vez de silenciarlo.
  */
 
 const INTERVALO_MS = 120;
@@ -37,7 +44,7 @@ const TEMA_CLARO = {
   blue: '#2f6bd8', magenta: '#8a3fbf', cyan: '#0e7490', white: '#22262e',
 };
 
-export function TerminalPanel() {
+export function TerminalPanel({ visible }: { visible: boolean }) {
   const project = useStore((s) => s.project);
   const temaOscuro = useStore((s) => s.settings.editor.theme === 'dark');
 
@@ -47,18 +54,70 @@ export function TerminalPanel() {
   const sesionRef = useRef<string | null>(null);
   const seq = useRef(0);
 
+  /**
+   * Ajusta el terminal a su hueco, pero solo si de verdad hay hueco.
+   *
+   * Al cambiar de pestaña o plegar el panel, el contenedor pasa a medir cero y
+   * xterm se rompe por dentro calculando las dimensiones. Comprobar el tamaño
+   * antes evita el fallo en lugar de taparlo con un try vacío.
+   */
+  const ajustar = () => {
+    const caja = contenedor.current;
+    const t = term.current;
+    const f = fit.current;
+    if (!caja || !t || !f || !caja.clientWidth || !caja.clientHeight) return false;
+    const propuesta = f.proposeDimensions();
+    if (!propuesta || !Number.isFinite(propuesta.cols) || !Number.isFinite(propuesta.rows)) return false;
+    if (propuesta.cols < 2 || propuesta.rows < 1) return false;
+    f.fit();
+    return true;
+  };
+
   const [disponible, setDisponible] = useState<TerminalDisponibilidad | null>(null);
   const [sesion, setSesion] = useState<TerminalSesion | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [abriendo, setAbriendo] = useState(false);
+  /** Sube al volver la ventana a primer plano, para retomar la lectura. */
+  const [despertar, setDespertar] = useState(0);
 
   useEffect(() => {
     api.terminalDisponible().then(setDisponible).catch((e: Error) => setError(e.message));
   }, []);
 
-  // --- creación del terminal visual, una sola vez mientras el panel viva
+  /**
+   * Al volver a esta pestaña, la consola sigue viva en el backend aunque este
+   * panel se haya desmontado. Se retoma la que quedo abierta en lugar de pedir
+   * al usuario que abra otra y dejar la anterior olvidada.
+   */
   useEffect(() => {
-    if (!contenedor.current || term.current) return;
+    if (!project) return;
+    let vigente = true;
+    api.terminalListar(project.id)
+      .then(({ sesiones }) => {
+        const viva = sesiones.find((s) => s.estado === 'viva');
+        if (!vigente || !viva) return;
+        seq.current = 0;
+        sesionRef.current = viva.id;
+        setSesion(viva);
+      })
+      .catch(() => {});
+    return () => { vigente = false; };
+  }, [project]);
+
+  // --- creación del terminal visual, la primera vez que la pestaña se ve
+  //
+  // Se crea aquí y no al montar porque xterm mide su contenedor al abrirse y
+  // se rompe por dentro si mide cero, que es lo que ocurre mientras esta
+  // pestaña está escondida. Cuando React quita el atributo `hidden`, el
+  // navegador ya ha recalculado el tamaño antes de que corra este efecto, así
+  // que aquí el hueco es real. No se usa un observador de tamaño para esto: no
+  // se ejecuta mientras la ventana está en segundo plano, y el terminal se
+  // quedaba sin crear.
+  useEffect(() => {
+    const caja = contenedor.current;
+    if (!visible || !caja || term.current) return;
+    if (!caja.clientWidth || !caja.clientHeight) return;
+
     const t = new Terminal({
       fontSize: 12.5,
       fontFamily: 'var(--mono), Consolas, "Cascadia Mono", monospace',
@@ -69,10 +128,10 @@ export function TerminalPanel() {
     });
     const f = new FitAddon();
     t.loadAddon(f);
-    t.open(contenedor.current);
-    f.fit();
+    t.open(caja);
     term.current = t;
     fit.current = f;
+    ajustar();
 
     // Cada tecla va al proceso; el eco lo devuelve el propio intérprete.
     t.onData((datos) => {
@@ -80,39 +139,63 @@ export function TerminalPanel() {
       if (!project || !sid) return;
       void api.terminalEscribir(project.id, sid, datos).catch((e: Error) => setError(e.message));
     });
+    // Lo que ya hubiera salido antes de existir el terminal se vuelve a pedir.
+    seq.current = 0;
+    // El terminal visual vive mientras viva el panel: no se destruye al
+    // cambiar de pestaña, que es donde xterm se quedaba con tareas de dibujo
+    // a medias y reventaba.
+  }, [visible, project]); // eslint-disable-line react-hooks/exhaustive-deps
 
-    const alRedimensionar = () => {
-      try {
-        f.fit();
-      } catch {
-        /* el panel está oculto: no hay tamaño que calcular */
-      }
+  /** Al volver a verse, el hueco puede haber cambiado de tamaño. */
+  useEffect(() => {
+    if (!visible || !term.current) return;
+    if (!ajustar()) return;
+    const sid = sesionRef.current;
+    if (project && sid) void api.terminalTamano(project.id, sid, term.current.cols, term.current.rows).catch(() => {});
+  }, [visible]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  /** Y se sigue el tamaño mientras se ve, por si se arrastra el panel. */
+  useEffect(() => {
+    const caja = contenedor.current;
+    if (!caja) return;
+    const observador = new ResizeObserver(() => {
+      const t = term.current;
+      if (!t || !ajustar()) return;
       const sid = sesionRef.current;
       if (project && sid) void api.terminalTamano(project.id, sid, t.cols, t.rows).catch(() => {});
-    };
-    const observador = new ResizeObserver(alRedimensionar);
-    observador.observe(contenedor.current);
+    });
+    observador.observe(caja);
+    return () => observador.disconnect();
+  }, [project]);
 
-    return () => {
-      observador.disconnect();
-      t.dispose();
-      term.current = null;
-      fit.current = null;
-    };
-    // El terminal visual no se recrea al cambiar de tema: eso se ajusta aparte.
-  }, [project]); // eslint-disable-line react-hooks/exhaustive-deps
+  /** Al cerrarse el panel entero se suelta el terminal visual. */
+  useEffect(() => () => {
+    term.current?.dispose();
+    term.current = null;
+    fit.current = null;
+  }, []);
 
   useEffect(() => {
     if (term.current) term.current.options.theme = temaOscuro ? TEMA_OSCURO : TEMA_CLARO;
   }, [temaOscuro]);
 
   // --- lectura continua de la salida
+  //
+  // Se detiene mientras la ventana esta en segundo plano: no tiene sentido
+  // pedir salida que nadie esta mirando, y ademas escribir en xterm mientras
+  // la pagina no se dibuja lo hace tropezar por dentro al recalcular su area
+  // de desplazamiento. Al volver, la salida sigue guardada en el backend y se
+  // recupera entera desde donde se quedo.
   useEffect(() => {
-    if (!project || !sesion || sesion.estado !== 'viva') return;
+    if (!project || !sesion || sesion.estado !== 'viva' || !visible) return;
     let vivo = true;
 
     const tick = async () => {
       if (!vivo) return;
+      if (document.hidden) {
+        temporizador = window.setTimeout(tick, 500);
+        return;
+      }
       try {
         const res = await api.terminalLeer(project.id, sesion.id, seq.current);
         if (!vivo) return;
@@ -131,14 +214,21 @@ export function TerminalPanel() {
 
     let temporizador = window.setTimeout(tick, 0);
     return () => { vivo = false; window.clearTimeout(temporizador); };
-  }, [project, sesion]);
+  }, [project, sesion, visible, despertar]);
+
+  /** Al volver a primer plano se retoma la lectura sin esperar al reloj. */
+  useEffect(() => {
+    const alCambiar = () => { if (!document.hidden) setDespertar((n) => n + 1); };
+    document.addEventListener('visibilitychange', alCambiar);
+    return () => document.removeEventListener('visibilitychange', alCambiar);
+  }, []);
 
   const abrir = async () => {
     if (!project || !term.current) return;
     setAbriendo(true);
     setError(null);
     try {
-      fit.current?.fit();
+      ajustar();
       const { sesion: nueva } = await api.terminalAbrir(project.id, term.current.cols, term.current.rows);
       seq.current = 0;
       term.current.clear();

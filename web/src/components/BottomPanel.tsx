@@ -174,12 +174,19 @@ export function BottomPanel() {
 
       {bottomOpen && (
         <div className="bottom-body">
-          {bottomTab === 'preview' ? (
+          {/* La consola no se desmonta al cambiar de pestaña: se aparta. Asi
+              conserva su historial, y se evita destruir y recrear xterm todo
+              el rato. Se aparta con `visibility` y no con `display: none`
+              porque xterm mide su contenedor todo el rato y con tamaño cero
+              se rompe por dentro. */}
+          <div className={`consola-envoltura ${bottomTab === 'terminal' ? '' : 'apartada'}`}>
+            <TerminalPanel visible={bottomOpen && bottomTab === 'terminal'} />
+          </div>
+
+          {bottomTab === 'terminal' ? null : bottomTab === 'preview' ? (
             <Preview />
           ) : bottomTab === 'comprobaciones' ? (
             <ChecksPanel />
-          ) : bottomTab === 'terminal' ? (
-            <TerminalPanel />
           ) : filtered.length === 0 ? (
             <p className="hint" style={{ fontFamily: 'var(--sans)' }}>
               {bottomTab === 'git' && !gitAvailable
