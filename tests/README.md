@@ -96,3 +96,15 @@ módulo, y que las importaciones se detectan para el mapa.
 
 Necesita las gramáticas: ejecuta `npm run gramaticas` antes (lo hacen solos `npm run dev` y
 `npm run build`).
+
+## `terminal.mjs`
+
+Abre una consola de verdad en una carpeta temporal, ejecuta un comando, comprueba que la salida
+llega entera y que la carpeta de trabajo es la del proyecto. Después lanza un proceso que tardaría
+dos minutos, lo interrumpe y verifica que la consola **vuelve a responder en segundos**: si la
+interrupción no funcionara, esa comprobación tardaría los dos minutos y fallaría.
+
+También comprueba los límites (una orden vacía, un texto desmesurado, una consola que no existe) y
+que al cerrar no queda ninguna sesión suelta.
+
+Funciona igual con pseudoterminal y sin él: dice en cuál de los dos modos se ejecutó.

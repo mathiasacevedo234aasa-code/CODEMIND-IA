@@ -24,6 +24,9 @@ import type {
   TreeNode,
   UrlProbe,
   ChecksInfo,
+  TerminalDisponibilidad,
+  TerminalSesion,
+  TerminalLectura,
   CheckResult,
 } from './types';
 
@@ -239,6 +242,21 @@ export const api = {
   runScripts: (id: string) => request<RunScriptsInfo>(`/api/projects/${id}/run/scripts`),
   runStart: (id: string, payload: { script?: string; command?: string; args?: string[]; label?: string }) =>
     request<{ process: RunProcess }>(`/api/projects/${id}/run/start`, { method: 'POST', ...json(payload) }),
+  terminalDisponible: () => request<TerminalDisponibilidad>('/api/terminal/disponibilidad'),
+  terminalListar: (id: string) => request<{ sesiones: TerminalSesion[] }>(`/api/projects/${id}/terminal`),
+  terminalAbrir: (id: string, cols: number, rows: number) =>
+    request<{ sesion: TerminalSesion }>(`/api/projects/${id}/terminal`, { method: 'POST', body: JSON.stringify({ cols, rows }) }),
+  terminalLeer: (id: string, sid: string, desde: number) =>
+    request<TerminalLectura>(`/api/projects/${id}/terminal/${sid}?desde=${desde}`),
+  terminalEscribir: (id: string, sid: string, datos: string) =>
+    request<{ sesion: TerminalSesion }>(`/api/projects/${id}/terminal/${sid}/escribir`, { method: 'POST', body: JSON.stringify({ datos }) }),
+  terminalTamano: (id: string, sid: string, cols: number, rows: number) =>
+    request<{ sesion: TerminalSesion }>(`/api/projects/${id}/terminal/${sid}/tamano`, { method: 'POST', body: JSON.stringify({ cols, rows }) }),
+  terminalInterrumpir: (id: string, sid: string) =>
+    request<{ sesion: TerminalSesion }>(`/api/projects/${id}/terminal/${sid}/interrumpir`, { method: 'POST' }),
+  terminalCerrar: (id: string, sid: string) =>
+    request<{ ok: true }>(`/api/projects/${id}/terminal/${sid}`, { method: 'DELETE' }),
+
   checks: (id: string) => request<ChecksInfo>(`/api/projects/${id}/checks`),
   runCheck: (id: string, script: string) =>
     request<CheckResult>(`/api/projects/${id}/checks/run`, { method: 'POST', body: JSON.stringify({ script }) }),

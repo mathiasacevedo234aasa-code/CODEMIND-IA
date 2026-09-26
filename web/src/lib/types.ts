@@ -516,3 +516,30 @@ export interface CheckResult {
   sinLeer: boolean;
   correcto: boolean;
 }
+
+// ------------------------------------------------------------- la consola
+
+/** Que clase de consola puede ofrecer este equipo. */
+export interface TerminalDisponibilidad {
+  shell: string;
+  /** "terminal" es un pseudoterminal de verdad; "tuberias" es el plan B. */
+  modo: 'terminal' | 'tuberias';
+  motivo: string | null;
+}
+
+export interface TerminalSesion {
+  id: string;
+  cwd: string;
+  shell: string;
+  modo: 'terminal' | 'tuberias';
+  estado: 'viva' | 'cerrada' | 'error';
+  creada: string;
+  exitCode: number | null;
+}
+
+export interface TerminalLectura {
+  sesion: TerminalSesion;
+  trozos: { seq: number; texto: string }[];
+  /** La salida mas vieja ya se habia tirado: hay un hueco. */
+  recortado: boolean;
+}

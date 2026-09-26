@@ -34,7 +34,7 @@ interface RelinkSuggestion {
 /** Vistas del panel lateral izquierdo, seleccionadas desde la barra de actividad. */
 export type LeftView = 'explorador' | 'buscar' | 'funciones' | 'git' | 'github' | 'ejecutar';
 export type RightTab = 'revision' | 'asistente';
-export type BottomTab = 'consola' | 'errores' | 'comprobaciones' | 'preview' | 'documentacion' | 'git' | 'procesos';
+export type BottomTab = 'consola' | 'errores' | 'comprobaciones' | 'terminal' | 'preview' | 'documentacion' | 'git' | 'procesos';
 
 interface State {
   projects: Project[];

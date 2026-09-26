@@ -6,11 +6,13 @@ import type { BottomTab } from '../state/useStore';
 import type { LogChannel } from '../lib/types';
 import { Icon } from './Icon';
 import { ChecksPanel } from './ChecksPanel';
+import { TerminalPanel } from './TerminalPanel';
 
 const TABS: { id: BottomTab; label: string }[] = [
   { id: 'consola', label: 'Consola' },
   { id: 'errores', label: 'Errores' },
   { id: 'comprobaciones', label: 'Comprobaciones' },
+  { id: 'terminal', label: 'Terminal' },
   { id: 'preview', label: 'Vista previa' },
   { id: 'procesos', label: 'Procesos' },
   { id: 'git', label: 'Registro de Git' },
@@ -176,6 +178,8 @@ export function BottomPanel() {
             <Preview />
           ) : bottomTab === 'comprobaciones' ? (
             <ChecksPanel />
+          ) : bottomTab === 'terminal' ? (
+            <TerminalPanel />
           ) : filtered.length === 0 ? (
             <p className="hint" style={{ fontFamily: 'var(--sans)' }}>
               {bottomTab === 'git' && !gitAvailable

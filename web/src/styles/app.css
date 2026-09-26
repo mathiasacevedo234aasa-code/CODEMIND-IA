@@ -1316,3 +1316,18 @@ textarea { resize: vertical; min-height: 64px; line-height: 1.5; }
     border-left: none; border-top: 1px solid var(--border-strong);
   }
 }
+
+/* ------------------------------------------------------------- consola */
+
+.consola { display: flex; flex-direction: column; height: 100%; min-height: 0; }
+.consola-barra {
+  display: flex; align-items: center; gap: 8px;
+  padding: 6px 10px; border-bottom: 1px solid var(--border); flex-shrink: 0;
+}
+.consola-barra code {
+  font-size: 11px; color: var(--text-faint);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 46%;
+}
+/* xterm mide su propio contenedor: necesita un alto real, no "auto". */
+.consola-lienzo { flex: 1; min-height: 120px; padding: 6px 8px; overflow: hidden; }
+.consola-lienzo .xterm { height: 100%; }

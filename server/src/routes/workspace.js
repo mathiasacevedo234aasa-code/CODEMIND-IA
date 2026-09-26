@@ -7,6 +7,7 @@ import * as github from '../services/github.js';
 import * as runner from '../services/runner.js';
 import * as search from '../services/search.js';
 import * as quality from '../services/quality.js';
+import * as terminal from '../services/terminal.js';
 import { exportarDocumentacion } from '../services/export.js';
 
 /**
@@ -179,6 +180,42 @@ router.get('/projects/:id/run/processes', wrap(async (req, res) => {
 
 router.get('/projects/:id/run/processes/:processId/logs', wrap(async (req, res) => {
   res.json(runner.logs(req.params.id, req.params.processId, Number(req.query.since) || 0));
+}));
+
+// ----------------------------------------------------------------- consola
+
+router.get('/terminal/disponibilidad', wrap(async (_req, res) => {
+  res.json(await terminal.disponibilidad());
+}));
+
+router.get('/projects/:id/terminal', wrap(async (req, res) => {
+  res.json({ sesiones: terminal.listar(req.params.id) });
+}));
+
+router.post('/projects/:id/terminal', wrap(async (req, res) => {
+  const { cols, rows } = req.body ?? {};
+  res.status(201).json({ sesion: await terminal.abrir(req.params.id, await rootOf(req), { cols, rows }) });
+}));
+
+router.get('/projects/:id/terminal/:sid', wrap(async (req, res) => {
+  res.json(terminal.leer(req.params.id, req.params.sid, Number(req.query.desde) || 0));
+}));
+
+router.post('/projects/:id/terminal/:sid/escribir', wrap(async (req, res) => {
+  res.json({ sesion: terminal.escribir(req.params.id, req.params.sid, req.body?.datos) });
+}));
+
+router.post('/projects/:id/terminal/:sid/tamano', wrap(async (req, res) => {
+  const { cols, rows } = req.body ?? {};
+  res.json({ sesion: terminal.redimensionar(req.params.id, req.params.sid, Number(cols), Number(rows)) });
+}));
+
+router.post('/projects/:id/terminal/:sid/interrumpir', wrap(async (req, res) => {
+  res.json({ sesion: terminal.interrumpir(req.params.id, req.params.sid) });
+}));
+
+router.delete('/projects/:id/terminal/:sid', wrap(async (req, res) => {
+  res.json(terminal.cerrar(req.params.id, req.params.sid));
 }));
 
 // --------------------------------------------------------- comprobaciones
