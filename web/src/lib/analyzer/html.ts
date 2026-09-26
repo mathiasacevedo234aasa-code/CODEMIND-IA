@@ -28,6 +28,8 @@ export interface BloqueIncrustado {
 export interface AnalisisHtml {
   simbolos: DetectedSymbol[];
   bloques: BloqueIncrustado[];
+  /** Archivos a los que enlaza la pagina: scripts, hojas de estilo e imagenes. */
+  dependencias: string[];
 }
 
 /** Elementos que estructuran una página y merecen aparecer en el panel. */
@@ -78,6 +80,7 @@ const nombreLegible = (attrs: Record<string, string>, etiqueta: string): string 
 export function analizarHtml(filePath: string, fuente: string): AnalisisHtml {
   const simbolos: DetectedSymbol[] = [];
   const bloques: BloqueIncrustado[] = [];
+  const dependencias: string[] = [];
   const lineas = fuente.split('\n');
   const ocurrencias = new Map<string, number>();
 
@@ -132,8 +135,11 @@ export function analizarHtml(filePath: string, fuente: string): AnalisisHtml {
       const contenido = encontrado ? resto.slice(0, encontrado.index) : resto;
       const lineaFin = lineaEn(fuente, finApertura + contenido.length);
 
-      // Un <script src="..."> no tiene código propio que analizar.
+      // Un <script src="..."> no tiene código propio que analizar, pero sí es
+      // una dependencia del archivo: se registra aquí porque esta rama sale
+      // antes de llegar al registro general de atributos.
       const esExterno = etiqueta === 'script' && Boolean(attrs.src);
+      if (esExterno) dependencias.push(attrs.src);
       if (!esExterno && contenido.trim()) {
         bloques.push({
           tipo: etiqueta === 'script' ? 'script' : 'style',
@@ -168,6 +174,10 @@ export function analizarHtml(filePath: string, fuente: string): AnalisisHtml {
     }
 
     const attrs = leerAtributos(atributos);
+
+    // Enlaces a otros archivos del proyecto: son aristas del mapa.
+    if (etiqueta === 'script' && attrs.src) dependencias.push(attrs.src);
+    if (etiqueta === 'link' && attrs.href && /stylesheet/i.test(attrs.rel ?? '')) dependencias.push(attrs.href);
 
     // Manejadores en línea: onclick, onsubmit... son código de verdad.
     for (const [clave, valor] of Object.entries(attrs)) {
@@ -211,7 +221,7 @@ export function analizarHtml(filePath: string, fuente: string): AnalisisHtml {
     anadir(nombreLegible(attrs, etiqueta), kind, inicio, fin, partes.join('  ') || `<${etiqueta}>`);
   }
 
-  return { simbolos, bloques };
+  return { simbolos, bloques, dependencias: [...new Set(dependencias)] };
 }
 
 /** Etiquetas que no llevan cierre. */

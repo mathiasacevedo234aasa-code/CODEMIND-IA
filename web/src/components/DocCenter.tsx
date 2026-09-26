@@ -4,6 +4,7 @@ import { api } from '../lib/api';
 import type { ApprovedDoc, ProjectMemory } from '../lib/types';
 import { DocView } from './DocView';
 import { Icon } from './Icon';
+import { ProjectMap } from './ProjectMap';
 
 type Section = 'general' | 'arquitectura' | 'funciones' | 'decisiones' | 'progreso' | 'historial';
 
@@ -159,10 +160,9 @@ function ArchitectureSection() {
 
   return (
     <>
-      <p className="hint" style={{ marginBottom: 12 }}>
-        Lo que aparece abajo procede del analisis real de tus archivos (relaciones confirmadas por los imports).
-        Las relaciones que solo parezcan probables deben anotarse como tales en tus notas.
-      </p>
+      <ProjectMap />
+
+      <h4 style={{ margin: '20px 0 8px' }}>Archivos analizados</h4>
       <div className="card">
         <h4>Estructura</h4>
         <p className="meta">{countFiles(tree)} archivo(s) en el proyecto · {rows.length} archivo(s) analizados</p>

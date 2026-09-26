@@ -324,6 +324,61 @@ button, input, select, textarea { font-family: inherit; font-size: inherit; colo
   flex-shrink: 0;
 }
 
+/* ------------------------------------------------- mapa del proyecto */
+
+.mapa-leyenda {
+  display: flex;
+  gap: 14px;
+  align-items: center;
+  flex-wrap: wrap;
+  font-size: 11px;
+  color: var(--text-faint);
+  margin-bottom: 8px;
+}
+.mapa-leyenda i {
+  display: inline-block;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  margin-right: 5px;
+  vertical-align: -1px;
+}
+
+.mapa-lienzo {
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--bg);
+  overflow: hidden;
+}
+.mapa-nodo { cursor: pointer; }
+.mapa-nodo:hover circle:first-child { filter: brightness(1.25); }
+.mapa-etiqueta {
+  font-family: var(--sans);
+  font-size: 9.5px;
+  fill: var(--text-dim);
+  pointer-events: none;
+}
+
+.mapa-fila {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 3px 0;
+  cursor: pointer;
+  border-bottom: 1px dashed var(--border);
+}
+.mapa-fila:last-of-type { border-bottom: none; }
+.mapa-fila:hover code { color: var(--accent); }
+.mapa-fila code {
+  font-family: var(--mono);
+  font-size: 11.5px;
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .extras-box { display: flex; flex-direction: column; gap: 6px; }
 .extras-lista {
   max-height: 160px;
@@ -357,7 +412,62 @@ button, input, select, textarea { font-family: inherit; font-size: inherit; colo
 }
 .comparacion > div { min-width: 0; }
 .comparacion .panel-title { display: block; margin-bottom: 8px; }
-@media (max-width: 860px) { .extras-box { display: flex; flex-direction: column; gap: 6px; }
+@media (max-width: 860px) { /* ------------------------------------------------- mapa del proyecto */
+
+.mapa-leyenda {
+  display: flex;
+  gap: 14px;
+  align-items: center;
+  flex-wrap: wrap;
+  font-size: 11px;
+  color: var(--text-faint);
+  margin-bottom: 8px;
+}
+.mapa-leyenda i {
+  display: inline-block;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  margin-right: 5px;
+  vertical-align: -1px;
+}
+
+.mapa-lienzo {
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--bg);
+  overflow: hidden;
+}
+.mapa-nodo { cursor: pointer; }
+.mapa-nodo:hover circle:first-child { filter: brightness(1.25); }
+.mapa-etiqueta {
+  font-family: var(--sans);
+  font-size: 9.5px;
+  fill: var(--text-dim);
+  pointer-events: none;
+}
+
+.mapa-fila {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 3px 0;
+  cursor: pointer;
+  border-bottom: 1px dashed var(--border);
+}
+.mapa-fila:last-of-type { border-bottom: none; }
+.mapa-fila:hover code { color: var(--accent); }
+.mapa-fila code {
+  font-family: var(--mono);
+  font-size: 11.5px;
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.extras-box { display: flex; flex-direction: column; gap: 6px; }
 .extras-lista {
   max-height: 160px;
   overflow: auto;
@@ -514,7 +624,62 @@ kbd {
 .emmet-row span { color: var(--text-dim); }
 
 .switch-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 16px; }
-@media (max-width: 700px) { .extras-box { display: flex; flex-direction: column; gap: 6px; }
+@media (max-width: 700px) { /* ------------------------------------------------- mapa del proyecto */
+
+.mapa-leyenda {
+  display: flex;
+  gap: 14px;
+  align-items: center;
+  flex-wrap: wrap;
+  font-size: 11px;
+  color: var(--text-faint);
+  margin-bottom: 8px;
+}
+.mapa-leyenda i {
+  display: inline-block;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  margin-right: 5px;
+  vertical-align: -1px;
+}
+
+.mapa-lienzo {
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--bg);
+  overflow: hidden;
+}
+.mapa-nodo { cursor: pointer; }
+.mapa-nodo:hover circle:first-child { filter: brightness(1.25); }
+.mapa-etiqueta {
+  font-family: var(--sans);
+  font-size: 9.5px;
+  fill: var(--text-dim);
+  pointer-events: none;
+}
+
+.mapa-fila {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 3px 0;
+  cursor: pointer;
+  border-bottom: 1px dashed var(--border);
+}
+.mapa-fila:last-of-type { border-bottom: none; }
+.mapa-fila:hover code { color: var(--accent); }
+.mapa-fila code {
+  font-family: var(--mono);
+  font-size: 11.5px;
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.extras-box { display: flex; flex-direction: column; gap: 6px; }
 .extras-lista {
   max-height: 160px;
   overflow: auto;
@@ -547,7 +712,62 @@ kbd {
 }
 .comparacion > div { min-width: 0; }
 .comparacion .panel-title { display: block; margin-bottom: 8px; }
-@media (max-width: 860px) { .extras-box { display: flex; flex-direction: column; gap: 6px; }
+@media (max-width: 860px) { /* ------------------------------------------------- mapa del proyecto */
+
+.mapa-leyenda {
+  display: flex;
+  gap: 14px;
+  align-items: center;
+  flex-wrap: wrap;
+  font-size: 11px;
+  color: var(--text-faint);
+  margin-bottom: 8px;
+}
+.mapa-leyenda i {
+  display: inline-block;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  margin-right: 5px;
+  vertical-align: -1px;
+}
+
+.mapa-lienzo {
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--bg);
+  overflow: hidden;
+}
+.mapa-nodo { cursor: pointer; }
+.mapa-nodo:hover circle:first-child { filter: brightness(1.25); }
+.mapa-etiqueta {
+  font-family: var(--sans);
+  font-size: 9.5px;
+  fill: var(--text-dim);
+  pointer-events: none;
+}
+
+.mapa-fila {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 3px 0;
+  cursor: pointer;
+  border-bottom: 1px dashed var(--border);
+}
+.mapa-fila:last-of-type { border-bottom: none; }
+.mapa-fila:hover code { color: var(--accent); }
+.mapa-fila code {
+  font-family: var(--mono);
+  font-size: 11.5px;
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.extras-box { display: flex; flex-direction: column; gap: 6px; }
 .extras-lista {
   max-height: 160px;
   overflow: auto;

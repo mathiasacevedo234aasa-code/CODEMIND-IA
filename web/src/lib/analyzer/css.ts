@@ -12,6 +12,15 @@ import { CATEGORIA_DE } from '../types.ts';
  * No es un parser completo de CSS: es un lector de estructura, que es lo que
  * hace falta para listar, navegar y explicar.
  */
+/** Hojas de estilo que esta importa con @import. */
+export function importacionesCss(fuente: string): string[] {
+  const salida: string[] = [];
+  const re = /@import\s+(?:url\(\s*)?["']([^"')]+)["']/g;
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(fuente))) salida.push(m[1]);
+  return [...new Set(salida)];
+}
+
 export function analizarCss(filePath: string, fuente: string, offsetLineas = 0): DetectedSymbol[] {
   const simbolos: DetectedSymbol[] = [];
   const lineas = fuente.split('\n');

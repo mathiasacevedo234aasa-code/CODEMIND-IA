@@ -1,7 +1,7 @@
 import type { DetectedSymbol } from '../types.ts';
 import { analizarJs } from './js.ts';
 import { analizarHtml } from './html.ts';
-import { analizarCss } from './css.ts';
+import { analizarCss, importacionesCss } from './css.ts';
 import { analizarMarkdown } from './markdown.ts';
 
 /**
@@ -52,6 +52,7 @@ export function hashCode(code: string): string {
 
 export interface FileAnalysis {
   symbols: DetectedSymbol[];
+  /** Especificadores tal y como aparecen en el codigo, sin resolver. */
   imports: string[];
   classes: string[];
   error: string | null;
@@ -94,16 +95,18 @@ export function analyzeFile(filePath: string, source: string): FileAnalysis {
 
   if (ext === 'html' || ext === 'htm' || ext === 'vue' || ext === 'svelte' || ext === 'astro') {
     // Una página es varios lenguajes a la vez: estructura, script y estilo.
-    const { simbolos, bloques } = analizarHtml(filePath, source);
+    const { simbolos, bloques, dependencias } = analizarHtml(filePath, source);
     const incrustados = analizarBloques(filePath, bloques);
     resultado = {
       symbols: [...simbolos, ...incrustados.simbolos],
-      imports: incrustados.imports,
+      // Los <script src> y <link href> de la pagina cuentan como dependencias
+      // igual que un import: son las aristas que unen los archivos.
+      imports: [...incrustados.imports, ...dependencias],
       classes: incrustados.classes,
       error: incrustados.error,
     };
   } else if (ext === 'css' || ext === 'scss' || ext === 'less') {
-    resultado = { symbols: analizarCss(filePath, source), imports: [], classes: [], error: null };
+    resultado = { symbols: analizarCss(filePath, source), imports: importacionesCss(source), classes: [], error: null };
   } else if (ext === 'md' || ext === 'mdx') {
     resultado = { symbols: analizarMarkdown(filePath, source), imports: [], classes: [], error: null };
   } else {
