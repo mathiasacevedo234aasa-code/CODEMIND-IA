@@ -1288,3 +1288,31 @@ textarea { resize: vertical; min-height: 64px; line-height: 1.5; }
   word-break: break-word;
   color: var(--text-dim, var(--text));
 }
+
+/* --------------------------------------------------- editor dividido */
+
+.editor-mitades { display: flex; flex: 1; min-height: 0; min-width: 0; }
+.editor-mitad {
+  display: flex; flex-direction: column;
+  flex: 1; min-width: 0; min-height: 0;
+}
+/* Solo hay separador cuando hay dos mitades que separar. */
+.editor-mitades.dividido > .editor-mitad + .editor-mitad {
+  border-left: 1px solid var(--border-strong);
+}
+/* La mitad con el foco se marca en su barra de pestañas, no con un borde
+   alrededor: un borde movería el contenido cada vez que cambia el foco. */
+.editor-mitades.dividido > .editor-mitad .tabs { opacity: 0.75; }
+.editor-mitades.dividido > .editor-mitad.enfocada .tabs { opacity: 1; }
+.editor-mitades.dividido > .editor-mitad.enfocada .tabs { box-shadow: inset 0 2px 0 var(--accent); }
+/* Dentro de una mitad, la pestaña que además tiene el foco del teclado. */
+.tab.enfocada.active { box-shadow: inset 0 -2px 0 var(--accent); }
+.tabs .btn.icon.sm { align-self: center; margin: 0 4px; flex-shrink: 0; }
+
+@media (max-width: 900px) {
+  /* En pantallas estrechas, una al lado de la otra no se lee: van apiladas. */
+  .editor-mitades.dividido { flex-direction: column; }
+  .editor-mitades.dividido > .editor-mitad + .editor-mitad {
+    border-left: none; border-top: 1px solid var(--border-strong);
+  }
+}

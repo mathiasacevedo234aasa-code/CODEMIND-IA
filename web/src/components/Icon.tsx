@@ -11,6 +11,7 @@ const paths: Record<string, string> = {
   file: 'M6 3h8l4 4v14H6V3zm8 0v4h4',
   plus: 'M12 5v14M5 12h14',
   close: 'M6 6l12 12M18 6L6 18',
+  columns: 'M4 4h16v16H4zM12 4v16',
   chevronRight: 'M9 5l7 7-7 7',
   chevronDown: 'M5 9l7 7 7-7',
   trash: 'M4 7h16M9 7V4h6v3m-8 0l1 14h8l1-14',

@@ -1,11 +1,13 @@
 import { create } from 'zustand';
 import { api } from '../lib/api';
+import { panelDe } from '../lib/types';
 import { analizarArchivo, forgetFile, isAnalyzable, necesitaGramatica, suggestRelinks } from '../lib/analyzer';
 import { detectarHuerfanos, type Huerfano } from '../lib/orphans';
 import type {
   AppSettings,
   ApprovedDoc,
   CenterTab,
+  PanelEditor,
   DetectedSymbol,
   DocStatus,
   FunctionDoc,
@@ -43,6 +45,10 @@ interface State {
 
   /** Pestanas del area central: archivos del proyecto y paginas web. */
   tabs: CenterTab[];
+  /** Mitad del editor en la que se abre lo siguiente y donde esta el foco. */
+  panelActivo: PanelEditor;
+  /** Ultima pestana usada en cada mitad, para que cada una recuerde la suya. */
+  ultimoPorPanel: Record<PanelEditor, string | null>;
   activeTabId: string | null;
   files: Record<string, OpenFile>;
   saving: boolean;
@@ -100,6 +106,10 @@ interface Actions {
   openFile: (path: string) => Promise<void>;
   openWebTab: (url: string, title?: string) => void;
   closeTab: (id: string) => void;
+  dividirEditor: () => void;
+  moverTabAPanel: (id: string, panel: PanelEditor) => void;
+  unirEditor: () => void;
+  setPanelActivo: (panel: PanelEditor) => void;
   setActiveTab: (id: string) => void;
   updateWebTab: (id: string, url: string) => void;
   editFile: (path: string, content: string) => void;
@@ -196,6 +206,8 @@ export const useStore = create<State & Actions>((set, get) => ({
   treeTruncated: false,
   loadingProject: false,
   tabs: [],
+  panelActivo: 'a',
+  ultimoPorPanel: { a: null, b: null },
   activeTabId: null,
   files: {},
   saving: false,
@@ -334,9 +346,12 @@ export const useStore = create<State & Actions>((set, get) => ({
     if (!guardadas.length) return;
 
     for (const tab of guardadas) {
+      // Cada pestana vuelve a la mitad en la que estaba.
+      set({ panelActivo: panelDe(tab) });
       if (tab.kind === 'file') await get().openFile(tab.path);
       else if (tab.kind === 'web') get().openWebTab(tab.url, tab.title);
     }
+    set({ panelActivo: 'a' });
     // El id guardado puede ya no existir si ese archivo se borro fuera.
     const existe = get().tabs.some((t) => t.id === session.activeTabId);
     if (session.activeTabId && existe) set({ activeTabId: session.activeTabId });
@@ -403,7 +418,10 @@ export const useStore = create<State & Actions>((set, get) => ({
     if (get().files[path]) {
       set((s) => ({
         activeTabId: id,
-        tabs: s.tabs.some((t) => t.id === id) ? s.tabs : [...s.tabs, { kind: 'file', id, path }],
+        ultimoPorPanel: { ...s.ultimoPorPanel, [s.panelActivo]: id },
+        tabs: s.tabs.some((t) => t.id === id)
+          ? s.tabs
+          : [...s.tabs, { kind: 'file', id, path, panel: s.panelActivo }],
       }));
       return;
     }
@@ -411,8 +429,11 @@ export const useStore = create<State & Actions>((set, get) => ({
       const { content } = await api.readFile(project.id, path);
       set((s) => ({
         files: { ...s.files, [path]: { content, saved: content } },
-        tabs: s.tabs.some((t) => t.id === id) ? s.tabs : [...s.tabs, { kind: 'file', id, path }],
+        tabs: s.tabs.some((t) => t.id === id)
+          ? s.tabs
+          : [...s.tabs, { kind: 'file', id, path, panel: s.panelActivo }],
         activeTabId: id,
+        ultimoPorPanel: { ...s.ultimoPorPanel, [s.panelActivo]: id },
       }));
       if (isAnalyzable(path)) {
         const analisis = await analizarArchivo(path, content);
@@ -430,8 +451,9 @@ export const useStore = create<State & Actions>((set, get) => ({
       const existing = s.tabs.find((t) => t.id === id);
       if (existing) return { activeTabId: id };
       return {
-        tabs: [...s.tabs, { kind: 'web', id, url, title: title || url }],
+        tabs: [...s.tabs, { kind: 'web', id, url, title: title || url, panel: s.panelActivo }],
         activeTabId: id,
+        ultimoPorPanel: { ...s.ultimoPorPanel, [s.panelActivo]: id },
       };
     });
     get().log('procesos', 'info', `Abierto en el navegador integrado: ${url}`);
@@ -449,17 +471,83 @@ export const useStore = create<State & Actions>((set, get) => ({
       const tabs = s.tabs.filter((t) => t.id !== id);
       const closed = s.tabs.find((t) => t.id === id);
       const files = { ...s.files };
-      if (closed?.kind === 'file') delete files[closed.path];
+      // El archivo solo se descarga de memoria si no queda abierto en la otra
+      // mitad: con el editor dividido puede estar en las dos.
+      if (closed?.kind === 'file' && !tabs.some((t) => t.kind === 'file' && t.path === closed.path)) {
+        delete files[closed.path];
+      }
+      // El relevo se busca en la misma mitad: cerrar algo de la derecha no
+      // debe saltar el foco a la izquierda.
+      const mitad = panelDe(closed);
+      const vecinas = tabs.filter((t) => panelDe(t) === mitad);
+      const relevo = vecinas[vecinas.length - 1] ?? tabs[tabs.length - 1] ?? null;
+
+      const ultimoPorPanel = { ...s.ultimoPorPanel };
+      if (ultimoPorPanel[mitad] === id) ultimoPorPanel[mitad] = vecinas[vecinas.length - 1]?.id ?? null;
+
       return {
         tabs,
         files,
-        activeTabId: s.activeTabId === id ? tabs[tabs.length - 1]?.id ?? null : s.activeTabId,
+        ultimoPorPanel,
+        // Si la mitad derecha se queda vacia, el foco vuelve a la izquierda.
+        panelActivo: tabs.some((t) => panelDe(t) === s.panelActivo) ? s.panelActivo : 'a',
+        activeTabId: s.activeTabId === id ? relevo?.id ?? null : s.activeTabId,
       };
     });
     get().persistSession();
   },
 
-  setActiveTab: (id) => { set({ activeTabId: id }); get().persistSession(); },
+  setActiveTab: (id) => {
+    set((s) => {
+      const tab = s.tabs.find((t) => t.id === id);
+      const mitad = panelDe(tab);
+      return {
+        activeTabId: id,
+        panelActivo: mitad,
+        ultimoPorPanel: { ...s.ultimoPorPanel, [mitad]: id },
+      };
+    });
+    get().persistSession();
+  },
+
+  /**
+   * Manda la pestana activa a la otra mitad. Es el gesto de "quiero ver estos
+   * dos archivos a la vez": la plantilla y su hoja de estilos, el codigo y su
+   * prueba, el archivo y su documentacion.
+   */
+  dividirEditor() {
+    const { activeTabId, tabs } = get();
+    const actual = tabs.find((t) => t.id === activeTabId);
+    if (!actual) return;
+    const destino: PanelEditor = panelDe(actual) === 'a' ? 'b' : 'a';
+    get().moverTabAPanel(actual.id, destino);
+  },
+
+  moverTabAPanel(id, panel) {
+    set((s) => ({
+      tabs: s.tabs.map((t) => (t.id === id ? { ...t, panel } : t)),
+      activeTabId: id,
+      panelActivo: panel,
+      ultimoPorPanel: { ...s.ultimoPorPanel, [panel]: id },
+    }));
+    get().persistSession();
+  },
+
+  /** Deshace la division: todo vuelve a una sola mitad, sin cerrar nada. */
+  unirEditor() {
+    set((s) => ({
+      tabs: s.tabs.map((t) => ({ ...t, panel: 'a' as PanelEditor })),
+      panelActivo: 'a',
+      ultimoPorPanel: { a: s.activeTabId, b: null },
+    }));
+    get().persistSession();
+  },
+
+  setPanelActivo: (panel) =>
+    set((s) => {
+      const suya = s.ultimoPorPanel[panel] ?? s.tabs.filter((t) => panelDe(t) === panel).at(-1)?.id ?? null;
+      return { panelActivo: panel, activeTabId: suya ?? s.activeTabId };
+    }),
 
   editFile(path, content) {
     set((s) => ({ files: { ...s.files, [path]: { ...s.files[path], content } } }));

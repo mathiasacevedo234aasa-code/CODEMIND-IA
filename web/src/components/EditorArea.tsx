@@ -4,15 +4,54 @@ import { useStore } from '../state/useStore';
 import { languageOf } from '../lib/analyzer';
 import { fontStackOf } from '../lib/editorFonts';
 import { activarEmmet } from '../lib/emmet';
+import { panelDe, type PanelEditor as Mitad } from '../lib/types';
 import { WebView } from './WebView';
 import { Icon } from './Icon';
 
+/**
+ * Zona central: una o dos mitades con sus propias pestañas.
+ *
+ * El editor dividido existe para lo que uno hace todo el rato: mirar dos
+ * archivos a la vez —la plantilla y su hoja de estilos, el código y su
+ * prueba, el archivo y lo que documenta—. Cada mitad recuerda su pestaña, y
+ * la mitad con el foco es donde se abre lo siguiente.
+ */
 export function EditorArea() {
   const tabs = useStore((s) => s.tabs);
+  const saveFile = useStore((s) => s.saveFile);
+
+  const dividido = tabs.some((t) => panelDe(t) === 'b');
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') {
+        e.preventDefault();
+        void saveFile();
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [saveFile]);
+
+  return (
+    <div className={`editor-mitades ${dividido ? 'dividido' : ''}`}>
+      <MitadEditor mitad="a" dividido={dividido} />
+      {dividido && <MitadEditor mitad="b" dividido />}
+    </div>
+  );
+}
+
+function MitadEditor({ mitad, dividido }: { mitad: Mitad; dividido: boolean }) {
+  const tabs = useStore((s) => s.tabs);
   const activeTabId = useStore((s) => s.activeTabId);
+  const panelActivo = useStore((s) => s.panelActivo);
+  const ultimoPorPanel = useStore((s) => s.ultimoPorPanel);
   const files = useStore((s) => s.files);
   const setActiveTab = useStore((s) => s.setActiveTab);
+  const setPanelActivo = useStore((s) => s.setPanelActivo);
   const closeTab = useStore((s) => s.closeTab);
+  const dividirEditor = useStore((s) => s.dividirEditor);
+  const unirEditor = useStore((s) => s.unirEditor);
   const updateWebTab = useStore((s) => s.updateWebTab);
   const editFile = useStore((s) => s.editFile);
   const saveFile = useStore((s) => s.saveFile);
@@ -24,24 +63,30 @@ export function EditorArea() {
   const askAssistant = useStore((s) => s.askAssistant);
   const emmetActivo = useStore((s) => s.settings.editor.emmet);
 
-  // El editor vivo, junto al archivo para el que se creo. Guardar tambien la
+  // El editor vivo, junto al archivo para el que se creó. Guardar también la
   // ruta importa: Monaco se destruye y se vuelve a crear al cambiar de archivo
-  // y al cerrar la ultima pestana, y una referencia a un editor ya destruido
-  // acepta las ordenes sin hacer nada (era por esto que un salto pedido justo
-  // despues de abrir un archivo se perdia en silencio).
+  // y al cerrar la última pestaña, y una referencia a un editor ya destruido
+  // acepta las órdenes sin hacer nada (era por esto que un salto pedido justo
+  // después de abrir un archivo se perdía en silencio).
   const editorRef = useRef<{ editor: Parameters<OnMount>[0]; path: string } | null>(null);
-  // Un ref no provoca re-render, asi que hace falta un estado para que el
+  // Un ref no provoca re-render, así que hace falta un estado para que el
   // salto pendiente se vuelva a intentar en cuanto Monaco termine de montarse.
   // Es un contador y no un booleano porque cada montaje debe reintentarlo.
   const [montajes, setMontajes] = useState(0);
 
-  const active = tabs.find((t) => t.id === activeTabId) ?? null;
+  const mias = tabs.filter((t) => panelDe(t) === mitad);
+  // Si el foco está en esta mitad manda la pestaña activa; si está en la otra,
+  // esta mitad sigue enseñando la última que se usó aquí.
+  const propia = mias.find((t) => t.id === activeTabId);
+  const active = propia ?? mias.find((t) => t.id === ultimoPorPanel[mitad]) ?? mias[mias.length - 1] ?? null;
   const activeFile = active?.kind === 'file' ? files[active.path] : undefined;
+  const enfocada = panelActivo === mitad;
 
   const onMount: OnMount = (editor, monaco) => {
     editorRef.current = active?.kind === 'file' ? { editor, path: active.path } : null;
     setMontajes((n) => n + 1);
     editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyS, () => void saveFile());
+    editor.onDidFocusEditorText(() => setPanelActivo(mitad));
 
     // Emmet: html:5, ul>li*3, div.clase... Se activa una sola vez por sesión.
     if (emmetActivo) activarEmmet(monaco);
@@ -89,11 +134,11 @@ ${texto.slice(0, 8000)}
   useEffect(() => {
     const montado = editorRef.current;
     if (!jumpTo || !montado || active?.kind !== 'file') return;
-    // Las tres rutas tienen que coincidir: la del salto, la de la pestana
-    // activa y la del editor realmente montado.
+    // Las tres rutas tienen que coincidir: la del salto, la de la pestaña que
+    // esta mitad enseña y la del editor realmente montado.
     if (jumpTo.path !== active.path || montado.path !== active.path) return;
-    // Recien creado, Monaco todavia no ha medido su contenedor y desplazarse
-    // no tendria ningun efecto: layout() lo obliga a medirse ahora mismo.
+    // Recién creado, Monaco todavía no ha medido su contenedor y desplazarse
+    // no tendría ningún efecto: layout() lo obliga a medirse ahora mismo.
     montado.editor.layout();
     montado.editor.revealLineInCenter(jumpTo.line);
     montado.editor.setPosition({ lineNumber: jumpTo.line, column: 1 });
@@ -101,33 +146,25 @@ ${texto.slice(0, 8000)}
     clearJump();
   }, [jumpTo, active, clearJump, montajes]);
 
-  // Al quedarse sin ningun archivo abierto, Monaco desaparece: hay que soltar
-  // la referencia para no darle ordenes a un editor que ya no existe.
+  // Al quedarse sin ningún archivo abierto, Monaco desaparece: hay que soltar
+  // la referencia para no darle órdenes a un editor que ya no existe.
   useEffect(() => {
     if (active?.kind !== 'file') editorRef.current = null;
   }, [active]);
 
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') {
-        e.preventDefault();
-        void saveFile();
-      }
-    };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, [saveFile]);
-
   return (
-    <>
+    <div
+      className={`editor-mitad ${dividido && enfocada ? 'enfocada' : ''}`}
+      onMouseDown={() => { if (!enfocada) setPanelActivo(mitad); }}
+    >
       <div className="tabs">
-        {tabs.map((tab) => {
+        {mias.map((tab) => {
           const dirty = tab.kind === 'file' && files[tab.path] && files[tab.path].content !== files[tab.path].saved;
           const label = tab.kind === 'file' ? tab.path.split('/').pop() : tab.title;
           return (
             <div
               key={tab.id}
-              className={`tab ${tab.id === activeTabId ? 'active' : ''}`}
+              className={`tab ${tab.id === active?.id ? 'active' : ''} ${tab.id === activeTabId ? 'enfocada' : ''}`}
               onClick={() => setActiveTab(tab.id)}
               title={tab.kind === 'file' ? tab.path : tab.url}
             >
@@ -147,6 +184,22 @@ ${texto.slice(0, 8000)}
             </div>
           );
         })}
+
+        <span style={{ flex: 1 }} />
+        {active && (
+          <button
+            className="btn icon sm"
+            title={mitad === 'a' && !dividido ? 'Dividir el editor: ver dos archivos a la vez' : 'Mandar esta pestaña a la otra mitad'}
+            onClick={() => { setActiveTab(active.id); dividirEditor(); }}
+          >
+            <Icon name="columns" size={13} />
+          </button>
+        )}
+        {dividido && mitad === 'b' && (
+          <button className="btn icon sm" title="Deshacer la división (no cierra nada)" onClick={() => unirEditor()}>
+            <Icon name="close" size={13} />
+          </button>
+        )}
       </div>
 
       <div className="editor-host">
@@ -167,7 +220,7 @@ ${texto.slice(0, 8000)}
           />
         ) : activeFile ? (
           <Editor
-            key={active.path}
+            key={`${mitad}:${active.path}`}
             height="100%"
             theme={settings.editor.theme === 'dark' ? 'vs-dark' : 'light'}
             path={active.path}
@@ -184,7 +237,7 @@ ${texto.slice(0, 8000)}
               fontLigatures: settings.editor.fontLigatures,
               tabSize: settings.editor.tabSize,
               wordWrap: settings.editor.wordWrap ? 'on' : 'off',
-              minimap: { enabled: settings.editor.minimap },
+              minimap: { enabled: settings.editor.minimap && !dividido },
               lineNumbers: settings.editor.lineNumbers,
               guides: { indentation: settings.editor.indentGuides },
               renderLineHighlight: settings.editor.highlightCurrentLine ? 'line' : 'none',
@@ -201,6 +254,6 @@ ${texto.slice(0, 8000)}
           />
         ) : null}
       </div>
-    </>
+    </div>
   );
 }

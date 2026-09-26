@@ -463,9 +463,18 @@ export interface LogEntry {
 }
 
 /** Una pestaña del área central: un archivo del proyecto o una página web. */
+/** En que mitad del editor vive una pestana cuando esta dividido. */
+export type PanelEditor = 'a' | 'b';
+
 export type CenterTab =
-  | { kind: 'file'; id: string; path: string }
-  | { kind: 'web'; id: string; url: string; title: string };
+  | { kind: 'file'; id: string; path: string; panel?: PanelEditor }
+  | { kind: 'web'; id: string; url: string; title: string; panel?: PanelEditor };
+
+/**
+ * En que mitad esta una pestana. Sin dividir, todas estan en la izquierda; las
+ * sesiones guardadas antes de que existiera la division no traen el campo.
+ */
+export const panelDe = (tab?: CenterTab | null): PanelEditor => tab?.panel ?? 'a';
 
 /** Una comprobacion declarada en el package.json del proyecto del usuario. */
 export interface CheckTask {

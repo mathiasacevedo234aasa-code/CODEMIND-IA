@@ -34,6 +34,8 @@ export function CommandPalette() {
   const setDocCenterOpen = useStore((s) => s.setDocCenterOpen);
   const setSettingsOpen = useStore((s) => s.setSettingsOpen);
   const setFolderPickerOpen = useStore((s) => s.setFolderPickerOpen);
+  const dividirEditor = useStore((s) => s.dividirEditor);
+  const unirEditor = useStore((s) => s.unirEditor);
   const refreshPreview = useStore((s) => s.refreshPreview);
   const scanProject = useStore((s) => s.scanProject);
   const settings = useStore((s) => s.settings);
@@ -64,6 +66,9 @@ export function CommandPalette() {
       { id: 'guardar', titulo: 'Guardar todo', grupo: 'Archivo', atajo: 'Ctrl+S', icono: 'save', accion: () => void saveAll() },
       { id: 'abrir-carpeta', titulo: 'Abrir una carpeta del equipo', grupo: 'Archivo', icono: 'folderOpen', accion: () => setFolderPickerOpen(true) },
       { id: 'cerrar-proyecto', titulo: 'Cerrar el proyecto', grupo: 'Archivo', icono: 'close', accion: closeProject },
+
+      { id: 'dividir-editor', titulo: 'Dividir el editor en dos', grupo: 'Editor', icono: 'columns', detalle: 'Manda la pestaña actual a la otra mitad para ver dos archivos a la vez', accion: () => dividirEditor() },
+      { id: 'unir-editor', titulo: 'Deshacer la división del editor', grupo: 'Editor', icono: 'close', detalle: 'Junta todas las pestañas en una sola mitad, sin cerrar ninguna', accion: () => unirEditor() },
 
       { id: 'ver-explorador', titulo: 'Ir al explorador', grupo: 'Paneles', icono: 'folderOpen', accion: () => setLeftView('explorador') },
       { id: 'ver-buscar', titulo: 'Buscar en todo el proyecto', grupo: 'Paneles', atajo: 'Ctrl+Shift+F', icono: 'search', accion: () => setLeftView('buscar') },
