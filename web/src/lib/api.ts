@@ -24,6 +24,10 @@ import type {
   TreeNode,
   UrlProbe,
   ChecksInfo,
+  ProveedorIA,
+  EstadoClave,
+  PruebaConexion,
+  Glosario,
   TerminalDisponibilidad,
   TerminalSesion,
   TerminalLectura,
@@ -56,7 +60,7 @@ export const api = {
     request<{
       ok: boolean;
       defaultModel: string;
-      groq: { configured: boolean; source: string | null };
+      ia: { proveedor: string; nombre: string; configured: boolean; source: string | null };
       git: { available: boolean; version: string | null };
       github: { configured: boolean };
     }>('/api/health'),
@@ -171,23 +175,43 @@ export const api = {
     }),
   chat: (payload: Record<string, unknown>) =>
     request<{ answer: string; model: string }>('/api/ai/chat', { method: 'POST', ...json(payload) }),
-  models: () => request<{ models: { id: string }[] }>('/api/ai/models'),
-  testGroq: () =>
-    request<{ ok: boolean; source: string | null; model?: string; modelAvailable?: boolean; message: string }>(
-      '/api/ai/test',
-    ),
+  models: (proveedor?: string) =>
+    request<{ models: { id: string }[] }>(`/api/ai/models${proveedor ? `?proveedor=${encodeURIComponent(proveedor)}` : ''}`),
+  proveedores: () => request<{ proveedores: ProveedorIA[] }>('/api/ai/proveedores'),
+  probarIA: (proveedor?: string) =>
+    request<PruebaConexion>(`/api/ai/test${proveedor ? `?proveedor=${encodeURIComponent(proveedor)}` : ''}`),
 
-  // ajustes
+  glosario: (id: string) => request<Glosario>(`/api/projects/${id}/glosario`),
+  glosarioProponer: (id: string, elementos: { nombre: string; tipo: string; archivo: string }[]) =>
+    request<{ glosario: Glosario; nuevas: number; descartadas: number; modelo: string; proveedor: string }>(
+      `/api/projects/${id}/glosario/proponer`, { method: 'POST', ...json({ elementos }) }),
+  glosarioAnadir: (id: string, termino: Record<string, unknown>) =>
+    request<Glosario>(`/api/projects/${id}/glosario`, { method: 'POST', ...json(termino) }),
+  glosarioEditar: (id: string, terminoId: string, termino: Record<string, unknown>) =>
+    request<Glosario>(`/api/projects/${id}/glosario/${terminoId}`, { method: 'PUT', ...json(termino) }),
+  glosarioBorrar: (id: string, terminoId: string) =>
+    request<Glosario>(`/api/projects/${id}/glosario/${terminoId}`, { method: 'DELETE' }),
+  glosarioAprobar: (id: string, propuestaId: string) =>
+    request<Glosario>(`/api/projects/${id}/glosario/propuestas/${propuestaId}/aprobar`, { method: 'POST' }),
+  glosarioDescartar: (id: string, propuestaId: string) =>
+    request<Glosario>(`/api/projects/${id}/glosario/propuestas/${propuestaId}`, { method: 'DELETE' }),
+
   settings: () =>
-    request<{ settings: AppSettings; defaultModel: string; apiKey: { configured: boolean; source: string | null } }>(
+    request<{
+      settings: AppSettings;
+      proveedores: ProveedorIA[];
+      defaultModel: string;
+      apiKey: EstadoClave;
+      claves: Record<string, EstadoClave>;
+    }>(
       '/api/settings',
     ),
   saveSettings: (settings: Partial<AppSettings>) =>
     request<{ settings: AppSettings }>('/api/settings', { method: 'PUT', ...json({ settings }) }),
-  saveApiKey: (apiKey: string) =>
-    request<{ apiKey: { configured: boolean } }>('/api/settings/api-key', { method: 'PUT', ...json({ apiKey }) }),
-  clearApiKey: () =>
-    request<{ apiKey: { configured: boolean } }>('/api/settings/api-key', { method: 'DELETE' }),
+  saveApiKey: (apiKey: string, proveedor: string) =>
+    request<{ apiKey: EstadoClave }>('/api/settings/api-key', { method: 'PUT', ...json({ apiKey, proveedor }) }),
+  clearApiKey: (proveedor: string) =>
+    request<{ apiKey: EstadoClave }>(`/api/settings/api-key?proveedor=${encodeURIComponent(proveedor)}`, { method: 'DELETE' }),
 
   // ------------------------------------------------------------------ Git
   gitStatus: (id: string) => request<GitStatus>(`/api/projects/${id}/git/status`),

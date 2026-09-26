@@ -240,7 +240,7 @@ export function SymbolsPanel() {
                 <button
                   className="btn sm primary"
                   disabled={generating || !apiKeyConfigured}
-                  title={apiKeyConfigured ? 'Enviar este elemento a la IA para obtener una explicación' : 'Configura la API key de Groq primero'}
+                  title={apiKeyConfigured ? 'Enviar este elemento a la IA para obtener una explicación' : 'Configura el servicio de IA primero'}
                   onClick={() => void generateDoc(sym)}
                 >
                   {generating ? <span className="spinner" /> : <Icon name="brain" size={12} />}

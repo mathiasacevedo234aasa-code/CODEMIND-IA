@@ -360,7 +360,13 @@ const settingsFile = path.join(DATA_DIR, 'settings.json');
 const secretsFile = path.join(DATA_DIR, 'secrets.json');
 
 export const DEFAULT_SETTINGS = {
-  model: null, // null = usar GROQ_MODEL del .env
+  /** Que servicio de IA se usa. Ver services/proveedores.js. */
+  proveedor: 'groq',
+  /** El modelo elegido para cada proveedor, para no perderlo al cambiar. */
+  modelos: {},
+  /** Donde escucha Ollama. Configurable: no todos lo tienen en el sitio de siempre. */
+  ollamaUrl: 'http://localhost:11434/v1',
+  model: null, // heredado: el modelo de Groq de las versiones anteriores
   temperature: 0.2,
   // A quien va dirigida la explicacion. Cambia el tono y la profundidad, no
   // los hechos: la IA sigue sin poder inventarse nada.
@@ -392,10 +398,26 @@ export const DEFAULT_SETTINGS = {
 export const readSettings = () => readJson(settingsFile, DEFAULT_SETTINGS);
 export const writeSettings = (value) => writeJson(settingsFile, value);
 
-/** La clave se guarda solo en el disco del backend y jamas se devuelve por la API. */
-export async function setStoredApiKey(key) {
+/**
+ * Las claves de cada proveedor, guardadas solo en el disco del backend.
+ *
+ * Nunca se devuelven por la API: de una clave solo sale de aqui si existe y
+ * de donde procede. El archivo guarda un mapa por proveedor; las versiones
+ * anteriores guardaban una sola clave de Groq y se sigue leyendo.
+ */
+async function leerSecretos() {
+  const crudo = (await readJson(secretsFile, null)) ?? {};
+  const claves = { ...(crudo.claves ?? {}) };
+  // Formato antiguo: una unica clave de Groq suelta en la raiz del archivo.
+  if (crudo.groqApiKey && !claves.groq) claves.groq = crudo.groqApiKey;
+  return claves;
+}
+
+export async function setStoredApiKey(proveedor, key) {
   await ensureDataDirs();
-  await writeJson(secretsFile, { groqApiKey: key });
+  const claves = await leerSecretos();
+  claves[proveedor] = key;
+  await writeJson(secretsFile, { claves });
   try {
     await fs.chmod(secretsFile, 0o600);
   } catch {
@@ -403,26 +425,36 @@ export async function setStoredApiKey(key) {
   }
 }
 
-export async function clearStoredApiKey() {
-  await fs.rm(secretsFile, { force: true });
+export async function clearStoredApiKey(proveedor) {
+  const claves = await leerSecretos();
+  delete claves[proveedor];
+  if (Object.keys(claves).length) await writeJson(secretsFile, { claves });
+  else await fs.rm(secretsFile, { force: true });
 }
 
 /**
- * Devuelve la clave de Groq y, sobre todo, DE DONDE sale.
+ * Devuelve la clave de un proveedor y, sobre todo, DE DONDE sale.
  *
  * El origen importa: una variable de sistema caducada tapaba la clave buena y
- * la aplicacion decia "Groq configurado" para despues fallar con un 401 sin
+ * la aplicacion decia "configurado" para despues fallar con un 401 sin
  * explicacion. La aplicacion de escritorio no lleva .env dentro, asi que ahi
- * la variable del sistema es justo la trampa mas probable.
- *
- * Prioridad: la guardada desde Configuracion, luego el .env del proyecto y por
- * ultimo la variable del sistema.
+ * la unica clave posible es la guardada desde Configuracion.
  */
-export async function getApiKey() {
-  const stored = await readJson(secretsFile, null);
-  if (stored?.groqApiKey) return { key: stored.groqApiKey, source: 'guardada' };
-  const fileKey = fileEnvValue('GROQ_API_KEY');
+export async function getApiKey(proveedor = 'groq') {
+  const variables = {
+    groq: 'GROQ_API_KEY',
+    openai: 'OPENAI_API_KEY',
+    anthropic: 'ANTHROPIC_API_KEY',
+    openrouter: 'OPENROUTER_API_KEY',
+  };
+  const variable = variables[proveedor];
+
+  const claves = await leerSecretos();
+  if (claves[proveedor]) return { key: claves[proveedor], source: 'guardada' };
+  if (!variable) return { key: null, source: null };
+
+  const fileKey = fileEnvValue(variable);
   if (fileKey) return { key: fileKey, source: 'archivo .env' };
-  if (process.env.GROQ_API_KEY) return { key: process.env.GROQ_API_KEY, source: 'variable del sistema' };
+  if (process.env[variable]) return { key: process.env[variable], source: 'variable del sistema' };
   return { key: null, source: null };
 }

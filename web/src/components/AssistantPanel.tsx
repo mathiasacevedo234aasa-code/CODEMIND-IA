@@ -137,7 +137,7 @@ export function AssistantPanel() {
             {m.text}
           </div>
         ))}
-        {busy && <div className="msg ai"><span className="spinner" /> Consultando a Groq...</div>}
+        {busy && <div className="msg ai"><span className="spinner" /> Consultando a la IA...</div>}
       </div>
 
       <div className="chat-input">
@@ -196,7 +196,7 @@ export function AssistantPanel() {
           </label>
         )}
         <textarea
-          placeholder={apiKeyConfigured ? 'Escribe tu pregunta...' : 'Configura la API key de Groq para usar el asistente'}
+          placeholder={apiKeyConfigured ? 'Escribe tu pregunta...' : 'Configura el servicio de IA para usar el asistente'}
           value={question}
           disabled={!apiKeyConfigured}
           onChange={(e) => setQuestion(e.target.value)}

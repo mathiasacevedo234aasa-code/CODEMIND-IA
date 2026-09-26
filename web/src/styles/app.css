@@ -1337,3 +1337,18 @@ textarea { resize: vertical; min-height: 64px; line-height: 1.5; }
 /* xterm mide su propio contenedor: necesita un alto real, no "auto". */
 .consola-lienzo { flex: 1; min-height: 120px; padding: 6px 8px; overflow: hidden; }
 .consola-lienzo .xterm { height: 100%; }
+
+/* ------------------------------------------------------------ glosario */
+
+.glosario-item {
+  padding: 10px 0;
+  border-bottom: 1px solid var(--border);
+}
+.glosario-item:last-child { border-bottom: none; }
+.glosario-cabecera { display: flex; align-items: center; gap: 8px; margin-bottom: 4px; }
+.glosario-cabecera strong { font-size: 13.5px; }
+.glosario-item p { margin: 4px 0; line-height: 1.6; font-size: 12.5px; color: var(--text-dim); }
+.glosario-item textarea { width: 100%; }
+/* Las rutas se pueden pulsar: comprobar de donde sale un termino es el punto. */
+.glosario-ruta { cursor: pointer; text-decoration: underline dotted; }
+.glosario-ruta:hover { color: var(--accent); }

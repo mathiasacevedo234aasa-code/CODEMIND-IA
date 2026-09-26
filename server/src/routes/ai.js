@@ -1,5 +1,7 @@
 import { Router } from 'express';
-import { generateFunctionDoc, chat, listModels, testConnection } from '../services/groq.js';
+import { generateFunctionDoc, chat, listModels, testConnection } from '../services/ia.js';
+import { listaProveedores } from '../services/proveedores.js';
+import { comoTexto as glosarioComoTexto } from '../services/glosario.js';
 import { getProject, readDocs, readMemory, readSettings } from '../services/store.js';
 
 const router = Router();
@@ -25,7 +27,7 @@ router.post('/document', async (req, res, next) => {
     const result = await generateFunctionDoc({
       code,
       context,
-      model: model ?? settings.model,
+      model: model ?? null,
       temperature: settings.temperature,
       maxTokens: settings.maxTokens,
       extraInstruction,
@@ -50,6 +52,10 @@ router.post('/chat', async (req, res, next) => {
       const approvedList = Object.values(store.approved).map(
         (v) => `- ${v.name} (${v.filePath}): ${v.doc?.proposito ?? ''}`,
       );
+      // El glosario aprobado va siempre: es vocabulario que el usuario ya ha
+      // dado por bueno, y sin el la IA interpreta a su manera las palabras
+      // propias del proyecto.
+      const glosario = await glosarioComoTexto(projectId);
       const projectBlock = [
         `Proyecto: ${project.name}`,
         `Objetivo declarado: ${project.objective || '(no registrado)'}`,
@@ -60,7 +66,8 @@ router.post('/chat', async (req, res, next) => {
         approvedList.length
           ? `Funciones con documentacion aprobada:\n${approvedList.join('\n')}`
           : 'Todavia no hay funciones con documentacion aprobada.',
-      ].join('\n');
+        glosario ? `\n${glosario}` : '',
+      ].filter(Boolean).join('\n');
       material = material ? `${projectBlock}\n\n${material}` : projectBlock;
     }
 
@@ -69,7 +76,7 @@ router.post('/chat', async (req, res, next) => {
       question,
       level: settings.explanationLevel,
       contextText: material,
-      model: model ?? settings.model,
+      model: model ?? null,
       temperature: settings.temperature,
       maxTokens: settings.maxTokens,
     });
@@ -79,18 +86,23 @@ router.post('/chat', async (req, res, next) => {
   }
 });
 
-/** Comprueba de verdad la conexion con Groq, no solo que exista una clave. */
-router.get('/test', async (_req, res, next) => {
+/** Que proveedores conoce la aplicacion. No dice cuales estan configurados. */
+router.get('/proveedores', (_req, res) => {
+  res.json({ proveedores: listaProveedores() });
+});
+
+/** Comprueba de verdad la conexion, no solo que exista una clave. */
+router.get('/test', async (req, res, next) => {
   try {
-    res.json(await testConnection());
+    res.json(await testConnection(req.query.proveedor || null));
   } catch (err) {
     next(err);
   }
 });
 
-router.get('/models', async (_req, res, next) => {
+router.get('/models', async (req, res, next) => {
   try {
-    res.json({ models: await listModels() });
+    res.json({ models: await listModels(req.query.proveedor || null) });
   } catch (err) {
     next(err);
   }

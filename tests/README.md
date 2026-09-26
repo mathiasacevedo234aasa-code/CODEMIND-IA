@@ -108,3 +108,17 @@ También comprueba los límites (una orden vacía, un texto desmesurado, una con
 que al cerrar no queda ninguna sesión suelta.
 
 Funciona igual con pseudoterminal y sin él: dice en cuál de los dos modos se ejecutó.
+
+## `proveedores.mjs`
+
+Prueba la capa de proveedores de IA **sin llamar a ningún servicio real**: sustituye `fetch` y mira
+exactamente qué se envía y cómo se interpreta lo que llega. Eso es justo lo que se rompe al soportar
+varios proveedores: mandarle a Anthropic el cuerpo de OpenAI, poner la clave en la cabecera
+equivocada, o que una clave acabe dentro de un mensaje de error.
+
+Lo más importante que comprueba: **ningún mensaje de error puede contener la API key**, ni el que
+devuelve el servicio ni el de un fallo de red. Esa comprobación encontró una fuga real.
+
+Ollama se prueba además contra un **servidor HTTP de verdad** levantado por la prueba, que habla su
+mismo dialecto: listar modelos, probar la conexión y completar, por un socket real. No prueba a
+Ollama —para eso hay que instalarlo—, prueba que nuestro lado del protocolo está bien.

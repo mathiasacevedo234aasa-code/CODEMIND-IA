@@ -442,6 +442,12 @@ export interface EditorSettings {
 }
 
 export interface AppSettings {
+  /** Que servicio de IA se usa. */
+  proveedor: string;
+  /** El modelo elegido para cada proveedor, para no perderlo al cambiar. */
+  modelos: Record<string, string>;
+  /** Donde escucha Ollama, por si no esta en el puerto de siempre. */
+  ollamaUrl: string;
   model: string | null;
   temperature: number;
   /** A quién van dirigidas las explicaciones de la IA. */
@@ -542,4 +548,69 @@ export interface TerminalLectura {
   trozos: { seq: number; texto: string }[];
   /** La salida mas vieja ya se habia tirado: hay un hueco. */
   recortado: boolean;
+}
+
+// ------------------------------------------------------- proveedores de IA
+
+export interface ProveedorIA {
+  id: string;
+  nombre: string;
+  necesitaClave: boolean;
+  /** Corre en el propio equipo: el codigo no sale de el. */
+  local: boolean;
+  modeloPorDefecto: string;
+  variableEntorno: string | null;
+  donde: string;
+  nota: string;
+}
+
+export interface EstadoClave {
+  configured: boolean;
+  source: string | null;
+}
+
+export interface PruebaConexion {
+  ok: boolean;
+  proveedor: string;
+  nombre: string;
+  source: string | null;
+  model?: string;
+  modelAvailable?: boolean;
+  modelos?: string[];
+  message: string;
+}
+
+// ----------------------------------------------------------- el glosario
+
+/** Un termino propio del proyecto, ya aprobado por una persona. */
+export interface TerminoGlosario {
+  id: string;
+  termino: string;
+  definicion: string;
+  aliases: string[];
+  /** Archivos donde se vio: lo que hace el glosario comprobable. */
+  apariciones: string[];
+  notas: string;
+  origen: 'persona' | 'propuesta-aprobada';
+  creado: string;
+  actualizado: string;
+}
+
+/** Un candidato propuesto por la IA, a la espera de que alguien lo lea. */
+export interface PropuestaGlosario {
+  id: string;
+  termino: string;
+  definicion: string;
+  aliases: string[];
+  apariciones: string[];
+  notas: string;
+  propuesto: string;
+  modelo: string;
+  proveedor: string;
+}
+
+export interface Glosario {
+  terminos: TerminoGlosario[];
+  propuestas: PropuestaGlosario[];
+  updatedAt: string | null;
 }

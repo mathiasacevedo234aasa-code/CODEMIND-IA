@@ -7,6 +7,7 @@ export function TopBar() {
   const saving = useStore((s) => s.saving);
   const saveAll = useStore((s) => s.saveAll);
   const apiKeyConfigured = useStore((s) => s.apiKeyConfigured);
+  const proveedorNombre = useStore((s) => s.proveedorNombre);
   const gitAvailable = useStore((s) => s.gitAvailable);
   const githubConfigured = useStore((s) => s.githubConfigured);
   const settings = useStore((s) => s.settings);
@@ -95,8 +96,13 @@ export function TopBar() {
       >
         <span className={`status-dot ${githubConfigured ? 'ok' : ''}`} /> GitHub
       </button>
-      <span className={`tag ${apiKeyConfigured ? 'ok' : 'warn'}`} title="Estado de la API key de Groq en el backend">
-        <span className={`status-dot ${apiKeyConfigured ? 'ok' : 'warn'}`} /> Groq
+      <span
+        className={`tag ${apiKeyConfigured ? 'ok' : 'warn'}`}
+        title={apiKeyConfigured
+          ? `${proveedorNombre} esta configurado en el backend`
+          : `${proveedorNombre} no esta configurado: ve a Configuracion`}
+      >
+        <span className={`status-dot ${apiKeyConfigured ? 'ok' : 'warn'}`} /> {proveedorNombre}
       </span>
 
       <button

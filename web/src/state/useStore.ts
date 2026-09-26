@@ -7,6 +7,8 @@ import type {
   AppSettings,
   ApprovedDoc,
   CenterTab,
+  ProveedorIA,
+  EstadoClave,
   PanelEditor,
   DetectedSymbol,
   DocStatus,
@@ -68,6 +70,12 @@ interface State {
   settings: AppSettings;
   defaultModel: string;
   apiKeyConfigured: boolean;
+  /** Los proveedores de IA que conoce la aplicacion. */
+  proveedores: ProveedorIA[];
+  /** Si cada proveedor tiene clave y de donde sale. */
+  claves: Record<string, EstadoClave>;
+  /** El nombre del proveedor en uso, para decirlo en la interfaz. */
+  proveedorNombre: string;
   gitAvailable: boolean;
   githubConfigured: boolean;
 
@@ -142,8 +150,8 @@ interface Actions {
   removeProgress: (id: string) => Promise<void>;
 
   saveSettings: (patch: Partial<AppSettings>) => Promise<void>;
-  saveApiKey: (key: string) => Promise<void>;
-  clearApiKey: () => Promise<void>;
+  saveApiKey: (key: string, proveedor: string) => Promise<void>;
+  clearApiKey: (proveedor: string) => Promise<void>;
   refreshConnections: () => Promise<void>;
 
   setLeftView: (view: LeftView) => void;
@@ -164,6 +172,9 @@ interface Actions {
 }
 
 const DEFAULT_SETTINGS: AppSettings = {
+  proveedor: 'groq',
+  modelos: {},
+  ollamaUrl: 'http://localhost:11434/v1',
   model: null,
   temperature: 0.2,
   explanationLevel: 'intermedio',
@@ -223,6 +234,9 @@ export const useStore = create<State & Actions>((set, get) => ({
   settings: DEFAULT_SETTINGS,
   defaultModel: '',
   apiKeyConfigured: false,
+  proveedores: [],
+  claves: {},
+  proveedorNombre: 'IA',
   gitAvailable: false,
   githubConfigured: false,
   leftView: 'explorador',
@@ -263,15 +277,18 @@ export const useStore = create<State & Actions>((set, get) => ({
         settings: settingsRes.settings,
         defaultModel: settingsRes.defaultModel,
         apiKeyConfigured: settingsRes.apiKey.configured,
+        proveedores: settingsRes.proveedores,
+        claves: settingsRes.claves,
+        proveedorNombre: health.ia.nombre,
         gitAvailable: health.git?.available ?? false,
         githubConfigured: health.github?.configured ?? false,
       });
       get().log(
         'sistema',
-        health.groq.configured ? 'info' : 'warn',
-        health.groq.configured
-          ? `Backend conectado. Groq configurado (origen: ${health.groq.source}).`
-          : 'Backend conectado, pero no hay API key de Groq. Configúrala para documentar.',
+        health.ia.configured ? 'info' : 'warn',
+        health.ia.configured
+          ? `Backend conectado. ${health.ia.nombre} listo (clave: ${health.ia.source}).`
+          : `Backend conectado, pero ${health.ia.nombre} no está configurado. Ve a Configuración para documentar.`,
       );
       if (!health.git?.available) {
         get().log('git', 'warn', 'Git no está disponible en este equipo: el control de versiones queda desactivado.');
@@ -287,7 +304,8 @@ export const useStore = create<State & Actions>((set, get) => ({
       set({
         gitAvailable: health.git?.available ?? false,
         githubConfigured: health.github?.configured ?? false,
-        apiKeyConfigured: health.groq.configured,
+        apiKeyConfigured: health.ia.configured,
+        proveedorNombre: health.ia.nombre,
       });
     } catch {
       /* el aviso de conexión perdida ya lo da cada panel */
@@ -916,19 +934,33 @@ export const useStore = create<State & Actions>((set, get) => ({
   // ------------------------------------------------------------- ajustes
 
   async saveSettings(patch) {
+    const anterior = get().settings.proveedor;
     const { settings } = await api.saveSettings({ ...get().settings, ...patch });
     set({ settings });
+    // Al cambiar de servicio de IA cambia tambien si esta listo para usarse y
+    // como se llama: sin esto, la aplicacion seguia diciendo el nombre viejo.
+    if (settings.proveedor !== anterior) {
+      await get().refreshConnections();
+      get().log('sistema', 'info', `Servicio de IA: ${get().proveedorNombre}.`);
+    }
   },
 
-  async saveApiKey(key) {
-    await api.saveApiKey(key);
-    set({ apiKeyConfigured: true });
-    get().log('sistema', 'info', 'API key de Groq guardada en el backend (no se muestra de nuevo).');
+  async saveApiKey(key, proveedor) {
+    await api.saveApiKey(key, proveedor);
+    set((s) => ({
+      claves: { ...s.claves, [proveedor]: { configured: true, source: 'guardada' } },
+      apiKeyConfigured: proveedor === s.settings.proveedor ? true : s.apiKeyConfigured,
+    }));
+    const nombre = get().proveedores.find((p) => p.id === proveedor)?.nombre ?? proveedor;
+    get().log('sistema', 'info', `Clave de ${nombre} guardada en el backend (no se muestra de nuevo).`);
   },
 
-  async clearApiKey() {
-    const { apiKey } = await api.clearApiKey();
-    set({ apiKeyConfigured: apiKey.configured });
+  async clearApiKey(proveedor) {
+    const { apiKey } = await api.clearApiKey(proveedor);
+    set((s) => ({
+      claves: { ...s.claves, [proveedor]: apiKey },
+      apiKeyConfigured: proveedor === s.settings.proveedor ? apiKey.configured : s.apiKeyConfigured,
+    }));
   },
 
   // ------------------------------------------------------------------ ui

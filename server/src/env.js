@@ -47,8 +47,11 @@ export const fromEnv = (name) => fileEnv[name] || process.env[name] || null;
 
 export const PORT = Number(fromEnv('PORT') || 5174);
 
-// Los identificadores de modelo de Groq cambian con el tiempo y dependen de la
-// cuenta. No se fija ninguno en el codigo: este es solo el valor de arranque.
-export const DEFAULT_MODEL = fromEnv('GROQ_MODEL') || 'openai/gpt-oss-120b';
-
-export const GROQ_BASE_URL = 'https://api.groq.com/openai/v1';
+/**
+ * Modelo de arranque de Groq, por compatibilidad con los .env existentes.
+ *
+ * Desde que hay varios proveedores, cada uno trae el suyo y el elegido se
+ * guarda en los ajustes: ver services/proveedores.js. Esto solo sirve para
+ * que un GROQ_MODEL ya escrito en un .env siga teniendo efecto.
+ */
+export const MODELO_GROQ_ENV = fromEnv('GROQ_MODEL') || null;

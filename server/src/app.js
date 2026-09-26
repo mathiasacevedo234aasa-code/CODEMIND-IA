@@ -2,8 +2,9 @@ import express from 'express';
 import cors from 'cors';
 import path from 'node:path';
 import fs from 'node:fs';
-import { DEFAULT_MODEL, WEB_DIST } from './env.js';
-import { ensureDataDirs, getApiKey } from './services/store.js';
+import { WEB_DIST } from './env.js';
+import { ensureDataDirs, getApiKey, readSettings } from './services/store.js';
+import { descriptor } from './services/proveedores.js';
 import { gitAvailable } from './services/git.js';
 import { getToken as getGithubToken } from './services/github.js';
 import { stopAll } from './services/runner.js';
@@ -25,12 +26,19 @@ export function createApp() {
   app.use(express.json({ limit: '8mb' }));
 
   app.get('/api/health', async (_req, res) => {
-    const { key, source } = await getApiKey();
+    const settings = await readSettings();
+    const proveedor = descriptor(settings.proveedor || 'groq');
+    // Un proveedor local no necesita clave: decir que "no esta configurado"
+    // por no tener una seria mentir sobre lo unico que importa, si se puede
+    // usar o no.
+    const { key, source } = proveedor.necesitaClave
+      ? await getApiKey(proveedor.id)
+      : { key: 'local', source: 'no hace falta' };
     const git = await gitAvailable();
     res.json({
       ok: true,
-      defaultModel: DEFAULT_MODEL,
-      groq: { configured: Boolean(key), source },
+      defaultModel: proveedor.modeloPorDefecto,
+      ia: { proveedor: proveedor.id, nombre: proveedor.nombre, configured: Boolean(key), source },
       git,
       github: { configured: Boolean(await getGithubToken()) },
     });

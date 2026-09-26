@@ -6,10 +6,21 @@ import {
   readHistory,
   writeHistory,
   newId,
+  readSettings,
 } from '../services/store.js';
-import { validateDoc } from '../services/groq.js';
+import { validateDoc } from '../services/ia.js';
+import * as glosario from '../services/glosario.js';
 
 const router = Router();
+
+/** Pasa los fallos al manejador de errores sin repetir try/catch en cada ruta. */
+const wrap = (handler) => async (req, res, next) => {
+  try {
+    await handler(req, res);
+  } catch (err) {
+    next(err);
+  }
+};
 
 /** Estado completo de documentacion: aprobadas + propuestas pendientes (separadas). */
 router.get('/:id/docs', async (req, res, next) => {
@@ -182,5 +193,44 @@ router.get('/:id/history', async (req, res, next) => {
     next(err);
   }
 });
+
+// ------------------------------------------------------------- glosario
+
+/**
+ * El vocabulario propio del proyecto. La IA propone y el usuario aprueba:
+ * ningun termino entra en el glosario sin que una persona lo lea.
+ */
+router.get('/:id/glosario', wrap(async (req, res) => {
+  res.json(await glosario.obtener(req.params.id));
+}));
+
+router.post('/:id/glosario/proponer', wrap(async (req, res) => {
+  const ajustes = await readSettings();
+  res.json(await glosario.proponer(req.params.id, {
+    elementos: req.body?.elementos ?? [],
+    temperature: ajustes.temperature,
+    maxTokens: ajustes.maxTokens,
+  }));
+}));
+
+router.post('/:id/glosario', wrap(async (req, res) => {
+  res.status(201).json(await glosario.anadirTermino(req.params.id, req.body ?? {}));
+}));
+
+router.put('/:id/glosario/:terminoId', wrap(async (req, res) => {
+  res.json(await glosario.editarTermino(req.params.id, req.params.terminoId, req.body ?? {}));
+}));
+
+router.delete('/:id/glosario/:terminoId', wrap(async (req, res) => {
+  res.json(await glosario.borrarTermino(req.params.id, req.params.terminoId));
+}));
+
+router.post('/:id/glosario/propuestas/:propuestaId/aprobar', wrap(async (req, res) => {
+  res.json(await glosario.aprobarPropuesta(req.params.id, req.params.propuestaId));
+}));
+
+router.delete('/:id/glosario/propuestas/:propuestaId', wrap(async (req, res) => {
+  res.json(await glosario.descartarPropuesta(req.params.id, req.params.propuestaId));
+}));
 
 export default router;

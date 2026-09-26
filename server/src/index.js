@@ -1,4 +1,6 @@
-import { PORT, DEFAULT_MODEL } from './env.js';
+import { PORT } from './env.js';
+import { readSettings } from './services/store.js';
+import { descriptor, resolverModelo } from './services/proveedores.js';
 import { getApiKey } from './services/store.js';
 import { gitAvailable } from './services/git.js';
 import { startServer } from './app.js';
@@ -10,7 +12,11 @@ const { key, source } = await getApiKey();
 const git = await gitAvailable();
 
 console.log(`CodeMind AI backend en ${url}`);
-console.log(`Modelo Groq por defecto: ${DEFAULT_MODEL}`);
+{
+  const ajustes = await readSettings();
+  const proveedor = descriptor(ajustes.proveedor || 'groq');
+  console.log(`IA: ${proveedor.nombre}, modelo ${(await resolverModelo(proveedor.id, null)) || '(ninguno elegido)'}`);
+}
 console.log(
   key
     ? `API key de Groq: configurada (origen: ${source}).`

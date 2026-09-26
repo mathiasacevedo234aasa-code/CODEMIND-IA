@@ -5,12 +5,14 @@ import type { ApprovedDoc, ProjectMemory } from '../lib/types';
 import { DocView } from './DocView';
 import { Icon } from './Icon';
 import { ProjectMap } from './ProjectMap';
+import { GlosarioPanel } from './GlosarioPanel';
 
-type Section = 'general' | 'arquitectura' | 'funciones' | 'decisiones' | 'progreso' | 'historial';
+type Section = 'general' | 'arquitectura' | 'glosario' | 'funciones' | 'decisiones' | 'progreso' | 'historial';
 
 const SECTIONS: { id: Section; label: string }[] = [
   { id: 'general', label: 'Descripcion general' },
   { id: 'arquitectura', label: 'Arquitectura' },
+  { id: 'glosario', label: 'Glosario' },
   { id: 'funciones', label: 'Documentacion de funciones' },
   { id: 'decisiones', label: 'Registro de decisiones' },
   { id: 'progreso', label: 'Registro de progreso' },
@@ -498,6 +500,7 @@ export function DocCenter() {
         <div className="modal-body">
           {section === 'general' && <GeneralSection />}
           {section === 'arquitectura' && <ArchitectureSection />}
+          {section === 'glosario' && <GlosarioPanel />}
           {section === 'funciones' && <FunctionsSection />}
           {section === 'decisiones' && <DecisionsSection />}
           {section === 'progreso' && <ProgressSection />}
