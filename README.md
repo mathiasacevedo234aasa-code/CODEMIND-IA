@@ -237,12 +237,22 @@ Implementado y verificado (fases 1 a 6):
   números de línea, guías de indentación, corchetes de colores, encabezado fijo y minimapa,
   con una muestra que se actualiza mientras eliges
 
+**Búsqueda y navegación**
+- Búsqueda y reemplazo en todo el proyecto, con expresiones regulares, filtros por tipo de archivo
+  y **vista previa obligatoria antes de tocar nada**
+- Paleta de comandos (`Ctrl+Shift+P`): abre archivos escribiendo parte de su nombre y ejecuta
+  cualquier acción sin buscarla por los menús
+
 **Comprensión y documentación**
 - Detección de funciones por AST en `.js .jsx .ts .tsx .mjs .cjs` y el `<script>` de `.vue` y `.svelte`
 - Panel *Funciones del proyecto* con estado, archivo, línea y navegación al código
 - Documentación asistida por Groq con aprobación manual obligatoria
 - Centro de documentación: descripción general, arquitectura, funciones, decisiones, progreso, historial
-- Memoria contextual por proyecto y asistente en cuatro modos
+- Memoria contextual por proyecto y asistente en cuatro modos, con varios archivos como contexto
+- Detección de **código sin usar**, presentada como sospecha razonada y nunca como orden de borrar
+- Nivel de las explicaciones: principiante, intermedio o avanzado
+- Exportación de la documentación aprobada a Markdown o a una página HTML lista para imprimir
+- Comparación de una versión antigua de la documentación con la actual, lado a lado
 
 **Control de versiones**
 - Git real sobre el ejecutable del sistema: estado, comparaciones, preparar, confirmar, historial y ramas

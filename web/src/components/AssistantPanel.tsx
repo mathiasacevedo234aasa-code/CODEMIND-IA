@@ -23,12 +23,16 @@ export function AssistantPanel() {
   const setError = useStore((s) => s.setError);
   const symbolsFn = useStore((s) => s.symbols);
   const analysis = useStore((s) => s.analysis);
+  const sources = useStore((s) => s.sources);
   const statusOf = useStore((s) => s.statusOf);
   const pendingAsk = useStore((s) => s.pendingAsk);
   const clearPendingAsk = useStore((s) => s.clearPendingAsk);
 
   const [mode, setMode] = useState<Mode>('comprehension');
   const [includeFile, setIncludeFile] = useState(true);
+  /** Archivos extra que el usuario quiere que la IA tenga delante. */
+  const [extras, setExtras] = useState<Set<string>>(new Set());
+  const [eligiendoArchivos, setEligiendoArchivos] = useState(false);
   const [question, setQuestion] = useState('');
   const [busy, setBusy] = useState(false);
   const [messages, setMessages] = useState<Message[]>([]);
@@ -150,6 +154,36 @@ export function AssistantPanel() {
           ))}
         </div>
         <p className="hint">{MODES.find((m) => m.id === mode)?.hint}</p>
+        {mode !== 'technical' && (
+          <div className="extras-box">
+            <button className="btn sm outline" onClick={() => setEligiendoArchivos((v) => !v)}>
+              <Icon name="file" size={12} /> Añadir archivos al contexto
+              {extras.size > 0 && <span className="tag info">{extras.size}</span>}
+            </button>
+            {eligiendoArchivos && (
+              <div className="extras-lista">
+                {Object.keys(sources).sort().map((ruta) => (
+                  <label key={ruta} className="extras-item" title={ruta}>
+                    <input
+                      type="checkbox"
+                      checked={extras.has(ruta)}
+                      onChange={(e) => {
+                        setExtras((previo) => {
+                          const siguiente = new Set(previo);
+                          if (e.target.checked) siguiente.add(ruta);
+                          else siguiente.delete(ruta);
+                          return siguiente;
+                        });
+                      }}
+                    />
+                    <span>{ruta}</span>
+                  </label>
+                ))}
+                {Object.keys(sources).length === 0 && <p className="hint">Todavía no se ha analizado ningún archivo.</p>}
+              </div>
+            )}
+          </div>
+        )}
         {active && mode !== 'technical' && (
           <label className="hint" style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
             <input

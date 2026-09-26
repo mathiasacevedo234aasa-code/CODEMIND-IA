@@ -80,6 +80,19 @@ const DOC_SCHEMA_HINT = `Devuelve EXCLUSIVAMENTE un objeto JSON valido con esta 
 }
 Sin texto antes ni despues del JSON. Sin bloques de codigo markdown.`;
 
+/**
+ * Tono y profundidad segun a quien va dirigida la explicacion. Solo cambia
+ * COMO se cuenta: los hechos y las incertidumbres siguen siendo los mismos.
+ */
+export const NIVELES = {
+  principiante:
+    'Escribes para alguien que esta aprendiendo a programar. Evita la jerga; cuando un termino tecnico sea inevitable, explicalo en la misma frase. Usa comparaciones sencillas. Prefiere frases cortas. No des por sabido nada.',
+  intermedio:
+    'Escribes para alguien que ya programa pero no conoce este codigo. Puedes usar terminologia habitual sin explicarla, y centrarte en el porque de las decisiones.',
+  avanzado:
+    'Escribes para alguien con experiencia. Ve al grano, usa la terminologia precisa y detente en los detalles que solo se aprecian con oficio: casos limite, complejidad, efectos secundarios y supuestos implicitos.',
+};
+
 export async function resolveModel(requested) {
   if (requested && String(requested).trim()) return String(requested).trim();
   const settings = await readSettings();
@@ -258,7 +271,9 @@ export async function generateFunctionDoc({ code, context, model, temperature, m
   const category = context?.category ?? 'codigo';
   const invocable = INVOCABLES.has(kind);
 
+  const nivel = context?.level ?? 'intermedio';
   const guia = [
+    NIVELES[nivel] ?? NIVELES.intermedio,
     `Lo que vas a explicar es de tipo "${kind}". ${GUIA_POR_TIPO[category] ?? GUIA_POR_TIPO.codigo}`,
     invocable
       ? 'Rellena "parametros" y "retorno" con lo que de verdad recibe y devuelve.'

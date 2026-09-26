@@ -66,6 +66,7 @@ export function SymbolsPanel() {
   const applyRelink = useStore((s) => s.applyRelink);
   const dismissRelink = useStore((s) => s.dismissRelink);
   const proposals = useStore((s) => s.proposals);
+  const orphansFn = useStore((s) => s.orphans);
 
   const [query, setQuery] = useState('');
   const [fileFilter, setFileFilter] = useState('');
@@ -74,6 +75,7 @@ export function SymbolsPanel() {
     () => new Set<SymbolCategory>(['codigo', 'estructura', 'estilo', 'contenido']),
   );
   const [selected, setSelected] = useState<string | null>(null);
+  const [soloHuerfanos, setSoloHuerfanos] = useState(false);
 
   // `analysis` en las dependencias mantiene la lista viva mientras se escribe.
   const todos = useMemo(() => symbolsFn(), [symbolsFn, analysis]);
@@ -85,7 +87,11 @@ export function SymbolsPanel() {
     return cuenta;
   }, [todos]);
 
-  const visibles = todos.filter((s) => {
+  // Se calcula solo cuando se pide: recorrer todo el proyecto no es gratis.
+  const huerfanos = useMemo(() => (soloHuerfanos ? orphansFn() : []), [soloHuerfanos, orphansFn, analysis]);
+  const mapaHuerfanos = useMemo(() => new Map(huerfanos.map((h) => [h.symbol.id, h])), [huerfanos]);
+
+  const visibles = (soloHuerfanos ? huerfanos.map((h) => h.symbol) : todos).filter((s) => {
     if (!categorias.has(s.category)) return false;
     if (query && !`${s.qualifiedName} ${s.filePath} ${s.kind}`.toLowerCase().includes(query.toLowerCase())) return false;
     if (fileFilter && s.filePath !== fileFilter) return false;
@@ -131,9 +137,24 @@ export function SymbolsPanel() {
             {c.label}{porCategoria[c.id] > 0 ? ` ${porCategoria[c.id]}` : ''}
           </button>
         ))}
+        <span style={{ flex: 1 }} />
+        <button
+          className={`mode-chip ${soloHuerfanos ? 'active' : ''}`}
+          onClick={() => setSoloHuerfanos((v) => !v)}
+          title="Elementos de los que no se encuentra ningún uso en el proyecto"
+        >
+          Sin usar
+        </button>
       </div>
 
       <div className="panel-body">
+        {soloHuerfanos && (
+          <div className="review-banner" style={{ margin: 10 }}>
+            Son <strong>sospechas</strong>, no certezas: se busca el nombre por todo el proyecto, sin analizar
+            ámbitos. Revisa cada caso antes de tocar nada. CodeMind AI no borra ni propone borrar.
+            {huerfanos.length === 0 && <div style={{ marginTop: 6 }}>No se encontró ningún elemento sin usar.</div>}
+          </div>
+        )}
         {relinks.length > 0 && (
           <div style={{ padding: 10, borderBottom: '1px solid var(--border)' }}>
             {relinks.map((r) => (
@@ -198,6 +219,16 @@ export function SymbolsPanel() {
                 {sym.isAsync && <span>async</span>}
               </div>
               {sym.detail && <div className="fn-meta"><span>{sym.detail}</span></div>}
+              {mapaHuerfanos.has(sym.id) && (
+                <div className="fn-meta">
+                  <span className={`tag ${mapaHuerfanos.get(sym.id)!.fiable ? 'warn' : 'muted'}`}>
+                    {mapaHuerfanos.get(sym.id)!.motivo}
+                  </span>
+                  {mapaHuerfanos.get(sym.id)!.aviso && (
+                    <span style={{ color: 'var(--text-faint)' }}>{mapaHuerfanos.get(sym.id)!.aviso}</span>
+                  )}
+                </div>
+              )}
               {doc && (
                 <div className="fn-meta">
                   <span>Documentado el {new Date(doc.approvedAt).toLocaleString('es')}</span>

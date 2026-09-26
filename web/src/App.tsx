@@ -5,6 +5,8 @@ import { ActivityRail } from './components/ActivityRail';
 import { FileExplorer } from './components/FileExplorer';
 import { EditorArea } from './components/EditorArea';
 import { SymbolsPanel } from './components/SymbolsPanel';
+import { SearchPanel } from './components/SearchPanel';
+import { CommandPalette } from './components/CommandPalette';
 import { GitPanel } from './components/GitPanel';
 import { GitHubPanel } from './components/GitHubPanel';
 import { RunPanel } from './components/RunPanel';
@@ -20,6 +22,7 @@ import { Icon } from './components/Icon';
 
 const LEFT_TITLE: Record<string, string> = {
   explorador: 'Explorador',
+  buscar: 'Buscar en el proyecto',
   funciones: 'Elementos del proyecto',
   git: 'Control de versiones',
   github: 'GitHub',
@@ -67,12 +70,31 @@ export default function App() {
   const folderPickerOpen = useStore((s) => s.folderPickerOpen);
   const setFolderPickerOpen = useStore((s) => s.setFolderPickerOpen);
   const createProject = useStore((s) => s.createProject);
+  const setPaletteOpen = useStore((s) => s.setPaletteOpen);
+  const setLeftView = useStore((s) => s.setLeftView);
 
   const [left, setLeft] = useState(260);
   const [right, setRight] = useState(380);
 
   useEffect(() => { void boot(); }, [boot]);
   useEffect(() => { document.documentElement.dataset.theme = theme; }, [theme]);
+
+  // Atajos globales. Se registran una vez y no dependen del foco.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      const ctrl = e.ctrlKey || e.metaKey;
+      if (ctrl && e.shiftKey && e.key.toLowerCase() === 'p') {
+        e.preventDefault();
+        setPaletteOpen(true);
+      }
+      if (ctrl && e.shiftKey && e.key.toLowerCase() === 'f') {
+        e.preventDefault();
+        setLeftView('buscar');
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [setPaletteOpen, setLeftView]);
 
   // Aviso del navegador si hay cambios sin guardar.
   useEffect(() => {
@@ -105,6 +127,7 @@ export default function App() {
                         <Icon name="close" size={13} />
                       </button>
                     </div>
+                    {leftView === 'buscar' && <SearchPanel />}
                     {leftView === 'funciones' && <SymbolsPanel />}
                     {leftView === 'git' && <GitPanel />}
                     {leftView === 'github' && <GitHubPanel />}
@@ -167,6 +190,7 @@ export default function App() {
       <DocCenter />
       <SettingsDialog />
       <DialogHost />
+      <CommandPalette />
 
       <FolderPicker
         open={folderPickerOpen}

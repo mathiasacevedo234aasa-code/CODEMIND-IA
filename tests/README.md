@@ -62,3 +62,8 @@ archivo por `release/win-unpacked/CodeMind AI.exe` y quita el argumento de la ca
 ---
 
 Los resultados de la última ejecución están en `docs/PRUEBAS.md` y `docs/FASES-5-6.md`.
+
+## `busqueda.mjs`
+
+Prueba la búsqueda y el reemplazo contra la API. Lo más importante que comprueba es que la **vista
+previa del reemplazo no escribe nada**: compara el tamaño del archivo antes y después de calcularla.

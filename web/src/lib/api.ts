@@ -17,6 +17,9 @@ import type {
   RunLogLine,
   RunProcess,
   RunScriptsInfo,
+  SearchOptions,
+  SearchResults,
+  ReplaceResult,
   SyncPreview,
   TreeNode,
   UrlProbe,
@@ -242,6 +245,20 @@ export const api = {
   runStop: (id: string, processId: string) =>
     request<{ process: RunProcess }>(`/api/projects/${id}/run/processes/${processId}/stop`, { method: 'POST' }),
   probeUrl: (url: string) => request<UrlProbe>(`/api/net/probe?url=${encodeURIComponent(url)}`),
+
+  // busqueda en todo el proyecto
+  search: (id: string, opciones: SearchOptions) =>
+    request<SearchResults>(`/api/projects/${id}/search`, { method: 'POST', ...json(opciones) }),
+  replacePreview: (id: string, opciones: SearchOptions & { replacement: string; paths?: string[] }) =>
+    request<ReplaceResult>(`/api/projects/${id}/replace/preview`, { method: 'POST', ...json(opciones) }),
+  replaceApply: (id: string, opciones: SearchOptions & { replacement: string; paths?: string[] }) =>
+    request<ReplaceResult>(`/api/projects/${id}/replace/apply`, { method: 'POST', ...json(opciones) }),
+
+  // exportar documentacion
+  exportDocs: (id: string, format: 'md' | 'html') =>
+    request<{ filename: string; mime: string; content: string; documented: number }>(
+      `/api/projects/${id}/docs/export?format=${format}`,
+    ),
   hostPreview: (html: string) =>
     request<{ id: string; url: string }>('/api/preview', { method: 'POST', ...json({ html }) }),
 };

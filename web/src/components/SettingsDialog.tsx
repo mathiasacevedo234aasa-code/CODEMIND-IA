@@ -137,6 +137,22 @@ export function SettingsDialog() {
             </p>
           </div>
 
+          <div className="field">
+            <label>Nivel de las explicaciones</label>
+            <select
+              value={settings.explanationLevel}
+              onChange={(e) => void saveSettings({ explanationLevel: e.target.value as 'principiante' | 'intermedio' | 'avanzado' })}
+            >
+              <option value="principiante">Principiante — evita la jerga y explica los términos</option>
+              <option value="intermedio">Intermedio — para quien ya programa</option>
+              <option value="avanzado">Avanzado — al grano, con los detalles finos</option>
+            </select>
+            <p className="hint">
+              Cambia el tono y la profundidad de lo que escribe la IA, no los hechos: sigue sin poder
+              inventarse nada ni corregir tu código.
+            </p>
+          </div>
+
           <div className="grid2">
             <div className="field">
               <label>Temperatura ({settings.temperature})</label>

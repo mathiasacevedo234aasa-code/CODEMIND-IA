@@ -173,6 +173,44 @@ export interface RunLogLine {
   text: string;
 }
 
+// ------------------------------------------------- busqueda en el proyecto
+
+export interface SearchOptions {
+  query: string;
+  regex?: boolean;
+  caseSensitive?: boolean;
+  wholeWord?: boolean;
+  /** Patrones separados por comas: "*.ts, src/**" */
+  include?: string;
+  exclude?: string;
+}
+
+export interface SearchMatch {
+  line: number;
+  column: number;
+  length: number;
+  preview: string;
+}
+
+export interface SearchFileResult {
+  path: string;
+  matches: SearchMatch[];
+}
+
+export interface SearchResults {
+  files: SearchFileResult[];
+  totalMatches: number;
+  totalFiles: number;
+  truncated: boolean;
+  scanned: number;
+}
+
+export interface ReplaceResult {
+  applied: boolean;
+  files: { path: string; replacements: number }[];
+  totalReplacements: number;
+}
+
 /** Resultado de comprobar si una URL se puede mostrar incrustada. */
 export interface UrlProbe {
   url: string;
@@ -398,6 +436,8 @@ export interface EditorSettings {
 export interface AppSettings {
   model: string | null;
   temperature: number;
+  /** A quién van dirigidas las explicaciones de la IA. */
+  explanationLevel: 'principiante' | 'intermedio' | 'avanzado';
   maxTokens: number;
   editor: EditorSettings;
 }

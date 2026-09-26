@@ -5,6 +5,8 @@ import * as fsbrowse from '../services/fsbrowse.js';
 import * as git from '../services/git.js';
 import * as github from '../services/github.js';
 import * as runner from '../services/runner.js';
+import * as search from '../services/search.js';
+import { exportarDocumentacion } from '../services/export.js';
 
 /**
  * Rutas de entorno: disco, control de versiones, GitHub y ejecucion.
@@ -130,6 +132,33 @@ router.post('/projects/:id/github/push', wrap(async (req, res) => {
 
 router.post('/projects/:id/github/pull', wrap(async (req, res) => {
   res.json(await github.pull(await rootOf(req), req.body?.branch));
+}));
+
+// --------------------------------------------------------------- busqueda
+
+router.post('/projects/:id/search', wrap(async (req, res) => {
+  await getProject(req.params.id);
+  res.json(await search.buscar(req.params.id, req.body ?? {}));
+}));
+
+/** Solo calcula el resultado: no escribe nada en el disco. */
+router.post('/projects/:id/replace/preview', wrap(async (req, res) => {
+  await getProject(req.params.id);
+  res.json(await search.reemplazar(req.params.id, req.body ?? {}, false));
+}));
+
+/** Aplica el reemplazo. Llega aqui solo tras confirmarlo el usuario. */
+router.post('/projects/:id/replace/apply', wrap(async (req, res) => {
+  await getProject(req.params.id);
+  res.json(await search.reemplazar(req.params.id, req.body ?? {}, true));
+}));
+
+// ------------------------------------------------------ exportar documentacion
+
+router.get('/projects/:id/docs/export', wrap(async (req, res) => {
+  const formato = req.query.format === 'html' ? 'html' : 'md';
+  const resultado = await exportarDocumentacion(req.params.id, formato);
+  res.json(resultado);
 }));
 
 // -------------------------------------------------------------- ejecucion

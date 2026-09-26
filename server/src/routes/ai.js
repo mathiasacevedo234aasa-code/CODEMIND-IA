@@ -21,6 +21,7 @@ router.post('/document', async (req, res, next) => {
       }
     }
 
+    context.level ??= settings.explanationLevel;
     const result = await generateFunctionDoc({
       code,
       context,
@@ -66,6 +67,7 @@ router.post('/chat', async (req, res, next) => {
     const result = await chat({
       mode,
       question,
+      level: settings.explanationLevel,
       contextText: material,
       model: model ?? settings.model,
       temperature: settings.temperature,

@@ -9,6 +9,7 @@ interface RailItem {
 
 const ITEMS: RailItem[] = [
   { id: 'explorador', icon: 'folderOpen', label: 'Explorador de archivos' },
+  { id: 'buscar', icon: 'search', label: 'Buscar en el proyecto' },
   { id: 'funciones', icon: 'fn', label: 'Elementos del proyecto' },
   { id: 'git', icon: 'git', label: 'Control de versiones' },
   { id: 'github', icon: 'link', label: 'GitHub' },

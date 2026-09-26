@@ -362,6 +362,9 @@ const secretsFile = path.join(DATA_DIR, 'secrets.json');
 export const DEFAULT_SETTINGS = {
   model: null, // null = usar GROQ_MODEL del .env
   temperature: 0.2,
+  // A quien va dirigida la explicacion. Cambia el tono y la profundidad, no
+  // los hechos: la IA sigue sin poder inventarse nada.
+  explanationLevel: 'intermedio', // 'principiante' | 'intermedio' | 'avanzado'
   maxTokens: 4096,
   editor: {
     theme: 'dark',

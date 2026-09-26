@@ -26,6 +26,54 @@ const OVERVIEW_FIELDS: { key: keyof ProjectMemory['overview']; label: string }[]
   { key: 'pending', label: 'Funcionalidades pendientes' },
 ];
 
+/**
+ * Descarga la documentación aprobada como un documento entregable.
+ *
+ * Solo sale lo aprobado: una propuesta pendiente no es documentación oficial
+ * y no debe acabar en algo que se entrega o se publica.
+ */
+function ExportarDocumentacion() {
+  const project = useStore((s) => s.project);
+  const setError = useStore((s) => s.setError);
+  const log = useStore((s) => s.log);
+  const [ocupado, setOcupado] = useState<string | null>(null);
+
+  const exportar = async (formato: 'md' | 'html') => {
+    if (!project) return;
+    setOcupado(formato);
+    try {
+      const res = await api.exportDocs(project.id, formato);
+      if (!res.documented) {
+        setError('Todavía no hay ningún elemento con documentación aprobada que exportar.');
+        return;
+      }
+      // Descarga local: el archivo no pasa por ningún servidor externo.
+      const url = URL.createObjectURL(new Blob([res.content], { type: res.mime }));
+      const enlace = document.createElement('a');
+      enlace.href = url;
+      enlace.download = res.filename;
+      enlace.click();
+      URL.revokeObjectURL(url);
+      log('documentacion', 'info', `Documentación exportada: ${res.filename} (${res.documented} elemento(s)).`);
+    } catch (err) {
+      setError((err as Error).message);
+    } finally {
+      setOcupado(null);
+    }
+  };
+
+  return (
+    <span style={{ display: 'flex', gap: 6 }}>
+      <button className="btn sm outline" disabled={Boolean(ocupado)} onClick={() => void exportar('md')} title="Descargar en Markdown">
+        {ocupado === 'md' ? <span className="spinner" /> : <Icon name="docs" size={13} />} Markdown
+      </button>
+      <button className="btn sm outline" disabled={Boolean(ocupado)} onClick={() => void exportar('html')} title="Descargar como página web, lista para imprimir">
+        {ocupado === 'html' ? <span className="spinner" /> : <Icon name="file" size={13} />} HTML
+      </button>
+    </span>
+  );
+}
+
 function GeneralSection() {
   const memory = useStore((s) => s.memory);
   const saveMemory = useStore((s) => s.saveMemory);
@@ -348,8 +396,10 @@ function ProgressSection() {
 
 function HistorySection() {
   const project = useStore((s) => s.project);
+  const approved = useStore((s) => s.approved);
   const [versions, setVersions] = useState<ApprovedDoc[]>([]);
   const [open, setOpen] = useState<string | null>(null);
+  const [comparando, setComparando] = useState<string | null>(null);
 
   useEffect(() => {
     if (project) void api.history(project.id).then((r) => setVersions(r.versions));
@@ -374,6 +424,36 @@ function HistorySection() {
             </button>
           </div>
           <p className="meta" style={{ marginTop: 6 }}>Aprobada el {new Date(v.approvedAt).toLocaleString('es')}</p>
+
+          {approved[v.functionId] && (
+            <button
+              className="btn sm outline"
+              style={{ marginTop: 6 }}
+              onClick={() => setComparando(comparando === v.versionId ? null : v.versionId)}
+            >
+              {comparando === v.versionId ? 'Ocultar comparación' : 'Comparar con la versión actual'}
+            </button>
+          )}
+
+          {comparando === v.versionId && approved[v.functionId] && (
+            <div className="comparacion">
+              <div>
+                <span className="panel-title">Esta versión · {new Date(v.approvedAt).toLocaleDateString('es')}</span>
+                <DocView doc={v.doc} />
+                {v.code && <div className="doc-section"><h4>Código de entonces</h4><pre>{v.code}</pre></div>}
+              </div>
+              <div>
+                <span className="panel-title">
+                  Versión actual · {new Date(approved[v.functionId].approvedAt).toLocaleDateString('es')}
+                </span>
+                <DocView doc={approved[v.functionId].doc} />
+                {approved[v.functionId].code && (
+                  <div className="doc-section"><h4>Código actual</h4><pre>{approved[v.functionId].code}</pre></div>
+                )}
+              </div>
+            </div>
+          )}
+
           {open === v.versionId && (
             <div style={{ marginTop: 10 }}>
               <DocView doc={v.doc} />
@@ -403,7 +483,9 @@ export function DocCenter() {
     <div className="overlay" onClick={() => setOpen(false)}>
       <div className="modal" onClick={(e) => e.stopPropagation()}>
         <div className="modal-head">
-          <h2>Centro de documentacion — {project.name}</h2>
+          <h2>Centro de documentación — {project.name}</h2>
+          <span style={{ flex: 1 }} />
+          <ExportarDocumentacion />
           <button className="btn icon" onClick={() => setOpen(false)}><Icon name="close" /></button>
         </div>
         <div className="doc-nav">

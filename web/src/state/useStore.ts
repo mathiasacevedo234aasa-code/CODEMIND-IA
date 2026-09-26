@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { api } from '../lib/api';
 import { analyzeFile, forgetFile, isAnalyzable, suggestRelinks } from '../lib/analyzer';
+import { detectarHuerfanos, type Huerfano } from '../lib/orphans';
 import type {
   AppSettings,
   ApprovedDoc,
@@ -29,7 +30,7 @@ interface RelinkSuggestion {
 }
 
 /** Vistas del panel lateral izquierdo, seleccionadas desde la barra de actividad. */
-export type LeftView = 'explorador' | 'funciones' | 'git' | 'github' | 'ejecutar';
+export type LeftView = 'explorador' | 'buscar' | 'funciones' | 'git' | 'github' | 'ejecutar';
 export type RightTab = 'revision' | 'asistente';
 export type BottomTab = 'consola' | 'errores' | 'preview' | 'documentacion' | 'git' | 'procesos';
 
@@ -47,6 +48,8 @@ interface State {
   saving: boolean;
 
   analysis: Record<string, { symbols: DetectedSymbol[]; imports: string[]; classes: string[]; error: string | null }>;
+  /** Contenido de los archivos analizados: hace falta para buscar usos. */
+  sources: Record<string, string>;
   scanning: boolean;
 
   approved: Record<string, ApprovedDoc>;
@@ -71,6 +74,7 @@ interface State {
   docCenterOpen: boolean;
   settingsOpen: boolean;
   folderPickerOpen: boolean;
+  paletteOpen: boolean;
   previewKey: number;
   logs: LogEntry[];
   error: string | null;
@@ -107,6 +111,7 @@ interface Actions {
 
   scanProject: () => Promise<void>;
   symbols: () => DetectedSymbol[];
+  orphans: () => Huerfano[];
   statusOf: (sym: DetectedSymbol) => DocStatus;
   goToSymbol: (sym: DetectedSymbol) => Promise<void>;
   clearJump: () => void;
@@ -140,6 +145,8 @@ interface Actions {
   setDocCenterOpen: (open: boolean) => void;
   setSettingsOpen: (open: boolean) => void;
   setFolderPickerOpen: (open: boolean) => void;
+  setPaletteOpen: (open: boolean) => void;
+  jumpToLine: (path: string, line: number) => void;
   refreshPreview: () => void;
   setActiveProposal: (id: string | null) => void;
   askAssistant: (question: string, contextText: string) => void;
@@ -149,6 +156,7 @@ interface Actions {
 const DEFAULT_SETTINGS: AppSettings = {
   model: null,
   temperature: 0.2,
+  explanationLevel: 'intermedio',
   maxTokens: 4096,
   editor: {
     theme: 'dark',
@@ -192,6 +200,7 @@ export const useStore = create<State & Actions>((set, get) => ({
   files: {},
   saving: false,
   analysis: {},
+  sources: {},
   scanning: false,
   approved: {},
   proposals: [],
@@ -213,6 +222,7 @@ export const useStore = create<State & Actions>((set, get) => ({
   docCenterOpen: false,
   settingsOpen: false,
   folderPickerOpen: false,
+  paletteOpen: false,
   previewKey: 0,
   logs: [],
   error: null,
@@ -299,6 +309,7 @@ export const useStore = create<State & Actions>((set, get) => ({
         activeTabId: null,
         files: {},
         analysis: {},
+        sources: {},
         relinks: [],
         activeProposalId: docs.proposals[0]?.id ?? null,
         leftView: (sessionRes.session.leftView as LeftView) || 'explorador',
@@ -453,7 +464,10 @@ export const useStore = create<State & Actions>((set, get) => ({
     set((s) => ({ files: { ...s.files, [path]: { ...s.files[path], content } } }));
     if (isAnalyzable(path)) {
       // El análisis corre en local, en segundo plano: no se envía código a la IA.
-      set((s) => ({ analysis: { ...s.analysis, [path]: analyzeFile(path, content) } }));
+      set((s) => ({
+        analysis: { ...s.analysis, [path]: analyzeFile(path, content) },
+        sources: { ...s.sources, [path]: content },
+      }));
     }
 
     // Autoguardado: se reinicia la cuenta con cada pulsacion, asi que solo
@@ -588,12 +602,16 @@ export const useStore = create<State & Actions>((set, get) => ({
       }
 
       const analysis = { ...get().analysis };
+      const sources: Record<string, string> = {};
       for (const path of limited) {
         const open = get().files[path];
         const content = open ? open.content : (await api.readFile(project.id, path).catch(() => null))?.content;
-        if (typeof content === 'string') analysis[path] = analyzeFile(path, content);
+        if (typeof content === 'string') {
+          analysis[path] = analyzeFile(path, content);
+          sources[path] = content;
+        }
       }
-      set({ analysis });
+      set({ analysis, sources });
 
       const current = Object.values(analysis).flatMap((a) => a.symbols);
       const approvedList = Object.values(get().approved).map((a) => ({
@@ -615,6 +633,16 @@ export const useStore = create<State & Actions>((set, get) => ({
       .sort()
       .flatMap((path) => analysis[path].symbols)
       .sort((a, b) => a.filePath.localeCompare(b.filePath) || a.line - b.line);
+  },
+
+  /** Elementos de los que no se encuentra ningun uso. Es una sospecha, no un veredicto. */
+  orphans() {
+    const { sources, files } = get();
+    // El contenido del editor manda sobre el del disco: si acabas de usar algo,
+    // debe contar aunque no hayas guardado.
+    const actual = { ...sources };
+    for (const [ruta, archivo] of Object.entries(files)) actual[ruta] = archivo.content;
+    return detectarHuerfanos(get().symbols(), actual);
   },
 
   statusOf(sym) {
@@ -816,6 +844,9 @@ export const useStore = create<State & Actions>((set, get) => ({
   setDocCenterOpen: (open) => set({ docCenterOpen: open }),
   setSettingsOpen: (open) => set({ settingsOpen: open }),
   setFolderPickerOpen: (open) => set({ folderPickerOpen: open }),
+  setPaletteOpen: (open) => set({ paletteOpen: open }),
+  /** Lleva el cursor a una linea concreta de un archivo ya abierto. */
+  jumpToLine: (path, line) => set({ jumpTo: { path, line } }),
   refreshPreview: () => set((s) => ({ previewKey: s.previewKey + 1 })),
   setActiveProposal: (id) => set({ activeProposalId: id }),
 
