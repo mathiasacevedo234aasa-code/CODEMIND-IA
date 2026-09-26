@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { api } from '../lib/api';
-import { analyzeFile, forgetFile, isAnalyzable, suggestRelinks } from '../lib/analyzer';
+import { analizarArchivo, forgetFile, isAnalyzable, necesitaGramatica, suggestRelinks } from '../lib/analyzer';
 import { detectarHuerfanos, type Huerfano } from '../lib/orphans';
 import type {
   AppSettings,
@@ -415,7 +415,8 @@ export const useStore = create<State & Actions>((set, get) => ({
         activeTabId: id,
       }));
       if (isAnalyzable(path)) {
-        set((s) => ({ analysis: { ...s.analysis, [path]: analyzeFile(path, content) } }));
+        const analisis = await analizarArchivo(path, content);
+        set((s) => ({ analysis: { ...s.analysis, [path]: analisis } }));
       }
       get().persistSession();
     } catch (err) {
@@ -464,10 +465,13 @@ export const useStore = create<State & Actions>((set, get) => ({
     set((s) => ({ files: { ...s.files, [path]: { ...s.files[path], content } } }));
     if (isAnalyzable(path)) {
       // El análisis corre en local, en segundo plano: no se envía código a la IA.
-      set((s) => ({
-        analysis: { ...s.analysis, [path]: analyzeFile(path, content) },
-        sources: { ...s.sources, [path]: content },
-      }));
+      set((s) => ({ sources: { ...s.sources, [path]: content } }));
+      void analizarArchivo(path, content).then((analisis) => {
+        // Puede haber seguido escribiendo mientras se cargaba la gramática:
+        // solo se guarda si este análisis es el del texto que hay ahora.
+        if (get().files[path]?.content !== content) return;
+        set((s) => ({ analysis: { ...s.analysis, [path]: analisis } }));
+      });
     }
 
     // Autoguardado: se reinicia la cuenta con cada pulsacion, asi que solo
@@ -603,11 +607,17 @@ export const useStore = create<State & Actions>((set, get) => ({
 
       const analysis = { ...get().analysis };
       const sources: Record<string, string> = {};
+      // Los lenguajes que no son del navegador cargan su gramática la primera
+      // vez que aparecen. Conviene decirlo: la primera pasada tarda más.
+      const gramaticas = new Set(limited.map(necesitaGramatica).filter(Boolean) as string[]);
+      if (gramaticas.size) {
+        get().log('sistema', 'info', `Cargando el analizador de ${[...gramaticas].sort().join(', ')} para este proyecto.`);
+      }
       for (const path of limited) {
         const open = get().files[path];
         const content = open ? open.content : (await api.readFile(project.id, path).catch(() => null))?.content;
         if (typeof content === 'string') {
-          analysis[path] = analyzeFile(path, content);
+          analysis[path] = await analizarArchivo(path, content);
           sources[path] = content;
         }
       }

@@ -242,6 +242,10 @@ export type SymbolKind =
   | 'enumeracion'
   | 'constante'
   | 'manejador en linea'
+  // Propios de lenguajes que no son del navegador (Python, Java, Go, Rust...)
+  | 'constructor de clase'
+  | 'propiedad'
+  | 'modulo'
   // Estructura de la página
   | 'bloque de script'
   | 'bloque de estilo'
@@ -275,6 +279,9 @@ export const CATEGORIA_DE: Record<SymbolKind, SymbolCategory> = {
   enumeracion: 'codigo',
   constante: 'codigo',
   'manejador en linea': 'codigo',
+  'constructor de clase': 'codigo',
+  propiedad: 'codigo',
+  modulo: 'codigo',
   'bloque de script': 'estructura',
   'bloque de estilo': 'estructura',
   seccion: 'estructura',
@@ -297,6 +304,7 @@ export const ES_INVOCABLE: ReadonlySet<SymbolKind> = new Set<SymbolKind>([
   'expresion de funcion',
   'metodo de clase',
   'metodo de objeto',
+  'constructor de clase',
   'componente React',
   'hook personalizado',
   'funcion exportada por defecto',

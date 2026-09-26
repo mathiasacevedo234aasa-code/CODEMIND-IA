@@ -85,3 +85,14 @@ proyecto se descarta y que un `warning` no se convierte en error.
 
 Al final ejecuta de verdad un proyecto temporal que falla, y comprueba que un script que no es una
 comprobación —o que no existe en el `package.json`— se rechaza en lugar de ejecutarse.
+
+## `lenguajes.mjs`
+
+Analiza un archivo real de Python, Java, C#, Go, Rust, PHP, Ruby y Bash con las gramáticas de
+tree-sitter, y comprueba que de cada uno salen los elementos esperados **con su tipo y su línea
+real**: que un método de dentro de una clase se llama `Clase.metodo`, que un constructor no se
+confunde con un método, que una variable de dentro de una función no aparece como constante del
+módulo, y que las importaciones se detectan para el mapa.
+
+Necesita las gramáticas: ejecuta `npm run gramaticas` antes (lo hacen solos `npm run dev` y
+`npm run build`).

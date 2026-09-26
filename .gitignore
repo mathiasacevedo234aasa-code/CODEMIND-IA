@@ -7,3 +7,4 @@ server/data/
 *.log
 desktop/runtime/
 release/
+web/public/gramaticas/

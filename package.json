@@ -9,14 +9,15 @@
     "desktop"
   ],
   "scripts": {
-    "dev": "node scripts/dev.mjs",
+    "dev": "npm run gramaticas && node scripts/dev.mjs",
     "dev:server": "npm --workspace server run dev",
     "dev:web": "npm --workspace web run dev",
-    "build": "npm --workspace web run build",
+    "build": "npm run gramaticas && npm --workspace web run build",
     "start": "npm --workspace server run start",
     "desktop": "npm run build && electron desktop",
     "desktop:dev": "electron desktop",
-    "desktop:build": "npm run build && node scripts/make-icon.mjs && node scripts/pack-runtime.mjs && electron-builder --config electron-builder.yml && node scripts/verify-package.mjs"
+    "desktop:build": "npm run build && node scripts/make-icon.mjs && node scripts/pack-runtime.mjs && electron-builder --config electron-builder.yml && node scripts/verify-package.mjs",
+    "gramaticas": "node scripts/copiar-gramaticas.mjs"
   },
   "allowScripts": {
     "esbuild@0.25.12": true,

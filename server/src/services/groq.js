@@ -48,6 +48,7 @@ const REQUIRED_FIELDS = [
 const INVOCABLES = new Set([
   'funcion', 'funcion flecha', 'expresion de funcion', 'metodo de clase', 'metodo de objeto',
   'componente React', 'hook personalizado', 'funcion exportada por defecto', 'manejador en linea',
+  'constructor de clase',
 ]);
 
 /** Que se le pide al modelo segun lo que esta mirando. */
