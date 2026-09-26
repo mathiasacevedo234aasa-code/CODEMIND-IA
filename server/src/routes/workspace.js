@@ -6,6 +6,7 @@ import * as git from '../services/git.js';
 import * as github from '../services/github.js';
 import * as runner from '../services/runner.js';
 import * as search from '../services/search.js';
+import * as quality from '../services/quality.js';
 import { exportarDocumentacion } from '../services/export.js';
 
 /**
@@ -178,6 +179,16 @@ router.get('/projects/:id/run/processes', wrap(async (req, res) => {
 
 router.get('/projects/:id/run/processes/:processId/logs', wrap(async (req, res) => {
   res.json(runner.logs(req.params.id, req.params.processId, Number(req.query.since) || 0));
+}));
+
+// --------------------------------------------------------- comprobaciones
+
+router.get('/projects/:id/checks', wrap(async (req, res) => {
+  res.json(await quality.tareas(await rootOf(req)));
+}));
+
+router.post('/projects/:id/checks/run', wrap(async (req, res) => {
+  res.json(await quality.ejecutar(await rootOf(req), String(req.body?.script ?? '')));
 }));
 
 router.post('/projects/:id/run/processes/:processId/stop', wrap(async (req, res) => {

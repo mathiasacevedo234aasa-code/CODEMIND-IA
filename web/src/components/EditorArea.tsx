@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import Editor, { type OnMount } from '@monaco-editor/react';
 import { useStore } from '../state/useStore';
 import { languageOf } from '../lib/analyzer';
@@ -24,13 +24,23 @@ export function EditorArea() {
   const askAssistant = useStore((s) => s.askAssistant);
   const emmetActivo = useStore((s) => s.settings.editor.emmet);
 
-  const editorRef = useRef<Parameters<OnMount>[0] | null>(null);
+  // El editor vivo, junto al archivo para el que se creo. Guardar tambien la
+  // ruta importa: Monaco se destruye y se vuelve a crear al cambiar de archivo
+  // y al cerrar la ultima pestana, y una referencia a un editor ya destruido
+  // acepta las ordenes sin hacer nada (era por esto que un salto pedido justo
+  // despues de abrir un archivo se perdia en silencio).
+  const editorRef = useRef<{ editor: Parameters<OnMount>[0]; path: string } | null>(null);
+  // Un ref no provoca re-render, asi que hace falta un estado para que el
+  // salto pendiente se vuelva a intentar en cuanto Monaco termine de montarse.
+  // Es un contador y no un booleano porque cada montaje debe reintentarlo.
+  const [montajes, setMontajes] = useState(0);
 
   const active = tabs.find((t) => t.id === activeTabId) ?? null;
   const activeFile = active?.kind === 'file' ? files[active.path] : undefined;
 
   const onMount: OnMount = (editor, monaco) => {
-    editorRef.current = editor;
+    editorRef.current = active?.kind === 'file' ? { editor, path: active.path } : null;
+    setMontajes((n) => n + 1);
     editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyS, () => void saveFile());
 
     // Emmet: html:5, ul>li*3, div.clase... Se activa una sola vez por sesión.
@@ -77,13 +87,25 @@ ${texto.slice(0, 8000)}
   };
 
   useEffect(() => {
-    if (!jumpTo || !editorRef.current || active?.kind !== 'file' || jumpTo.path !== active.path) return;
-    const editor = editorRef.current;
-    editor.revealLineInCenter(jumpTo.line);
-    editor.setPosition({ lineNumber: jumpTo.line, column: 1 });
-    editor.focus();
+    const montado = editorRef.current;
+    if (!jumpTo || !montado || active?.kind !== 'file') return;
+    // Las tres rutas tienen que coincidir: la del salto, la de la pestana
+    // activa y la del editor realmente montado.
+    if (jumpTo.path !== active.path || montado.path !== active.path) return;
+    // Recien creado, Monaco todavia no ha medido su contenedor y desplazarse
+    // no tendria ningun efecto: layout() lo obliga a medirse ahora mismo.
+    montado.editor.layout();
+    montado.editor.revealLineInCenter(jumpTo.line);
+    montado.editor.setPosition({ lineNumber: jumpTo.line, column: 1 });
+    montado.editor.focus();
     clearJump();
-  }, [jumpTo, active, clearJump]);
+  }, [jumpTo, active, clearJump, montajes]);
+
+  // Al quedarse sin ningun archivo abierto, Monaco desaparece: hay que soltar
+  // la referencia para no darle ordenes a un editor que ya no existe.
+  useEffect(() => {
+    if (active?.kind !== 'file') editorRef.current = null;
+  }, [active]);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {

@@ -128,14 +128,19 @@ function makeChunkHandler(proc, stream) {
   };
 }
 
-export async function start(projectId, cwd, { script, command, args = [], label } = {}) {
+/**
+ * Traduce lo que pide el usuario a un comando ejecutable, o falla.
+ *
+ * Lista blanca estricta: o es un script declarado en el package.json del
+ * propio proyecto, o es la instalacion de dependencias. Nunca texto libre.
+ * Es el unico punto del programa que decide que se ejecuta, y lo comparten
+ * tanto los servidores de desarrollo como las comprobaciones de calidad.
+ */
+export async function resolverComando(cwd, { script, command, args = [] } = {}) {
   const info = await scripts(cwd);
-
-  // Lista blanca estricta: o es un script declarado en el package.json del
-  // propio proyecto, o es la instalacion de dependencias. Nunca texto libre.
+  const manager = info.packageManager ?? 'npm';
   let runArgs;
   let displayCommand;
-  const manager = info.packageManager ?? 'npm';
 
   if (command === 'install') {
     if (!info.hasPackageJson) throw new HttpError(400, 'No hay package.json: no hay dependencias que instalar.');
@@ -159,12 +164,84 @@ export async function start(projectId, cwd, { script, command, args = [], label 
   }
   if (args.length) throw new HttpError(400, 'No se admiten argumentos adicionales.');
 
+  return { info, manager, runArgs, displayCommand, executable: WINDOWS ? `${manager}.cmd` : manager };
+}
+
+/** Opciones comunes a todo lo que se ejecuta. */
+const opcionesSpawn = (cwd) => ({
+  cwd,
+  // Node 20+ exige shell para ejecutar un .cmd en Windows, y el shell no escapa
+  // los argumentos; por eso resolverComando() restringe el nombre del script.
+  shell: WINDOWS,
+  windowsHide: true,
+  // En POSIX el hijo va en su propio grupo, para poder matar el arbol entero.
+  // En Windows NO se usa detached: crearia una consola nueva y perderiamos su
+  // salida, que es justo lo que necesitamos para detectar la URL.
+  detached: !WINDOWS,
+  stdio: ['ignore', 'pipe', 'pipe'],
+  env: { ...process.env, FORCE_COLOR: '0', BROWSER: 'none', CI: '1' },
+});
+
+/**
+ * Ejecuta un script hasta que termina y devuelve toda su salida.
+ *
+ * A diferencia de start(), esto no es para servidores que se quedan vivos,
+ * sino para tareas que acaban: las pruebas, el compilador de tipos, el
+ * analizador de estilo. No se registra en el listado de procesos.
+ */
+export async function runOnce(cwd, { script, command } = {}, { timeoutMs = 300000 } = {}) {
+  const { runArgs, displayCommand, executable } = await resolverComando(cwd, { script, command });
+
+  return new Promise((resolve) => {
+    const inicio = Date.now();
+    let child;
+    try {
+      child = spawn(executable, runArgs, opcionesSpawn(cwd));
+    } catch (err) {
+      resolve({ command: displayCommand, exitCode: null, salida: '', error: err.message, ms: 0 });
+      return;
+    }
+
+    let salida = '';
+    let cortada = false;
+    const acumular = (chunk) => {
+      if (salida.length > 4_000_000) { cortada = true; return; }
+      salida += chunk.toString('utf8');
+    };
+    child.stdout?.on('data', acumular);
+    child.stderr?.on('data', acumular);
+
+    const temporizador = setTimeout(() => {
+      cortada = true;
+      if (WINDOWS) execFile('taskkill', ['/PID', String(child.pid), '/T', '/F'], { windowsHide: true }, () => {});
+      else { try { process.kill(-child.pid, 'SIGKILL'); } catch { child.kill('SIGKILL'); } }
+    }, timeoutMs);
+
+    const terminar = (exitCode, error) => {
+      clearTimeout(temporizador);
+      resolve({
+        command: displayCommand,
+        exitCode,
+        salida: salida.replace(ANSI, ''),
+        cortada,
+        error: error ?? null,
+        ms: Date.now() - inicio,
+      });
+    };
+
+    child.on('error', (err) => terminar(null, err.message));
+    child.on('exit', (code) => terminar(code, null));
+  });
+}
+
+export async function start(projectId, cwd, { script, command, args = [], label } = {}) {
+  const { runArgs, displayCommand, executable } = await resolverComando(cwd, { script, command, args });
+
   const existing = [...bucket(projectId).values()].find(
     (p) => p.command === displayCommand && (p.status === 'iniciando' || p.status === 'activo'),
   );
   if (existing) throw new HttpError(409, `"${displayCommand}" ya se esta ejecutando en este proyecto.`);
 
-  const executable = WINDOWS ? `${manager}.cmd` : manager;
   const proc = {
     id: crypto.randomUUID(),
     label: label || displayCommand,
@@ -184,20 +261,7 @@ export async function start(projectId, cwd, { script, command, args = [], label 
 
   let child;
   try {
-    child = spawn(executable, runArgs, {
-      cwd,
-      // Node 20+ exige shell para ejecutar un .cmd en Windows. Los argumentos
-      // provienen de la lista blanca de arriba, nunca de texto del usuario,
-      // asi que esto no abre ninguna via de inyeccion.
-      shell: WINDOWS,
-      windowsHide: true,
-      // En POSIX el hijo va en su propio grupo, para poder matar el arbol entero.
-      // En Windows NO se usa detached: crearia una consola nueva y perderiamos
-      // su salida, que es justo lo que necesitamos para detectar la URL.
-      detached: !WINDOWS,
-      stdio: ['ignore', 'pipe', 'pipe'],
-      env: { ...process.env, FORCE_COLOR: '0', BROWSER: 'none', CI: '1' },
-    });
+    child = spawn(executable, runArgs, opcionesSpawn(cwd));
   } catch (err) {
     throw new HttpError(500, `No se pudo arrancar "${displayCommand}": ${err.message}`);
   }

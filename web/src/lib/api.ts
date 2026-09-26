@@ -23,6 +23,8 @@ import type {
   SyncPreview,
   TreeNode,
   UrlProbe,
+  ChecksInfo,
+  CheckResult,
 } from './types';
 
 async function request<T>(url: string, init?: RequestInit): Promise<T> {
@@ -237,6 +239,10 @@ export const api = {
   runScripts: (id: string) => request<RunScriptsInfo>(`/api/projects/${id}/run/scripts`),
   runStart: (id: string, payload: { script?: string; command?: string; args?: string[]; label?: string }) =>
     request<{ process: RunProcess }>(`/api/projects/${id}/run/start`, { method: 'POST', ...json(payload) }),
+  checks: (id: string) => request<ChecksInfo>(`/api/projects/${id}/checks`),
+  runCheck: (id: string, script: string) =>
+    request<CheckResult>(`/api/projects/${id}/checks/run`, { method: 'POST', body: JSON.stringify({ script }) }),
+
   runProcesses: (id: string) => request<{ processes: RunProcess[] }>(`/api/projects/${id}/run/processes`),
   runLogs: (id: string, processId: string, since = 0) =>
     request<{ lines: RunLogLine[]; process: RunProcess }>(

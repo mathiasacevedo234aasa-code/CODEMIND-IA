@@ -458,3 +458,44 @@ export interface LogEntry {
 export type CenterTab =
   | { kind: 'file'; id: string; path: string }
   | { kind: 'web'; id: string; url: string; title: string };
+
+/** Una comprobacion declarada en el package.json del proyecto del usuario. */
+export interface CheckTask {
+  id: string;
+  clase: 'pruebas' | 'tipos' | 'estilo';
+  etiqueta: string;
+  descripcion: string;
+  comando: string;
+}
+
+export interface ChecksInfo {
+  tareas: CheckTask[];
+  hasNodeModules: boolean;
+  packageManager: string | null;
+  notas: string[];
+}
+
+/** Un aviso situado en un archivo y una linea concretos. */
+export interface CheckIssue {
+  archivo: string;
+  linea: number;
+  columna: number;
+  nivel: 'error' | 'aviso';
+  mensaje: string;
+  regla: string | null;
+}
+
+export interface CheckResult {
+  tarea: { id: string; clase: CheckTask['clase']; etiqueta: string };
+  comando: string;
+  exitCode: number | null;
+  ms: number;
+  cortada: boolean;
+  error: string | null;
+  avisos: CheckIssue[];
+  salida: string;
+  resumen: { fallidas: number; superadas: number } | null;
+  /** Fallo pero no se supo situar el motivo: hay que mostrar la salida cruda. */
+  sinLeer: boolean;
+  correcto: boolean;
+}

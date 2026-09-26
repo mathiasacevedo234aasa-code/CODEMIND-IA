@@ -67,3 +67,21 @@ Los resultados de la última ejecución están en `docs/PRUEBAS.md` y `docs/FASE
 
 Prueba la búsqueda y el reemplazo contra la API. Lo más importante que comprueba es que la **vista
 previa del reemplazo no escribe nada**: compara el tamaño del archivo antes y después de calcularla.
+
+## `mapa.mjs`
+
+Construye el mapa de dependencias de un proyecto de mentira que tiene un `<script src>`, un
+`<link rel=stylesheet>`, un `@import` de CSS, imports de JavaScript, un paquete externo, un archivo
+que nadie importa y un ciclo puesto a propósito. Comprueba que cada relación aparece, que el ciclo
+se detecta, que `react` se clasifica como externo y que la disposición del grafo es **reproducible**:
+el mapa no puede cambiar de forma solo al reabrirlo.
+
+## `comprobaciones.mjs`
+
+Prueba el lector de las comprobaciones del proyecto (pruebas, tipos y estilo). Traduce salidas
+reales de `tsc`, de ESLint en formato *stylish*, de vitest, de jest y del corredor propio de Node,
+y verifica que cada aviso queda situado en su archivo y su línea, que un archivo de fuera del
+proyecto se descarta y que un `warning` no se convierte en error.
+
+Al final ejecuta de verdad un proyecto temporal que falla, y comprueba que un script que no es una
+comprobación —o que no existe en el `package.json`— se rechaza en lugar de ejecutarse.
