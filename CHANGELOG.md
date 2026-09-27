@@ -4,6 +4,43 @@ Todo lo que aparece aquí está comprobado ejecutándolo, no solo escrito.
 
 ---
 
+## 1.0.1
+
+Correcciones de lo que aparecio al usar la 1.0.0 de verdad.
+
+### No dejaba escribir
+
+Al hacer clic dentro del editor, la pestana saltaba sola a otro archivo y lo
+que escribias no llegaba a ninguna parte. Era del editor dividido: al recibir
+el foco se reactivaba "la ultima pestana usada en esta mitad", que tras
+recuperar una sesion casi nunca es la que estas viendo. Ahora, si la pestana
+activa ya vive en esa mitad, no se toca nada.
+
+### El panel no reconocia la mayoria de las etiquetas
+
+Solo aparecian las secciones, los encabezados, los formularios, las tablas,
+las listas y lo que llevara `id`. Se quedaban fuera los parrafos, los enlaces,
+las imagenes, los controles, las celdas, el `<title>` y hasta el `<body>`:
+abrias tu pagina y faltaba media.
+
+Ahora se reconocen **todas**, con su tipo (enlace, multimedia, control,
+contenedor, metadato, texto) y con sus atributos a la vista. Para que una
+pagina grande siga siendo legible, el panel tiene un filtro *Sin relleno* que
+esconde los parrafos y contenedores que no llevan ni `id` ni clase.
+
+### Otras
+
+- Una constante del modulo con un valor sencillo (`export const VERSION =
+  "1.0.0"`, `const IVA = 0.19`) no se detectaba. Solo contaban los objetos,
+  listas y expresiones regulares. Dentro de una funcion sigue sin contar,
+  porque ahi es una variable de trabajo.
+- Las propuestas titulaban **"Funcion"** cualquier cosa, asi que un `<form>` o
+  una regla CSS aparecian como funciones. Ahora el titulo dice lo que es, y a
+  lo que no se invoca no se le ensenan las secciones de parametros y retorno,
+  que ahi no significan nada.
+
+---
+
 ## 1.0.0
 
 La versión en la que CodeMind AI deja de ser un editor con documentación asistida y pasa a ser un

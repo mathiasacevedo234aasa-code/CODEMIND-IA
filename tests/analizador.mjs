@@ -29,6 +29,9 @@ const html = `<!doctype html>
   <main>
     <section id="catalogo">
       <h1>Nuestros productos</h1>
+      <p class="intro">Todo lo que vendemos, en un sitio.</p>
+      <p>Precios con IVA incluido.</p>
+      <img src="portada.jpg" alt="Portada">
       <table id="tabla-precios"></table>
     </section>
 
@@ -116,6 +119,39 @@ if (!h.symbols.some((s) => s.kind === 'manejador en linea')) fallos.push('no det
 if (!tiene('seccion', '#catalogo')) fallos.push('no detecto la seccion con id');
 if (!tiene('tabla', '#tabla-precios')) fallos.push('no detecto la tabla con id');
 if (!tiene('componente personalizado', 'mi-componente')) fallos.push('no detecto el componente personalizado');
+
+// Todas las etiquetas, no una seleccion. Esto se escribio despues de que el
+// panel se dejara fuera los parrafos, los enlaces, los controles y hasta el
+// <title>: el usuario abria su pagina y no encontraba media pagina.
+const etiquetas = new Set(h.symbols.filter((x) => x.language === 'html').map((x) => x.name));
+for (const suelta of ['p', 'a', 'li', 'html', 'body', 'head', 'title', 'meta']) {
+  if (![...etiquetas].some((n) => n === suelta || n.startsWith(`${suelta}.`))) {
+    fallos.push(`no reconoce la etiqueta <${suelta}>`);
+  }
+}
+// Y las de relleno deben quedar marcadas, para que el panel pueda esconderlas.
+const parrafo = h.symbols.find((x) => x.name === 'p' && x.language === 'html');
+if (!parrafo) fallos.push('no reconoce un <p> suelto');
+else if (parrafo.menor !== true) fallos.push('un <p> sin id ni clase deberia contar como relleno');
+const conClase = h.symbols.find((x) => x.qualifiedName === 'p.intro');
+if (!conClase) fallos.push('no reconoce un <p class="intro">');
+else if (conClase.menor) fallos.push('un elemento con clase no es relleno: lleva intencion');
+if (!h.symbols.some((x) => x.kind === 'multimedia')) fallos.push('no reconoce la imagen');
+if (!h.symbols.some((x) => x.kind === 'enlace')) fallos.push('no reconoce el enlace');
+const conId = h.symbols.find((x) => x.qualifiedName === '#catalogo');
+if (conId && conId.menor) fallos.push('un elemento con id nunca es relleno');
+
+// Una constante del modulo cuenta aunque su valor sea un texto o un numero.
+const fuenteJs = [
+  'export const VERSION = "1.0.0";',
+  'const IVA = 0.19;',
+  'export function f() { const interno = 1; return interno; }',
+].join('\n');
+const js = analyzeFile('config.js', fuenteJs);
+const nombresJs = js.symbols.map((x) => x.qualifiedName);
+if (!nombresJs.includes('VERSION')) fallos.push('no detecto la constante de texto del modulo');
+if (!nombresJs.includes('IVA')) fallos.push('no detecto la constante numerica del modulo');
+if (nombresJs.includes('interno')) fallos.push('una variable de dentro de una funcion no deberia aparecer');
 
 // Las lineas del script deben apuntar al sitio real del archivo
 const ct = h.symbols.find((s) => s.qualifiedName === 'calcularTotal');

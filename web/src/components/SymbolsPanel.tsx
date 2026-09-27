@@ -43,6 +43,12 @@ const ICONO_DE: Partial<Record<SymbolKind, string>> = {
   'variable CSS': 'file',
   encabezado: 'docs',
   'manejador en linea': 'play',
+  enlace: 'link',
+  multimedia: 'play',
+  control: 'edit',
+  contenedor: 'folder',
+  metadato: 'file',
+  texto: 'docs',
 };
 
 /**
@@ -76,6 +82,9 @@ export function SymbolsPanel() {
   );
   const [selected, setSelected] = useState<string | null>(null);
   const [soloHuerfanos, setSoloHuerfanos] = useState(false);
+  // Una pagina entera son muchas etiquetas. Se muestran todas, pero se puede
+  // esconder el relleno —parrafos y divs sin id ni clase— de un clic.
+  const [sinRelleno, setSinRelleno] = useState(false);
 
   // `analysis` en las dependencias mantiene la lista viva mientras se escribe.
   const todos = useMemo(() => symbolsFn(), [symbolsFn, analysis]);
@@ -91,7 +100,10 @@ export function SymbolsPanel() {
   const huerfanos = useMemo(() => (soloHuerfanos ? orphansFn() : []), [soloHuerfanos, orphansFn, analysis]);
   const mapaHuerfanos = useMemo(() => new Map(huerfanos.map((h) => [h.symbol.id, h])), [huerfanos]);
 
+  const relleno = useMemo(() => todos.filter((s) => s.menor).length, [todos]);
+
   const visibles = (soloHuerfanos ? huerfanos.map((h) => h.symbol) : todos).filter((s) => {
+    if (sinRelleno && s.menor) return false;
     if (!categorias.has(s.category)) return false;
     if (query && !`${s.qualifiedName} ${s.filePath} ${s.kind}`.toLowerCase().includes(query.toLowerCase())) return false;
     if (fileFilter && s.filePath !== fileFilter) return false;
@@ -137,6 +149,15 @@ export function SymbolsPanel() {
             {c.label}{porCategoria[c.id] > 0 ? ` ${porCategoria[c.id]}` : ''}
           </button>
         ))}
+        {relleno > 0 && (
+          <button
+            className={`mode-chip ${sinRelleno ? 'active' : ''}`}
+            onClick={() => setSinRelleno((v) => !v)}
+            title="Esconde los párrafos, celdas y contenedores que no llevan id ni clase"
+          >
+            Sin relleno {relleno}
+          </button>
+        )}
         <span style={{ flex: 1 }} />
         <button
           className={`mode-chip ${soloHuerfanos ? 'active' : ''}`}
@@ -187,8 +208,10 @@ export function SymbolsPanel() {
             <Icon name="fn" size={22} />
             <h3>Sin elementos que mostrar</h3>
             <p>
-              Se analizan archivos .html, .css, .js, .jsx, .ts, .tsx, .vue, .svelte y .md, incluido el código dentro
-              de las etiquetas <code>&lt;script&gt;</code> y <code>&lt;style&gt;</code> de tus páginas.
+              Se analizan tus páginas enteras —<strong>todas las etiquetas</strong>, con sus atributos— y también
+              el código dentro de <code>&lt;script&gt;</code> y <code>&lt;style&gt;</code>, las reglas CSS, el
+              JavaScript y TypeScript, y otros catorce lenguajes: Python, Java, C#, Go, PHP, Ruby, Rust, C, C++,
+              Bash, Lua, Kotlin, Swift y Dart.
             </p>
             <p className="hint">
               El análisis es local: tu código no sale del equipo hasta que pulses «Documentar».

@@ -255,6 +255,12 @@ export type SymbolKind =
   | 'tabla'
   | 'lista'
   | 'componente personalizado'
+  | 'enlace'
+  | 'multimedia'
+  | 'control'
+  | 'contenedor'
+  | 'metadato'
+  | 'texto'
   // Estilos
   | 'regla CSS'
   | 'consulta de medios'
@@ -290,6 +296,12 @@ export const CATEGORIA_DE: Record<SymbolKind, SymbolCategory> = {
   tabla: 'estructura',
   lista: 'estructura',
   'componente personalizado': 'estructura',
+  multimedia: 'estructura',
+  control: 'estructura',
+  contenedor: 'estructura',
+  metadato: 'estructura',
+  enlace: 'contenido',
+  texto: 'contenido',
   'regla CSS': 'estilo',
   'consulta de medios': 'estilo',
   animacion: 'estilo',
@@ -318,6 +330,12 @@ export interface DetectedSymbol {
   qualifiedName: string;
   kind: SymbolKind;
   category: SymbolCategory;
+  /**
+   * Elemento de relleno: un parrafo o un div sin id ni clase. Se detecta
+   * igual que los demas, pero el panel puede esconderlos para que una pagina
+   * grande siga siendo legible.
+   */
+  menor?: boolean;
   filePath: string;
   line: number;
   endLine: number;
@@ -361,6 +379,8 @@ export interface ApprovedDoc {
   versionId: string;
   functionId: string;
   name: string;
+  /** Que clase de elemento se documento: una funcion, una regla CSS, un <form>... */
+  kind?: SymbolKind;
   filePath: string;
   codeHash: string | null;
   code: string;
@@ -375,6 +395,7 @@ export interface Proposal {
   id: string;
   functionId: string;
   name: string;
+  kind?: SymbolKind;
   filePath: string;
   codeHash: string | null;
   code: string;

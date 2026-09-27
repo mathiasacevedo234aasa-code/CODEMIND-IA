@@ -23,6 +23,20 @@ export interface AnalisisJs {
 
 type AnyNode = Record<string, any>;
 
+/** El valor de una constante sencilla, tal y como esta escrito. */
+function valorLegible(init: AnyNode): string {
+  if (init.type === 'StringLiteral') {
+    const texto = String(init.value);
+    return `"${texto.length > 50 ? `${texto.slice(0, 47)}...` : texto}"`;
+  }
+  if (init.type === 'NumericLiteral' || init.type === 'BooleanLiteral') return String(init.value);
+  if (init.type === 'NullLiteral') return 'null';
+  if (init.type === 'UnaryExpression' && init.argument?.type === 'NumericLiteral') {
+    return `${init.operator}${init.argument.value}`;
+  }
+  return 'valor del modulo';
+}
+
 const FUNCIONES = new Set([
   'FunctionDeclaration',
   'FunctionExpression',
@@ -200,6 +214,14 @@ export function analizarJs(
     });
   };
 
+  // Las declaraciones que cuelgan directamente del archivo, para distinguir
+  // una constante del modulo de una variable de trabajo dentro de una funcion.
+  const deNivelSuperior = new Set<AnyNode>();
+  for (const entrada of ast.program?.body ?? []) {
+    if (entrada?.type === 'VariableDeclaration') deNivelSuperior.add(entrada);
+    else if (entrada?.declaration?.type === 'VariableDeclaration') deNivelSuperior.add(entrada.declaration);
+  }
+
   walk(ast, (node, parent) => {
     if (node.type === 'ImportDeclaration' && node.source?.value) imports.push(String(node.source.value));
 
@@ -245,8 +267,12 @@ export function analizarJs(
         tipoInit === 'TemplateLiteral';
       const declaracion = parent?.type === 'VariableDeclaration' ? parent : null;
       const esConstante = declaracion?.kind === 'const';
+      // Una constante del propio archivo cuenta aunque su valor sea un simple
+      // texto o un numero: "const IVA = 0.19" es justo lo que hay que
+      // documentar. Dentro de una funcion, en cambio, seria ruido.
+      const deModulo = Boolean(declaracion && deNivelSuperior.has(declaracion));
 
-      if (!esFuncion && interesante && esConstante) {
+      if (!esFuncion && esConstante && (interesante || deModulo)) {
         const nombre = node.id.name;
         const resumen =
           tipoInit === 'ObjectExpression'
@@ -257,7 +283,9 @@ export function analizarJs(
                 ? 'expresión regular'
                 : tipoInit === 'NewExpression'
                   ? `instancia de ${node.init.callee?.name ?? 'algo'}`
-                  : 'texto con plantilla';
+                  : tipoInit === 'TemplateLiteral'
+                    ? 'texto con plantilla'
+                    : valorLegible(node.init);
         anadir(nombre, nombre, 'constante', node, { detail: resumen });
       }
     }

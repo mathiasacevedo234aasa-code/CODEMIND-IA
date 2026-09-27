@@ -1,14 +1,27 @@
-import type { FunctionDoc } from '../lib/types';
+import type { FunctionDoc, SymbolKind } from '../lib/types';
+import { ES_INVOCABLE } from '../lib/types';
 
 const Certainty = ({ value }: { value?: string }) =>
   value === 'inferido' ? <span className="tag warn">inferido</span> : <span className="tag ok">confirmado</span>;
 
-/** Render de una propuesta o de una version aprobada. Mismo formato en ambos casos. */
-export function DocView({ doc }: { doc: FunctionDoc }) {
+/**
+ * Render de una propuesta o de una version aprobada. Mismo formato en ambos
+ * casos.
+ *
+ * El titulo dice QUE es lo documentado. Antes ponia siempre "Funcion", asi que
+ * un <form> o una regla CSS aparecian como funciones, que es sencillamente
+ * falso. Por lo mismo, a lo que no se invoca no se le ensenan las secciones de
+ * parametros y retorno: en una seccion de HTML no significan nada, y decir
+ * "no recibe parametros" es responder a una pregunta que nadie hizo.
+ */
+export function DocView({ doc, kind }: { doc: FunctionDoc; kind?: SymbolKind }) {
+  const invocable = !kind || ES_INVOCABLE.has(kind);
+  const titulo = kind ? kind.charAt(0).toUpperCase() + kind.slice(1) : 'Elemento';
+
   return (
     <>
       <div className="doc-section">
-        <h4>Funcion</h4>
+        <h4>{titulo}</h4>
         <p><code style={{ fontFamily: 'var(--mono)', color: 'var(--accent)' }}>{doc.nombre}</code></p>
       </div>
 
@@ -22,35 +35,39 @@ export function DocView({ doc }: { doc: FunctionDoc }) {
         <p>{doc.explicacion}</p>
       </div>
 
-      <div className="doc-section">
-        <h4>Parametros</h4>
-        {doc.parametros?.length ? (
-          doc.parametros.map((p, i) => (
-            <div className="param-row" key={`${p.nombre}-${i}`}>
-              <div>
-                <code>{p.nombre}</code>
-                {p.tipo && <span style={{ color: 'var(--text-faint)' }}> : {p.tipo}</span>}
-                <div style={{ color: 'var(--text-dim)', marginTop: 2 }}>{p.descripcion}</div>
+      {invocable && (
+        <>
+        <div className="doc-section">
+          <h4>Parametros</h4>
+          {doc.parametros?.length ? (
+            doc.parametros.map((p, i) => (
+              <div className="param-row" key={`${p.nombre}-${i}`}>
+                <div>
+                  <code>{p.nombre}</code>
+                  {p.tipo && <span style={{ color: 'var(--text-faint)' }}> : {p.tipo}</span>}
+                  <div style={{ color: 'var(--text-dim)', marginTop: 2 }}>{p.descripcion}</div>
+                </div>
+                <Certainty value={p.certeza} />
               </div>
-              <Certainty value={p.certeza} />
-            </div>
-          ))
-        ) : (
-          <p style={{ color: 'var(--text-faint)' }}>No recibe parametros.</p>
-        )}
-      </div>
+            ))
+          ) : (
+            <p style={{ color: 'var(--text-faint)' }}>No recibe parametros.</p>
+          )}
+        </div>
+
+        <div className="doc-section">
+          <h4>Retorno</h4>
+          <p>
+            {doc.retorno?.descripcion ?? 'No indicado.'}{' '}
+            {doc.retorno?.tipo && <span style={{ color: 'var(--text-faint)' }}>({doc.retorno.tipo})</span>}{' '}
+            <Certainty value={doc.retorno?.certeza} />
+          </p>
+        </div>
+        </>
+      )}
 
       <div className="doc-section">
-        <h4>Retorno</h4>
-        <p>
-          {doc.retorno?.descripcion ?? 'No indicado.'}{' '}
-          {doc.retorno?.tipo && <span style={{ color: 'var(--text-faint)' }}>({doc.retorno.tipo})</span>}{' '}
-          <Certainty value={doc.retorno?.certeza} />
-        </p>
-      </div>
-
-      <div className="doc-section">
-        <h4>Flujo de ejecucion</h4>
+        <h4>{invocable ? 'Flujo de ejecucion' : 'Como se compone'}</h4>
         {doc.flujo?.length ? (
           <ol>{doc.flujo.map((step, i) => <li key={i}>{step}</li>)}</ol>
         ) : (

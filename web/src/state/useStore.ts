@@ -371,8 +371,17 @@ export const useStore = create<State & Actions>((set, get) => ({
     }
     set({ panelActivo: 'a' });
     // El id guardado puede ya no existir si ese archivo se borro fuera.
-    const existe = get().tabs.some((t) => t.id === session.activeTabId);
-    if (session.activeTabId && existe) set({ activeTabId: session.activeTabId });
+    const restaurada = get().tabs.find((t) => t.id === session.activeTabId);
+    if (restaurada) {
+      // Hay que dejar tambien "la ultima de cada mitad" apuntando aqui. Si no,
+      // seguiria senalando al ultimo archivo abierto por el bucle de arriba, y
+      // al hacer clic en el editor el foco saltaria a ese otro archivo.
+      set((s) => ({
+        activeTabId: restaurada.id,
+        panelActivo: panelDe(restaurada),
+        ultimoPorPanel: { ...s.ultimoPorPanel, [panelDe(restaurada)]: restaurada.id },
+      }));
+    }
 
     const recuperadas = get().tabs.length;
     if (recuperadas) {
@@ -561,10 +570,31 @@ export const useStore = create<State & Actions>((set, get) => ({
     get().persistSession();
   },
 
+  /**
+   * Mueve el foco a una mitad del editor.
+   *
+   * Si la pestana que ya esta activa vive en esa mitad, NO se toca: lo unico
+   * que cambia es donde se abrira lo siguiente. Esto importaba mucho mas de lo
+   * que parece. Antes se reactivaba siempre "la ultima pestana usada en esta
+   * mitad", y como el editor llama aqui al recibir el foco, bastaba con hacer
+   * clic dentro para que saltara a otro archivo: la pulsacion se iba con el
+   * editor viejo y lo que escribias no llegaba a ninguna parte. Pasaba sobre
+   * todo al recuperar una sesion, donde la pestana activa y la ultima abierta
+   * casi nunca coinciden.
+   */
   setPanelActivo: (panel) =>
     set((s) => {
-      const suya = s.ultimoPorPanel[panel] ?? s.tabs.filter((t) => panelDe(t) === panel).at(-1)?.id ?? null;
-      return { panelActivo: panel, activeTabId: suya ?? s.activeTabId };
+      const actual = s.tabs.find((t) => t.id === s.activeTabId);
+      if (actual && panelDe(actual) === panel) {
+        return { panelActivo: panel, ultimoPorPanel: { ...s.ultimoPorPanel, [panel]: actual.id } };
+      }
+      const suya = s.tabs.find((t) => t.id === s.ultimoPorPanel[panel] && panelDe(t) === panel)
+        ?? s.tabs.filter((t) => panelDe(t) === panel).at(-1);
+      return {
+        panelActivo: panel,
+        activeTabId: suya?.id ?? s.activeTabId,
+        ultimoPorPanel: { ...s.ultimoPorPanel, [panel]: suya?.id ?? s.ultimoPorPanel[panel] },
+      };
     }),
 
   editFile(path, content) {

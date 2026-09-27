@@ -1,4 +1,4 @@
-# CodeMind AI 1.0.0
+# CodeMind AI 1.0.1
 
 Entorno de desarrollo con documentación asistida por IA.
 
@@ -249,7 +249,7 @@ consultar junto con el código al que correspondía.
 
 ---
 
-## Alcance de la versión 1.0.0
+## Alcance de la versión 1.0
 
 Todo lo que sigue está implementado y **comprobado ejecutándolo**, no solo escrito.
 
@@ -270,8 +270,10 @@ Todo lo que sigue está implementado y **comprobado ejecutándolo**, no solo esc
 - **Catorce lenguajes más con tree-sitter**: Python, Java, C#, Go, PHP, Ruby, Rust, C, C++, Bash,
   Lua, Kotlin, Swift y Dart — clases, funciones, métodos, constructores, propiedades, interfaces,
   enumeraciones y constantes, con su línea real. La gramática corre en tu equipo
-- No solo funciones: secciones, formularios, tablas, listas, elementos con `id`, componentes
-  personalizados, manejadores en línea, reglas CSS, medias queries, animaciones y variables CSS
+- **Todas las etiquetas de tus páginas**, con sus atributos: secciones, formularios, tablas, listas,
+  enlaces, imágenes, controles, contenedores, metadatos y texto, además de los manejadores en línea.
+  Un filtro esconde el relleno —párrafos y contenedores sin `id` ni clase— cuando la página es grande
+- Reglas CSS, medias queries, animaciones y variables CSS
 - **Mapa del proyecto**: grafo de dependencias construido solo con hechos comprobables — los
   `import`, los `<script src>`, los `<link rel=stylesheet>` y los `@import` — con detección de
   ciclos, archivos de los que más depende el proyecto y archivos que nadie importa

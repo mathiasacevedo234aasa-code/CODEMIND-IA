@@ -137,7 +137,7 @@ export function ReviewPanel() {
         </>
       ) : (
         <>
-          <DocView doc={proposal.doc} />
+          <DocView doc={proposal.doc} kind={proposal.kind} />
           <div className="review-actions">
             <button className="btn ok" onClick={() => void approveProposal(proposal.id)}>
               <Icon name="check" size={13} /> Aprobar y guardar

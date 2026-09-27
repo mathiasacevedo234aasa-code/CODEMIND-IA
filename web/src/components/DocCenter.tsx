@@ -258,7 +258,7 @@ function FunctionsSection() {
               {d.model ? ` · modelo ${d.model}` : ''}
               {d.edited ? ' · editada manualmente' : ''}
             </p>
-            {open === d.functionId && <div style={{ marginTop: 10 }}><DocView doc={d.doc} /></div>}
+            {open === d.functionId && <div style={{ marginTop: 10 }}><DocView doc={d.doc} kind={d.kind} /></div>}
           </div>
         );
       })}
@@ -441,14 +441,14 @@ function HistorySection() {
             <div className="comparacion">
               <div>
                 <span className="panel-title">Esta versión · {new Date(v.approvedAt).toLocaleDateString('es')}</span>
-                <DocView doc={v.doc} />
+                <DocView doc={v.doc} kind={v.kind} />
                 {v.code && <div className="doc-section"><h4>Código de entonces</h4><pre>{v.code}</pre></div>}
               </div>
               <div>
                 <span className="panel-title">
                   Versión actual · {new Date(approved[v.functionId].approvedAt).toLocaleDateString('es')}
                 </span>
-                <DocView doc={approved[v.functionId].doc} />
+                <DocView doc={approved[v.functionId].doc} kind={approved[v.functionId].kind} />
                 {approved[v.functionId].code && (
                   <div className="doc-section"><h4>Código actual</h4><pre>{approved[v.functionId].code}</pre></div>
                 )}
@@ -458,7 +458,7 @@ function HistorySection() {
 
           {open === v.versionId && (
             <div style={{ marginTop: 10 }}>
-              <DocView doc={v.doc} />
+              <DocView doc={v.doc} kind={v.kind} />
               {v.code && (
                 <div className="doc-section">
                   <h4>Codigo documentado en esa version</h4>

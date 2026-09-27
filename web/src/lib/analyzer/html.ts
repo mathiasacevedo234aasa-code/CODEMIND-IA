@@ -8,6 +8,11 @@ import { CATEGORIA_DE } from '../types.ts';
  * poder saltar a él desde el panel, y el DOM no conserva posiciones. Este
  * recorrido es un tokenizador sencillo que va contando líneas mientras avanza.
  *
+ * Reconoce TODAS las etiquetas, no una seleccion: si esta en tu pagina, esta
+ * en el panel. Lo que cambia entre unas y otras es el tipo que se les asigna,
+ * y si cuentan como relleno (un parrafo suelto, un div sin nada) para que el
+ * panel pueda esconderlas cuando la pagina es grande.
+ *
  * Reconoce tres cosas distintas:
  *  - Bloques `<script>` y `<style>`, que se devuelven con su contenido y su
  *    desplazamiento para que los analicen los analizadores de JS y CSS.
@@ -51,6 +56,36 @@ const ESTRUCTURALES: Record<string, SymbolKind> = {
 
 const ENCABEZADOS = new Set(['h1', 'h2', 'h3', 'h4', 'h5', 'h6']);
 
+/** Familias del resto de etiquetas, para darle un tipo a cada una. */
+const POR_FAMILIA: [Set<string>, SymbolKind][] = [
+  [new Set(['a']), 'enlace'],
+  [new Set([
+    'img', 'picture', 'source', 'video', 'audio', 'canvas', 'svg', 'iframe',
+    'embed', 'object', 'figure', 'track', 'map', 'area',
+  ]), 'multimedia'],
+  [new Set([
+    'input', 'button', 'textarea', 'label', 'option', 'optgroup', 'fieldset',
+    'legend', 'output', 'progress', 'meter', 'datalist',
+  ]), 'control'],
+  [new Set([
+    'meta', 'title', 'link', 'base', 'noscript', 'head',
+  ]), 'metadato'],
+  [new Set([
+    'p', 'span', 'li', 'dt', 'dd', 'td', 'th', 'blockquote', 'q', 'cite',
+    'strong', 'b', 'em', 'i', 'u', 's', 'small', 'mark', 'code', 'pre',
+    'samp', 'kbd', 'var', 'abbr', 'time', 'sub', 'sup', 'del', 'ins',
+    'caption', 'figcaption', 'summary', 'address', 'br', 'hr', 'wbr',
+  ]), 'texto'],
+];
+
+/** Etiquetas de relleno cuando no llevan ni id ni clase. */
+const RELLENO = new Set(['texto', 'contenedor', 'metadato']);
+
+function familiaDe(etiqueta: string): SymbolKind {
+  for (const [conjunto, kind] of POR_FAMILIA) if (conjunto.has(etiqueta)) return kind;
+  return 'contenedor';
+}
+
 const RE_ETIQUETA = /<(\/?)([a-zA-Z][\w:-]*)((?:"[^"]*"|'[^']*'|[^>"'])*?)(\/?)>/g;
 const RE_ATRIBUTO = /([a-zA-Z_:@#.-][\w:.-]*)\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s"'>]+))/g;
 
@@ -84,6 +119,13 @@ export function analizarHtml(filePath: string, fuente: string): AnalisisHtml {
   const lineas = fuente.split('\n');
   const ocurrencias = new Map<string, number>();
 
+  /** Para una etiqueta sin atributos, su propio texto es lo que la identifica. */
+  const resumenDeTexto = (inicio: number, fin: number, etiqueta: string) => {
+    const crudo = lineas.slice(inicio - 1, fin).join(' ').replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
+    if (!crudo) return `<${etiqueta}>`;
+    return crudo.length > 70 ? `${crudo.slice(0, 67)}...` : crudo;
+  };
+
   const anadir = (
     nombre: string,
     kind: SymbolKind,
@@ -91,6 +133,7 @@ export function analizarHtml(filePath: string, fuente: string): AnalisisHtml {
     fin: number,
     detail?: string,
     codigo?: string,
+    menor = false,
   ) => {
     const vistas = ocurrencias.get(nombre) ?? 0;
     ocurrencias.set(nombre, vistas + 1);
@@ -111,6 +154,7 @@ export function analizarHtml(filePath: string, fuente: string): AnalisisHtml {
       codeHash: '',
       language: 'html',
       detail,
+      menor,
     });
   };
 
@@ -205,20 +249,36 @@ export function analizarHtml(filePath: string, fuente: string): AnalisisHtml {
     const estructural = ESTRUCTURALES[etiqueta];
     const encabezado = ENCABEZADOS.has(etiqueta);
 
-    let kind: SymbolKind | null = null;
+    let kind: SymbolKind;
     if (personalizado) kind = 'componente personalizado';
     else if (estructural) kind = estructural;
     else if (encabezado) kind = 'encabezado';
     else if (attrs.id) kind = 'elemento con id';
-    if (!kind) return;
+    else kind = familiaDe(etiqueta);
 
+    // Los detalles son lo que hace util la lista: sin ellos, diez <p> seguidos
+    // son diez lineas iguales. Se muestran los atributos que dicen algo.
     const partes: string[] = [];
     if (attrs.id) partes.push(`id="${attrs.id}"`);
     if (attrs.class) partes.push(`class="${attrs.class}"`);
     if (attrs.href) partes.push(`href="${attrs.href}"`);
+    if (attrs.src) partes.push(`src="${attrs.src}"`);
+    if (attrs.alt) partes.push(`alt="${attrs.alt}"`);
+    if (attrs.type) partes.push(`type="${attrs.type}"`);
+    if (attrs.name) partes.push(`name="${attrs.name}"`);
     if (attrs.action) partes.push(`action="${attrs.action}"`);
+    if (attrs.role) partes.push(`role="${attrs.role}"`);
 
-    anadir(nombreLegible(attrs, etiqueta), kind, inicio, fin, partes.join('  ') || `<${etiqueta}>`);
+    const menor = RELLENO.has(kind) && !attrs.id && !attrs.class;
+    anadir(
+      nombreLegible(attrs, etiqueta),
+      kind,
+      inicio,
+      fin,
+      partes.join('  ') || resumenDeTexto(inicio, fin, etiqueta),
+      undefined,
+      menor,
+    );
   }
 
   return { simbolos, bloques, dependencias: [...new Set(dependencias)] };
