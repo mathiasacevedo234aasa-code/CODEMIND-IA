@@ -3,6 +3,8 @@ import { useStore } from '../state/useStore';
 import { api } from '../lib/api';
 import type { RunLogLine, RunProcess, RunScriptsInfo } from '../lib/types';
 import { Icon } from './Icon';
+import { TarjetaEjecutarArchivo } from './EjecutarArchivo';
+import { LenguajesInstalados } from './LenguajesInstalados';
 
 const STATUS_DOT: Record<RunProcess['status'], string> = {
   iniciando: 'warn',
@@ -180,6 +182,9 @@ export function RunPanel() {
 
   return (
     <div className="panel-body" style={{ padding: 12 }}>
+      <TarjetaEjecutarArchivo />
+      <LenguajesInstalados />
+
       {!info.hasPackageJson ? (
         <div className="empty" style={{ height: 'auto', paddingTop: 24 }}>
           <Icon name="terminal" size={22} />

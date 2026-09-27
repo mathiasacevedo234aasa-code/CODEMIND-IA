@@ -635,3 +635,32 @@ export interface Glosario {
   propuestas: PropuestaGlosario[];
   updatedAt: string | null;
 }
+
+// ------------------------------------------- ejecutar un archivo suelto
+
+/** Como se ejecutaria un archivo, y si este equipo puede. */
+export interface PlanEjecucion {
+  soportado: boolean;
+  archivo: string;
+  nombre?: string;
+  lenguaje?: string;
+  comando?: string;
+  herramienta?: string;
+  disponible?: boolean;
+  version?: string | null;
+  donde?: string | null;
+  /** Por que no se puede, dicho de forma que se pueda arreglar. */
+  motivo?: string | null;
+  alcance?: 'archivo' | 'proyecto';
+  compila?: boolean;
+  nota?: string | null;
+}
+
+export interface LenguajeDisponible {
+  lenguaje: string;
+  herramienta: string;
+  disponible: boolean;
+  version: string | null;
+  donde: string | null;
+  aviso: string | null;
+}

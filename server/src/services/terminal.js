@@ -225,6 +225,33 @@ export function escribir(projectId, id, datos) {
   return vistaPublica(sesion);
 }
 
+/**
+ * Espera a que el interprete termine de arrancar.
+ *
+ * Una consola recien abierta tarda un momento en sacar su prompt, y lo que se
+ * le escriba antes se pierde o se mezcla: PowerShell se quedaba en modo
+ * continuacion (">>") y el comando no llegaba a ejecutarse nunca. Se espera a
+ * que deje de escribir, que es la senal de que esta lista.
+ */
+export async function esperarListo(projectId, id, { quietoMs = 400, plazoMs = 10000 } = {}) {
+  const sesion = buscar(projectId, id);
+  const limite = Date.now() + plazoMs;
+  let ultimoSeq = -1;
+  let quietoDesde = Date.now();
+
+  while (Date.now() < limite) {
+    if (sesion.estado !== 'viva') return false;
+    if (sesion.seq !== ultimoSeq) {
+      ultimoSeq = sesion.seq;
+      quietoDesde = Date.now();
+    } else if (Date.now() - quietoDesde >= quietoMs && sesion.seq > 0) {
+      return true;
+    }
+    await new Promise((r) => setTimeout(r, 80));
+  }
+  return false;
+}
+
 export function redimensionar(projectId, id, cols, rows) {
   const sesion = buscar(projectId, id);
   if (sesion.estado !== 'viva' || sesion.modo !== 'terminal') return vistaPublica(sesion);

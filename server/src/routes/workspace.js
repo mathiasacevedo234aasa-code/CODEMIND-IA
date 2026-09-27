@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { randomUUID } from 'node:crypto';
-import { getProject, projectRootDir } from '../services/store.js';
+import { getProject, projectRootDir, HttpError } from '../services/store.js';
 import * as fsbrowse from '../services/fsbrowse.js';
 import * as git from '../services/git.js';
 import * as github from '../services/github.js';
@@ -8,6 +8,7 @@ import * as runner from '../services/runner.js';
 import * as search from '../services/search.js';
 import * as quality from '../services/quality.js';
 import * as terminal from '../services/terminal.js';
+import * as lenguajes from '../services/lenguajes.js';
 import { exportarDocumentacion } from '../services/export.js';
 
 /**
@@ -180,6 +181,49 @@ router.get('/projects/:id/run/processes', wrap(async (req, res) => {
 
 router.get('/projects/:id/run/processes/:processId/logs', wrap(async (req, res) => {
   res.json(runner.logs(req.params.id, req.params.processId, Number(req.query.since) || 0));
+}));
+
+// ------------------------------------------------- ejecutar un archivo
+
+/** Que lenguajes puede ejecutar este equipo ahora mismo. */
+router.get('/lenguajes', wrap(async (req, res) => {
+  res.json({ lenguajes: await lenguajes.resumen({ refrescar: req.query.refrescar === '1' }) });
+}));
+
+/** Como se ejecutaria este archivo. No ejecuta nada: solo lo explica. */
+router.get('/projects/:id/ejecutar/plan', wrap(async (req, res) => {
+  res.json(await lenguajes.planPara(await rootOf(req), req.query.path));
+}));
+
+/**
+ * Ejecuta el archivo abierto en el terminal del proyecto.
+ *
+ * Va al terminal y no a un proceso aparte a proposito: un programa que pide
+ * datos por teclado se quedaria colgado para siempre sin un terminal de
+ * verdad. Ademas el comando queda escrito, que es la mejor forma de aprender
+ * cual era.
+ */
+router.post('/projects/:id/ejecutar/archivo', wrap(async (req, res) => {
+  const raiz = await rootOf(req);
+  const plan = await lenguajes.planPara(raiz, req.body?.path);
+
+  if (!plan.soportado) throw new HttpError(400, plan.motivo);
+  if (!plan.disponible) throw new HttpError(409, plan.motivo);
+
+  // Se reutiliza la consola que ya estuviera abierta: abrir una nueva con
+  // cada ejecucion dejaria el proyecto lleno de consolas sueltas.
+  const vivas = terminal.listar(req.params.id).filter((s) => s.estado === 'viva');
+  const sesion = vivas[0] ?? (await terminal.abrir(req.params.id, raiz, req.body ?? {}));
+
+  // Una consola recien abierta no esta lista de inmediato: escribirle antes
+  // de que saque su prompt dejaba el comando a medias, sin ejecutarse nunca.
+  if (!vivas.length) await terminal.esperarListo(req.params.id, sesion.id);
+
+  // El retorno de carro es lo que envia la orden. Se escribe como codigo
+  // explicito: un salto de linea normal deja a PowerShell esperando mas.
+  const ENVIAR = String.fromCharCode(13);
+  terminal.escribir(req.params.id, sesion.id, plan.comando + ENVIAR);
+  res.json({ sesion, plan, reutilizada: vivas.length > 0 });
 }));
 
 // ----------------------------------------------------------------- consola

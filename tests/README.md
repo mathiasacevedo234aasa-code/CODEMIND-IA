@@ -131,3 +131,17 @@ devuelve el servicio ni el de un fallo de red. Esa comprobación encontró una f
 Ollama se prueba además contra un **servidor HTTP de verdad** levantado por la prueba, que habla su
 mismo dialecto: listar modelos, probar la conexión y completar, por un socket real. No prueba a
 Ollama —para eso hay que instalarlo—, prueba que nuestro lado del protocolo está bien.
+
+## `ejecutar.mjs`
+
+Prueba la ejecución de un archivo suelto. Lo que más importa: que **nunca se ofrezca un botón que
+va a fallar**. Comprueba que se detectan de verdad las herramientas instaladas (Node tiene que
+aparecer: es quien está ejecutando la prueba), que lo que falta dice de dónde se descarga, y que un
+archivo que no se sabe ejecutar lo dice y sugiere el Terminal.
+
+Y dos cosas que se rompen sin que se note: que un nombre de archivo con espacios o comillas no
+puede partir el comando en dos, y que no se puede apuntar fuera del proyecto (`../`, rutas
+absolutas). Esa última comprobación encontró un caso real: una ruta absoluta se reinterpretaba en
+silencio como relativa.
+
+Al final ejecuta de verdad el comando que genera para un `.js` y comprueba su salida.

@@ -24,6 +24,8 @@ import type {
   TreeNode,
   UrlProbe,
   ChecksInfo,
+  PlanEjecucion,
+  LenguajeDisponible,
   ProveedorIA,
   EstadoClave,
   PruebaConexion,
@@ -280,6 +282,14 @@ export const api = {
     request<{ sesion: TerminalSesion }>(`/api/projects/${id}/terminal/${sid}/interrumpir`, { method: 'POST' }),
   terminalCerrar: (id: string, sid: string) =>
     request<{ ok: true }>(`/api/projects/${id}/terminal/${sid}`, { method: 'DELETE' }),
+
+  lenguajes: (refrescar = false) =>
+    request<{ lenguajes: LenguajeDisponible[] }>(`/api/lenguajes${refrescar ? '?refrescar=1' : ''}`),
+  planEjecucion: (id: string, path: string) =>
+    request<PlanEjecucion>(`/api/projects/${id}/ejecutar/plan?path=${encodeURIComponent(path)}`),
+  ejecutarArchivo: (id: string, path: string) =>
+    request<{ sesion: TerminalSesion; plan: PlanEjecucion; reutilizada: boolean }>(
+      `/api/projects/${id}/ejecutar/archivo`, { method: 'POST', ...json({ path }) }),
 
   checks: (id: string) => request<ChecksInfo>(`/api/projects/${id}/checks`),
   runCheck: (id: string, script: string) =>

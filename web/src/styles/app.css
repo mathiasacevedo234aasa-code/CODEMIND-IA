@@ -1352,3 +1352,17 @@ textarea { resize: vertical; min-height: 64px; line-height: 1.5; }
 /* Las rutas se pueden pulsar: comprobar de donde sale un termino es el punto. */
 .glosario-ruta { cursor: pointer; text-decoration: underline dotted; }
 .glosario-ruta:hover { color: var(--accent); }
+
+/* ------------------------------------------- ejecutar un archivo */
+
+/* El boton de ejecutar se distingue del resto: es el que mas se pulsa. */
+.btn.icon.ejecutar-listo { color: var(--ok); }
+.btn.icon.ejecutar-listo:hover { background: color-mix(in srgb, var(--ok) 15%, transparent); }
+
+.lenguajes-rejilla { display: flex; flex-direction: column; gap: 4px; margin-top: 8px; }
+.lenguaje-fila {
+  display: flex; align-items: center; gap: 7px;
+  font-size: 12.5px; padding: 3px 0;
+}
+.lenguaje-fila.falta { opacity: 0.65; }
+.lenguaje-fila .meta { font-size: 11.5px; }

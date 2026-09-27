@@ -1,4 +1,4 @@
-# CodeMind AI 1.0.1
+# CodeMind AI 1.1.0
 
 Entorno de desarrollo con documentación asistida por IA.
 
@@ -312,6 +312,13 @@ Todo lo que sigue está implementado y **comprobado ejecutándolo**, no solo esc
   siempre qué commits y qué archivos viajan antes de subir
 
 **Ejecución y comprobación**
+- **Ejecutar el archivo abierto** con un botón, en el lenguaje que sea: Python, JavaScript,
+  TypeScript (sin compilar nada), Ruby, PHP, Go, Java, Rust, C, C++, C#, Lua, Dart, Swift, Bash y
+  PowerShell. Se ejecuta dentro del Terminal, así que los programas que piden datos por teclado
+  funcionan y se pueden parar con Ctrl+C
+- Antes de ofrecer el botón se comprueba que la herramienta está instalada, preguntándole su
+  versión. Si falta, se dice **cuál y de dónde se descarga**; el panel *Ejecutar* lista todo lo que
+  este equipo puede ejecutar ahora mismo
 - **Terminal de verdad** en la carpeta del proyecto: prompt, eco, colores y Ctrl+C reales
 - **Comprobaciones del proyecto**: ejecuta tus scripts de pruebas, tipos y estilo, y convierte su
   salida en avisos con archivo y línea en los que se puede pulsar. Lee `tsc`, ESLint, vitest, jest,
@@ -366,7 +373,7 @@ Lo que esta versión **no** hace, dicho sin adornos.
 
 ## Pruebas
 
-Siete pruebas, todas ejecutables y todas contra cosas reales. Están documentadas una por una en
+Ocho pruebas, todas ejecutables y todas contra cosas reales. Están documentadas una por una en
 [`tests/README.md`](tests/README.md).
 
 ```bash
@@ -376,6 +383,7 @@ node tests/mapa.mjs            # grafo de dependencias, ciclos y disposición re
 node tests/comprobaciones.mjs  # lectura de las salidas de tsc, ESLint, vitest, jest y node --test
 node tests/terminal.mjs        # una consola de verdad: comandos, interrupción y cierre
 node tests/proveedores.mjs     # los dos protocolos, Ollama y que ninguna clave se filtre
+node tests/ejecutar.mjs        # ejecutar un archivo: detección, comandos y límites
 node tests/busqueda.mjs        # que la vista previa del reemplazo no escriba nada
 ```
 

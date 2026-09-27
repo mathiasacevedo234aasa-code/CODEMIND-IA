@@ -4,6 +4,44 @@ Todo lo que aparece aquí está comprobado ejecutándolo, no solo escrito.
 
 ---
 
+## 1.1.0
+
+### Ejecutar un archivo, en el lenguaje que sea
+
+Tienes un `.py` abierto, pulsas el boton ▷ de la barra de pestanas y se
+ejecuta. Lo mismo con JavaScript, TypeScript (sin compilar: Node se encarga),
+Ruby, PHP, Go, Java, Rust, C, C++, C#, Lua, Dart, Swift, Bash y PowerShell.
+
+Se ejecuta **dentro del Terminal**, no como un proceso aparte. Eso no es un
+detalle: un programa que hace `input()` o pide una contrasena se quedaria
+colgado para siempre sin una consola de verdad, y no habria forma de saber
+por que. Asi ademas se ve en color, se puede parar con Ctrl+C y queda el
+comando escrito, que es la mejor manera de aprender cual era.
+
+Antes de ofrecer el boton se comprueba que la herramienta esta instalada,
+preguntandole su version. Si no lo esta, se dice **cual falta y donde se
+descarga**, en vez de dejar que el comando falle con "comando no encontrado".
+El panel *Ejecutar* lista lo que este equipo puede ejecutar ahora mismo, con
+un boton para volver a comprobarlo si instalas algo sin reiniciar nada.
+
+Dos casos que se detectan bien a proposito: en Windows, `python3` es un
+señuelo de la Microsoft Store que imprime un anuncio, y un Java 8 no puede
+ejecutar un `.java` suelto, cosa que necesita Java 11. En los dos se dice
+exactamente lo que pasa.
+
+### Corregido
+
+- Al ejecutar en una consola recien abierta, el comando se escribia antes de
+  que el interprete terminara de arrancar y se quedaba a medias, sin correr
+  nunca. Ahora se espera a que este listo.
+- Una ruta absoluta se reinterpretaba en silencio como relativa al proyecto,
+  o sea que apuntaba a un archivo distinto del pedido sin avisar. Ahora se
+  rechaza. Lo encontro la prueba nueva.
+- `tests/busqueda.mjs` usaba el primer proyecto de la lista, asi que fallaba
+  segun lo que hubiera en el equipo. Ahora se crea el suyo y lo borra.
+
+---
+
 ## 1.0.1
 
 Correcciones de lo que aparecio al usar la 1.0.0 de verdad.

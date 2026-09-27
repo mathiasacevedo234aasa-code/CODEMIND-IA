@@ -7,6 +7,7 @@ import { activarEmmet } from '../lib/emmet';
 import { panelDe, type PanelEditor as Mitad } from '../lib/types';
 import { WebView } from './WebView';
 import { Icon } from './Icon';
+import { BotonEjecutarArchivo } from './EjecutarArchivo';
 
 /**
  * Zona central: una o dos mitades con sus propias pestañas.
@@ -186,6 +187,7 @@ ${texto.slice(0, 8000)}
         })}
 
         <span style={{ flex: 1 }} />
+        {enfocada && <BotonEjecutarArchivo />}
         {active && (
           <button
             className="btn icon sm"
