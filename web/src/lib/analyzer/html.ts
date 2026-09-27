@@ -99,11 +99,30 @@ function leerAtributos(texto: string): Record<string, string> {
   return salida;
 }
 
-/** Cuenta las líneas que hay hasta una posición, sin cortar toda la cadena. */
-function lineaEn(fuente: string, indice: number): number {
-  let linea = 1;
-  for (let i = 0; i < indice; i++) if (fuente.charCodeAt(i) === 10) linea++;
-  return linea;
+/**
+ * Traductor de posición a número de línea.
+ *
+ * Antes se contaban los saltos desde el principio en cada consulta. Con una
+ * página grande eso es recorrer el archivo entero una vez por etiqueta, y
+ * como el análisis corre con cada pulsación, escribir en una página de tres
+ * mil líneas se sentía trabado. Se calcula el índice una sola vez y después
+ * cada consulta es una búsqueda binaria.
+ */
+function indiceDeLineas(fuente: string): number[] {
+  const inicios = [0];
+  for (let i = 0; i < fuente.length; i++) if (fuente.charCodeAt(i) === 10) inicios.push(i + 1);
+  return inicios;
+}
+
+function lineaDe(inicios: number[], indice: number): number {
+  let bajo = 0;
+  let alto = inicios.length - 1;
+  while (bajo < alto) {
+    const medio = (bajo + alto + 1) >> 1;
+    if (inicios[medio] <= indice) bajo = medio;
+    else alto = medio - 1;
+  }
+  return bajo + 1;
 }
 
 const nombreLegible = (attrs: Record<string, string>, etiqueta: string): string => {
@@ -117,11 +136,15 @@ export function analizarHtml(filePath: string, fuente: string): AnalisisHtml {
   const bloques: BloqueIncrustado[] = [];
   const dependencias: string[] = [];
   const lineas = fuente.split('\n');
+  const inicios = indiceDeLineas(fuente);
   const ocurrencias = new Map<string, number>();
 
   /** Para una etiqueta sin atributos, su propio texto es lo que la identifica. */
   const resumenDeTexto = (inicio: number, fin: number, etiqueta: string) => {
-    const crudo = lineas.slice(inicio - 1, fin).join(' ').replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
+    // Con las tres primeras lineas basta para reconocerlo, y un contenedor
+    // grande no obliga a recorrer medio archivo.
+    const crudo = lineas.slice(inicio - 1, Math.min(fin, inicio + 2)).join(' ')
+      .replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
     if (!crudo) return `<${etiqueta}>`;
     return crudo.length > 70 ? `${crudo.slice(0, 67)}...` : crudo;
   };
@@ -166,7 +189,7 @@ export function analizarHtml(filePath: string, fuente: string): AnalisisHtml {
   while ((m = RE_ETIQUETA.exec(fuente))) {
     const [completo, cierre, etiquetaCruda, atributos, autoCierre] = m;
     const etiqueta = etiquetaCruda.toLowerCase();
-    const linea = lineaEn(fuente, m.index);
+    const linea = lineaDe(inicios, m.index);
 
     // ---- script y style: se extrae su contenido con el desplazamiento exacto
     if (!cierre && (etiqueta === 'script' || etiqueta === 'style') && !autoCierre) {
@@ -177,7 +200,7 @@ export function analizarHtml(filePath: string, fuente: string): AnalisisHtml {
       const resto = fuente.slice(finApertura);
       const encontrado = cierreTag.exec(resto);
       const contenido = encontrado ? resto.slice(0, encontrado.index) : resto;
-      const lineaFin = lineaEn(fuente, finApertura + contenido.length);
+      const lineaFin = lineaDe(inicios, finApertura + contenido.length);
 
       // Un <script src="..."> no tiene código propio que analizar, pero sí es
       // una dependencia del archivo: se registra aquí porque esta rama sale
@@ -188,7 +211,7 @@ export function analizarHtml(filePath: string, fuente: string): AnalisisHtml {
         bloques.push({
           tipo: etiqueta === 'script' ? 'script' : 'style',
           codigo: contenido,
-          offset: lineaEn(fuente, finApertura) - 1,
+          offset: lineaDe(inicios, finApertura) - 1,
           lenguaje: etiqueta === 'script' ? (/typescript|ts/i.test(attrs.type ?? '') ? 'typescript' : 'javascript') : 'css',
         });
       }

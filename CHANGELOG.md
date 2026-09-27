@@ -28,6 +28,23 @@ contenedor, metadato, texto) y con sus atributos a la vista. Para que una
 pagina grande siga siendo legible, el panel tiene un filtro *Sin relleno* que
 esconde los parrafos y contenedores que no llevan ni `id` ni clase.
 
+### Y se sentia trabada al escribir
+
+Analizar una pagina de 3600 lineas tardaba **1,3 segundos**, y eso corre con
+cada pulsacion: escribir en un archivo grande era un suplicio. Dos causas:
+para cada etiqueta se contaban los saltos de linea desde el principio del
+archivo (recorrerlo entero, una vez por etiqueta), y de cada elemento se unia
+su contenido completo para despues recortarlo a 20 000 caracteres, asi que el
+`<body>` copiaba el documento entero.
+
+Ahora el indice de lineas se calcula una vez y cada consulta es una busqueda
+binaria, y solo se copian las lineas que caben en el limite. La misma pagina
+pasa de 1295 ms a 20 ms.
+
+El panel, ademas, dibujaba los 4200 elementos de esa pagina en cada
+redibujado. Ahora pinta 300 y dice cuantos hay en total: no se esconde nada a
+la callada, pero escribir vuelve a ser instantaneo.
+
 ### Otras
 
 - Una constante del modulo con un valor sencillo (`export const VERSION =

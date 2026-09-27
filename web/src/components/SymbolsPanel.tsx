@@ -15,6 +15,16 @@ const STATUS_CLASS: Record<DocStatus, string> = {
   revisar: 'warn',
 };
 
+/**
+ * Cuantos elementos se pintan de una vez.
+ *
+ * Una pagina grande puede tener miles, y el panel se redibuja con cada
+ * pulsacion del editor. Pintarlos todos hacia que escribir se sintiera
+ * trabado. Se dice cuantos hay y cuantos se ven: no se esconde nada a la
+ * callada.
+ */
+const MAX_EN_PANTALLA = 300;
+
 const CATEGORIAS: { id: SymbolCategory; label: string }[] = [
   { id: 'codigo', label: 'Código' },
   { id: 'estructura', label: 'Estructura' },
@@ -219,7 +229,19 @@ export function SymbolsPanel() {
           </div>
         )}
 
-        {visibles.map((sym) => {
+        {visibles.length > MAX_EN_PANTALLA && (
+          <div style={{ padding: '8px 10px', borderBottom: '1px solid var(--border)' }}>
+            <span className="tag info">
+              Mostrando {MAX_EN_PANTALLA} de {visibles.length}
+            </span>
+            <p className="hint" style={{ marginTop: 6 }}>
+              Dibujar miles de elementos a la vez haría que escribir se sintiera trabado. Usa el buscador,
+              el filtro por archivo o «Sin relleno» para acotar la lista.
+            </p>
+          </div>
+        )}
+
+        {visibles.slice(0, MAX_EN_PANTALLA).map((sym) => {
           const status = statusOf(sym);
           const doc = approved[sym.id];
           const pending = proposals.find((p) => p.functionId === sym.id);
