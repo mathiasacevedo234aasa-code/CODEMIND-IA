@@ -38,20 +38,20 @@ export function useplanDelArchivo(): { plan: PlanEjecucion | null; ruta: string 
   return { plan, ruta };
 }
 
-/** El botón de la barra de pestañas. Solo aparece si el archivo se puede ejecutar. */
-export function BotonEjecutarArchivo() {
+/**
+ * Lanza el archivo abierto. Lo comparten el botón, el atajo F5 y la paleta de
+ * comandos, para que las tres vías hagan exactamente lo mismo.
+ */
+export function useEjecutarArchivo() {
   const project = useStore((s) => s.project);
   const setBottomTab = useStore((s) => s.setBottomTab);
   const saveFile = useStore((s) => s.saveFile);
   const setError = useStore((s) => s.setError);
   const log = useStore((s) => s.log);
-  const { plan, ruta } = useplanDelArchivo();
-
   const [lanzando, setLanzando] = useState(false);
 
-  if (!project || !ruta || !plan?.soportado) return null;
-
-  const ejecutar = async () => {
+  const ejecutar = async (ruta: string) => {
+    if (!project) return;
     setLanzando(true);
     try {
       // Se guarda antes: ejecutar una versión vieja del archivo que tienes
@@ -68,8 +68,31 @@ export function BotonEjecutarArchivo() {
     }
   };
 
+  return { ejecutar, lanzando };
+}
+
+/** El botón de la barra de pestañas. Solo aparece si el archivo se puede ejecutar. */
+export function BotonEjecutarArchivo() {
+  const { plan, ruta } = useplanDelArchivo();
+  const { ejecutar, lanzando } = useEjecutarArchivo();
+
+  // F5 es lo que todo el mundo espera para ejecutar. Solo se intercepta
+  // cuando de verdad hay algo que ejecutar: si no, se deja pasar.
+  useEffect(() => {
+    const alPulsar = (e: KeyboardEvent) => {
+      if (e.key !== 'F5' || e.ctrlKey || e.shiftKey || e.altKey) return;
+      if (!ruta || !plan?.disponible) return;
+      e.preventDefault();
+      void ejecutar(ruta);
+    };
+    window.addEventListener('keydown', alPulsar);
+    return () => window.removeEventListener('keydown', alPulsar);
+  }, [ruta, plan, ejecutar]);
+
+  if (!ruta || !plan?.soportado) return null;
+
   const titulo = plan.disponible
-    ? `Ejecutar con ${plan.lenguaje}${plan.version ? ` ${plan.version}` : ''} — ${plan.comando}`
+    ? `Ejecutar con ${plan.lenguaje}${plan.version ? ` ${plan.version}` : ''} (F5) — ${plan.comando}`
     : plan.motivo ?? 'No se puede ejecutar';
 
   return (
@@ -77,7 +100,7 @@ export function BotonEjecutarArchivo() {
       className={`btn icon sm ${plan.disponible ? 'ejecutar-listo' : ''}`}
       title={titulo}
       disabled={lanzando || !plan.disponible}
-      onClick={() => void ejecutar()}
+      onClick={() => void ejecutar(ruta)}
     >
       {lanzando ? <span className="spinner" /> : <Icon name="play" size={13} />}
     </button>
@@ -87,27 +110,10 @@ export function BotonEjecutarArchivo() {
 /** La tarjeta del panel Ejecutar, con el detalle y el motivo cuando no se puede. */
 export function TarjetaEjecutarArchivo() {
   const project = useStore((s) => s.project);
-  const setBottomTab = useStore((s) => s.setBottomTab);
-  const saveFile = useStore((s) => s.saveFile);
-  const setError = useStore((s) => s.setError);
   const { plan, ruta } = useplanDelArchivo();
-  const [lanzando, setLanzando] = useState(false);
+  const { ejecutar, lanzando } = useEjecutarArchivo();
 
   if (!project) return null;
-
-  const ejecutar = async () => {
-    if (!ruta) return;
-    setLanzando(true);
-    try {
-      await saveFile(ruta);
-      await api.ejecutarArchivo(project.id, ruta);
-      setBottomTab('terminal');
-    } catch (err) {
-      setError((err as Error).message);
-    } finally {
-      setLanzando(false);
-    }
-  };
 
   return (
     <div className="card" style={{ marginBottom: 12 }}>
@@ -127,8 +133,8 @@ export function TarjetaEjecutarArchivo() {
             <span className={`tag ${plan.disponible ? 'ok' : 'warn'}`}>{plan.lenguaje}</span>
             {plan.version && <span className="meta">{plan.herramienta} {plan.version}</span>}
             <span style={{ flex: 1 }} />
-            <button className="btn sm primary" disabled={!plan.disponible || lanzando} onClick={() => void ejecutar()}>
-              {lanzando ? <span className="spinner" /> : <Icon name="play" size={12} />} Ejecutar
+            <button className="btn sm primary" disabled={!plan.disponible || lanzando} onClick={() => void ejecutar(ruta)}>
+              {lanzando ? <span className="spinner" /> : <Icon name="play" size={12} />} Ejecutar (F5)
             </button>
           </div>
 

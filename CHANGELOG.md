@@ -24,6 +24,10 @@ descarga**, en vez de dejar que el comando falle con "comando no encontrado".
 El panel *Ejecutar* lista lo que este equipo puede ejecutar ahora mismo, con
 un boton para volver a comprobarlo si instalas algo sin reiniciar nada.
 
+Tres formas de lanzarlo, todas la misma: el boton de la barra de pestanas,
+**F5** y la paleta de comandos. F5 solo se intercepta cuando de verdad hay
+algo que ejecutar; si no, se deja pasar.
+
 Dos casos que se detectan bien a proposito: en Windows, `python3` es un
 señuelo de la Microsoft Store que imprime un anuncio, y un Java 8 no puede
 ejecutar un `.java` suelto, cosa que necesita Java 11. En los dos se dice

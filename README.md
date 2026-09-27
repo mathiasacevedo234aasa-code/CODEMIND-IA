@@ -312,7 +312,7 @@ Todo lo que sigue está implementado y **comprobado ejecutándolo**, no solo esc
   siempre qué commits y qué archivos viajan antes de subir
 
 **Ejecución y comprobación**
-- **Ejecutar el archivo abierto** con un botón, en el lenguaje que sea: Python, JavaScript,
+- **Ejecutar el archivo abierto** con un botón, con **F5** o desde la paleta de comandos, en el lenguaje que sea: Python, JavaScript,
   TypeScript (sin compilar nada), Ruby, PHP, Go, Java, Rust, C, C++, C#, Lua, Dart, Swift, Bash y
   PowerShell. Se ejecuta dentro del Terminal, así que los programas que piden datos por teclado
   funcionan y se pueden parar con Ctrl+C
