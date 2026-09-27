@@ -1,10 +1,14 @@
-# CodeMind AI
+# CodeMind AI 1.0.0
 
-Entorno de desarrollo web con documentación asistida por IA.
+Entorno de desarrollo con documentación asistida por IA.
 
 **La IA explica. El usuario decide.** CodeMind AI nunca modifica, corrige ni refactoriza tu código:
-detecta tus funciones, genera propuestas de documentación cuando tú lo pides, y no guarda nada
-como oficial hasta que tú lo apruebas.
+reconoce lo que has escrito, genera propuestas de documentación cuando tú lo pides, y no guarda nada
+como oficial hasta que tú lo apruebas. Esa regla no es un eslogan: está en las instrucciones que
+recibe el modelo, en la validación de sus respuestas y en el hecho de que ninguna propuesta —ni de
+documentación ni de glosario— llega a ser oficial sin que una persona pulse *Aprobar*.
+
+El historial de versiones está en [CHANGELOG.md](CHANGELOG.md).
 
 ---
 
@@ -14,13 +18,9 @@ como oficial hasta que tú lo apruebas.
 npm install
 ```
 
-Crea el archivo `.env` en la raíz (copia de `.env.example`):
-
-```
-GROQ_API_KEY=tu_clave
-GROQ_MODEL=openai/gpt-oss-120b
-PORT=5174
-```
+Opcionalmente, crea el archivo `.env` en la raíz (copia de `.env.example`) con la clave del
+proveedor de IA que vayas a usar. También puedes guardarla desde **Configuración**, y esa siempre
+tiene prioridad. Con **Ollama** no hace falta ninguna clave: el modelo corre en tu propio equipo.
 
 Arranca backend y frontend a la vez:
 
@@ -63,8 +63,10 @@ relativas `/api` que en el navegador y no existen dos versiones del código.
 | Detalle | Cómo se resuelve |
 |---|---|
 | Datos del usuario | En la app instalada van a `%APPDATA%\codemind-ai\data`, porque la carpeta de instalación es de solo lectura. En desarrollo se usa `server/data`, para compartir proyectos con `npm run dev` |
-| Clave de Groq | En la app instalada no hay `.env`: se guarda desde **Configuración**, en la carpeta de datos. Si tu equipo tiene una variable de entorno `GROQ_API_KEY`, la app la usará como último recurso — y si está caducada verás un 401. La clave guardada desde Configuración siempre tiene prioridad |
-| Dependencias | `scripts/pack-runtime.mjs` instala un árbol limpio con solo `express`, `cors` y `dotenv`. Electron, Vite y Monaco no viajan en el paquete |
+| Claves de IA | En la app instalada no hay `.env`: se guardan desde **Configuración**, en la carpeta de datos, una por proveedor. Si tu equipo tiene una variable de entorno (`GROQ_API_KEY`, `OPENAI_API_KEY`...), la app la usará como último recurso — y si está caducada verás un 401. La clave guardada desde Configuración siempre tiene prioridad |
+| Dependencias | `scripts/pack-runtime.mjs` instala un árbol limpio con solo lo que el backend usa en ejecución: `express`, `cors`, `dotenv` y el terminal nativo. Electron, Vite y Monaco no viajan en el paquete |
+| Terminal nativo | `@lydell/node-pty` trae binarios precompilados con **N-API**, estable entre versiones, así que no hay que recompilarlo para Electron. Verificado dentro de Electron 33 (ABI 130) |
+| Gramáticas de lenguajes | Los `.wasm` de tree-sitter (23 MB) no están en el repositorio: `scripts/copiar-gramaticas.mjs` los copia desde `node_modules` antes de arrancar y de construir |
 | Comprobación del paquete | `scripts/verify-package.mjs` compara el número de archivos empaquetados con el origen, exige los archivos imprescindibles y mide el margen de longitud de ruta. El build falla si algo no cuadra |
 | Permisos de la ventana | Sin acceso a Node (`contextIsolation`, sin `nodeIntegration`): solo habla con el backend por HTTP |
 | Enlaces externos | Se abren en el navegador del sistema, nunca en una ventana de Electron sin barra de direcciones |
@@ -89,9 +91,7 @@ elevar privilegios.
 Las dependencias se instalan **fuera del monorepo** y se copian después. No es un capricho: dentro,
 npm ve el `node_modules` del padre y acaba anidando las dependencias transitivas unas dentro de
 otras, generando rutas de casi 200 caracteres. Sumadas al prefijo de instalación real
-(`C:\Program Files\CodeMind AI
-esourcespp
-ode_modules\`) rebasan el límite de 260 caracteres
+(`C:\Program Files\CodeMind AI\resources\app\node_modules\`) rebasan el límite de 260 caracteres
 de Windows, y entonces **algunos archivos simplemente no se copian, sin ningún error**.
 
 Eso ocurrió de verdad: el instalador se generaba correctamente y la aplicación instalada fallaba al
@@ -110,18 +110,20 @@ No está **firmado digitalmente**. Windows mostrará el aviso de SmartScreen la 
 pulsar "Más información → Ejecutar de todas formas". Firmarlo exige un certificado de pago; mientras
 no lo tengas, es el comportamiento esperado y conviene advertirlo a quien se lo pases.
 
-### De dónde sale la clave de Groq
+### De dónde sale la clave de cada proveedor
 
 Se busca en este orden, y **el primero que exista gana**:
 
 1. La guardada desde **Configuración** (en la carpeta de datos)
 2. El archivo `.env` del proyecto
-3. La variable de entorno `GROQ_API_KEY` del equipo
+3. La variable de entorno del equipo (`GROQ_API_KEY`, `OPENAI_API_KEY`, `ANTHROPIC_API_KEY`,
+   `OPENROUTER_API_KEY`)
 
-El tercer punto es una trampa conocida: si tu sistema tiene una `GROQ_API_KEY` antigua, la aplicación
-**instalada** la usará, porque no lleva `.env` dentro. Verás "Groq ✓" y después un 401 al documentar.
-Por eso el mensaje de error dice de dónde salió la clave, y **Configuración → Probar conexión** llama
-de verdad a Groq en lugar de limitarse a comprobar que hay algo escrito.
+El tercer punto es una trampa conocida: si tu sistema tiene una clave antigua exportada, la
+aplicación **instalada** la usará, porque no lleva `.env` dentro. Verás el indicador en verde y
+después un 401 al documentar. Por eso el mensaje de error **dice de dónde salió la clave**, y
+**Configuración → Probar conexión** llama de verdad al servicio en lugar de limitarse a comprobar
+que hay algo escrito.
 
 La solución: guarda tu clave desde Configuración. Tiene prioridad sobre todo lo demás.
 
@@ -131,41 +133,58 @@ La solución: guarda tu clave desde Configuración. Tiene prioridad sobre todo l
 
 ```
 codemind-ai/
-├── scripts/dev.mjs         Lanzador de desarrollo (backend + frontend)
-├── server/                 Backend Node + Express (guardián de credenciales, disco y procesos)
+├── scripts/
+│   ├── dev.mjs                 Lanzador de desarrollo (backend + frontend)
+│   ├── copiar-gramaticas.mjs   Copia los .wasm de tree-sitter a web/public
+│   ├── pack-runtime.mjs        Arbol limpio de dependencias para el instalador
+│   └── verify-package.mjs      Comprueba el paquete antes de darlo por bueno
+├── server/                     Backend Node + Express (guardian de credenciales, disco y procesos)
 │   └── src/
-│       ├── index.js        Arranque en 127.0.0.1, rutas, apagado ordenado
-│       ├── env.js          Carga de .env con prioridad sobre el entorno del sistema
-│       ├── git-askpass.cjs Entrega el token a git sin exponerlo en la línea de comandos
-│       ├── routes/         projects · docs · ai · settings · workspace
+│       ├── index.js            Arranque en 127.0.0.1, rutas, apagado ordenado
+│       ├── env.js              Carga de .env con prioridad sobre el entorno del sistema
+│       ├── git-askpass.cjs     Entrega el token a git sin exponerlo en la linea de comandos
+│       ├── routes/             projects · docs · ai · settings · workspace
 │       └── services/
-│           ├── store.js    Persistencia (proyectos, docs, memoria, historial, carpetas reales)
-│           ├── groq.js     Integración con Groq + validación de respuestas
-│           ├── git.js      Envoltorio sobre el git del sistema
-│           ├── github.js   API de GitHub + push/pull autenticados
-│           ├── fsbrowse.js Navegación por el disco del equipo
-│           └── runner.js   Arranque y supervisión de servidores de desarrollo
-└── web/                    Frontend React + TypeScript + Vite + Monaco
+│           ├── store.js        Persistencia y claves (una por proveedor)
+│           ├── proveedores.js  Groq · OpenAI · Anthropic · OpenRouter · Ollama
+│           ├── ia.js           Reglas del asistente y validacion de respuestas
+│           ├── glosario.js     Vocabulario del proyecto: propuestas y aprobacion
+│           ├── quality.js      Pruebas, tipos y estilo del proyecto del usuario
+│           ├── terminal.js     Consola real (pseudoterminal, con plan B por tuberias)
+│           ├── git.js          Envoltorio sobre el git del sistema
+│           ├── github.js       API de GitHub + push/pull autenticados
+│           ├── search.js       Busqueda y reemplazo con vista previa
+│           ├── export.js       Exportacion de la documentacion aprobada
+│           ├── fsbrowse.js     Navegacion por el disco del equipo
+│           └── runner.js       Arranque y supervision de servidores de desarrollo
+└── web/                        Frontend React + TypeScript + Vite + Monaco
     └── src/
         ├── lib/
-        │   ├── analyzer.ts Detección de funciones por AST (@babel/parser)
-        │   ├── preview.ts  Vista previa HTML/CSS/JS en iframe aislado
-        │   ├── api.ts      Cliente HTTP
-        │   └── types.ts    Tipos compartidos
-        ├── state/useStore.ts   Estado de la aplicación (zustand)
-        └── components/     TopBar · ActivityRail · FileExplorer · EditorArea · WebView ·
-                            FunctionsPanel · ReviewPanel · AssistantPanel · GitPanel ·
-                            GitHubPanel · RunPanel · FolderPicker · BottomPanel ·
-                            DocCenter · SettingsDialog · Welcome
+        │   ├── analyzer/       index · js · html · css · markdown · treesitter
+        │   ├── projectMap.ts   Grafo de dependencias y deteccion de ciclos
+        │   ├── preview.ts      Vista previa HTML/CSS/JS en iframe aislado
+        │   ├── api.ts          Cliente HTTP
+        │   └── types.ts        Tipos compartidos
+        ├── state/useStore.ts   Estado de la aplicacion (zustand)
+        └── components/         TopBar · ActivityRail · FileExplorer · EditorArea ·
+                                SymbolsPanel · SearchPanel · ProjectMap · GlosarioPanel ·
+                                ChecksPanel · TerminalPanel · ReviewPanel · AssistantPanel ·
+                                GitPanel · GitHubPanel · RunPanel · WebView · FolderPicker ·
+                                BottomPanel · DocCenter · SettingsDialog · ProveedorIADialog ·
+                                CommandPalette · DialogHost · Welcome
 ```
 
 ### Por qué estas decisiones
 
 | Decisión | Motivo |
 |---|---|
-| Backend propio | La API key de Groq no puede estar en el frontend. Todas las llamadas pasan por el servidor. |
+| Backend propio | Una API key no puede estar en el frontend. Todas las llamadas a la IA pasan por el servidor. |
 | Persistencia en disco, no en el navegador | `localStorage` se pierde al limpiar datos del navegador y no soporta proyectos grandes. Los archivos se guardan como archivos reales. |
 | `@babel/parser` (AST) | Entiende JS, JSX, TS y TSX de verdad. Las expresiones regulares no distinguen un método de clase de un callback anónimo. |
+| tree-sitter para los demás lenguajes | Escribir catorce analizadores más no tiene sentido. tree-sitter es el motor que usan los editores de verdad, y su gramática compilada a WebAssembly corre **en tu equipo**: el código no sale de él para analizarse. |
+| Varios proveedores de IA | Atar la aplicación a un solo servicio es atar al usuario. Por dentro son dos protocolos, no cinco: el de OpenAI, que casi todos hablan, y el de Anthropic. |
+| Ollama como opción de primera | Para un programa cuyo único trabajo es leer tu código, poder hacerlo **sin que salga de tu equipo** no es un detalle. |
+| Pseudoterminal nativo | Sin él no hay prompt, ni eco, ni colores, ni un Ctrl+C de verdad. El módulo trae binarios N-API, estables entre versiones de Electron, así que no reintroduce el problema de compilar nativos. |
 | Monaco Editor | Es el editor de VS Code: resaltado, plegado, búsqueda y reemplazo, multicursor y marcadores de error sin construirlos desde cero. |
 | Zustand | Estado compartido entre paneles sin el peso de Redux. |
 | Sin base de datos | Un proyecto es una carpeta real, así que Git trabaja directamente sobre ella. |
@@ -177,13 +196,15 @@ codemind-ai/
 
 ## Cómo funciona la documentación
 
-1. Escribes una función.
-2. El analizador local la detecta (tu código **no** sale de tu máquina en este paso).
-3. Pulsas **Documentar función**.
-4. El backend envía a Groq la función y un contexto acotado: proyecto, objetivo, archivo,
-   funciones vecinas, imports, clases y la documentación previa si existía.
-5. Groq devuelve un JSON estructurado que el backend **valida**. Si falta algún campo, se rechaza y
-   se te informa; nunca se guarda una respuesta incompleta.
+1. Escribes código.
+2. El analizador local lo reconoce (tu código **no** sale de tu máquina en este paso, ni siquiera en
+   los lenguajes que usan tree-sitter: la gramática corre aquí).
+3. Pulsas **Documentar**.
+4. El backend envía al proveedor de IA que hayas elegido el elemento y un contexto acotado:
+   proyecto, objetivo, archivo, elementos vecinos, imports, clases, el glosario aprobado y la
+   documentación previa si existía.
+5. El modelo devuelve un JSON estructurado que el backend **valida**. Si falta algún campo, se
+   rechaza y se te informa; nunca se guarda una respuesta incompleta.
 6. La propuesta aparece en el panel **Revisión** con cuatro acciones: aprobar, editar, regenerar, descartar.
 7. Solo al aprobar pasa a ser documentación oficial, y la versión anterior se conserva en el historial.
 
@@ -206,11 +227,15 @@ consultar junto con el código al que correspondía.
 
 ## Seguridad de credenciales
 
-- La clave se lee del `.env` o, si la guardas desde la interfaz, de `server/data/secrets.json`.
+- Las claves se leen del `.env` o, si las guardas desde la interfaz, de `server/data/secrets.json`,
+  una por proveedor.
+- **Ninguna clave puede aparecer en un mensaje de error**, ni en el que devuelve el servicio ni en el
+  de un fallo de red: se borra de cualquier texto antes de que salga. Hay una prueba que lo vigila
+  (`tests/proveedores.mjs`), y fue esa prueba la que encontró una fuga real por la vía del fallo de red.
 - Nunca se devuelve por la API: `/api/settings` y `/api/health` solo informan de si existe y de dónde viene.
 - No se escribe en consola ni en mensajes de error.
 - `.env` y `server/data/` están excluidos en `.gitignore`.
-- El token de GitHub se guarda junto a la clave de Groq en `server/data/secrets.json`, se valida
+- El token de GitHub se guarda junto a las claves de IA en `server/data/secrets.json`, se valida
   contra GitHub antes de guardarse y nunca se devuelve por la API.
 - Git recibe el token por `GIT_ASKPASS`, no por la línea de comandos ni por la URL del remoto, que
   se configura limpia (`https://github.com/propietario/repo.git`). Cualquier salida de git se filtra
@@ -224,68 +249,151 @@ consultar junto con el código al que correspondía.
 
 ---
 
-## Alcance actual
+## Alcance de la versión 1.0.0
 
-Implementado y verificado (fases 1 a 6):
+Todo lo que sigue está implementado y **comprobado ejecutándolo**, no solo escrito.
 
 **Editor y proyectos**
-- Editor Monaco con pestañas, temas, atajos e indicadores de cambios sin guardar
+- Monaco con pestañas, temas, atajos e indicadores de cambios sin guardar
+- **Editor dividido**: dos mitades, cada una con sus pestañas y su archivo; la mitad enfocada es
+  donde se abre lo siguiente, y la división se guarda con la sesión
+- Emmet (`html:5`, `ul>li*3`, `div.clase`) y apariencia configurable: tipografía, tamaño,
+  interlineado, espaciado, ligaduras, números de línea, guías, corchetes de colores y minimapa
 - Explorador con crear, renombrar, eliminar y carpetas anidadas
 - Proyectos en el espacio gestionado **o sobre cualquier carpeta real de tu equipo**
-- Selector que navega por las unidades del disco y **crea carpetas nuevas** sin salir de la aplicación
-- Apariencia del editor configurable: tipografía, tamaño, interlineado, espaciado, ligaduras,
-  números de línea, guías de indentación, corchetes de colores, encabezado fijo y minimapa,
-  con una muestra que se actualiza mientras eliges
+- Selector que navega por las unidades del disco y crea carpetas sin salir de la aplicación
+- Diálogos propios, porque Electron no implementa `window.prompt`
+
+**Comprensión del código**
+- Análisis por AST (`@babel/parser`) de `.js .jsx .ts .tsx .mjs .cjs`, del `<script>` y el `<style>`
+  **dentro del HTML**, de las reglas CSS y de los encabezados Markdown
+- **Catorce lenguajes más con tree-sitter**: Python, Java, C#, Go, PHP, Ruby, Rust, C, C++, Bash,
+  Lua, Kotlin, Swift y Dart — clases, funciones, métodos, constructores, propiedades, interfaces,
+  enumeraciones y constantes, con su línea real. La gramática corre en tu equipo
+- No solo funciones: secciones, formularios, tablas, listas, elementos con `id`, componentes
+  personalizados, manejadores en línea, reglas CSS, medias queries, animaciones y variables CSS
+- **Mapa del proyecto**: grafo de dependencias construido solo con hechos comprobables — los
+  `import`, los `<script src>`, los `<link rel=stylesheet>` y los `@import` — con detección de
+  ciclos, archivos de los que más depende el proyecto y archivos que nadie importa
+- Detección de **código sin usar**, presentada como sospecha razonada y nunca como orden de borrar
+- Explicar **cualquier selección** de código, no solo las funciones detectadas
+
+**Documentación**
+- Propuestas de documentación con aprobación manual obligatoria
+- Centro de documentación: descripción general, arquitectura, **glosario**, documentación de
+  elementos, decisiones, progreso e historial
+- **Glosario del proyecto**: las palabras propias del dominio con su significado y con los archivos
+  donde aparecen, que se pueden abrir. La IA propone; ninguna entra sin que tú la apruebes. El
+  asistente usa después el glosario aprobado como vocabulario dado por bueno
+- Memoria contextual por proyecto y asistente en cuatro modos
+- Nivel de las explicaciones: principiante, intermedio o avanzado
+- Exportación a Markdown o a una página HTML lista para imprimir
+- Comparación de una versión antigua de la documentación con la actual, lado a lado
+
+**Servicios de IA**
+- **Groq, OpenAI, Anthropic, OpenRouter y Ollama.** Cada uno guarda su propia clave y su propio
+  modelo: cambiar de uno a otro y volver no pierde nada
+- **Ollama en tu propio equipo**: el código no sale de él y la aplicación funciona sin conexión
+- *Probar conexión* llama de verdad al servicio; los errores dicen de dónde salió la clave, qué
+  modelo falta y cómo descargarlo
 
 **Búsqueda y navegación**
 - Búsqueda y reemplazo en todo el proyecto, con expresiones regulares, filtros por tipo de archivo
   y **vista previa obligatoria antes de tocar nada**
-- Paleta de comandos (`Ctrl+Shift+P`): abre archivos escribiendo parte de su nombre y ejecuta
-  cualquier acción sin buscarla por los menús
-
-**Comprensión y documentación**
-- Detección de funciones por AST en `.js .jsx .ts .tsx .mjs .cjs` y el `<script>` de `.vue` y `.svelte`
-- Panel *Funciones del proyecto* con estado, archivo, línea y navegación al código
-- Documentación asistida por Groq con aprobación manual obligatoria
-- Centro de documentación: descripción general, arquitectura, funciones, decisiones, progreso, historial
-- Memoria contextual por proyecto y asistente en cuatro modos, con varios archivos como contexto
-- Detección de **código sin usar**, presentada como sospecha razonada y nunca como orden de borrar
-- Nivel de las explicaciones: principiante, intermedio o avanzado
-- Exportación de la documentación aprobada a Markdown o a una página HTML lista para imprimir
-- Comparación de una versión antigua de la documentación con la actual, lado a lado
+- Paleta de comandos (`Ctrl+Shift+P`)
 
 **Control de versiones**
 - Git real sobre el ejecutable del sistema: estado, comparaciones, preparar, confirmar, historial y ramas
-- Cada cambio se etiqueta como **código**, **documentación**, **configuración** u **otro**
+- Cada cambio etiquetado como **código**, **documentación**, **configuración** u **otro**
 - Cambiar de rama con cambios sin confirmar se bloquea y se explica: nunca se descarta tu trabajo
-- GitHub con token personal: repositorios, vinculación, subida y descarga controladas
-- Antes de subir se muestra siempre qué commits y qué archivos viajan, a qué rama y con qué avisos
+- GitHub con token personal: repositorios, vinculación, subida y descarga controladas, mostrando
+  siempre qué commits y qué archivos viajan antes de subir
 
-**Ejecución**
+**Ejecución y comprobación**
+- **Terminal de verdad** en la carpeta del proyecto: prompt, eco, colores y Ctrl+C reales
+- **Comprobaciones del proyecto**: ejecuta tus scripts de pruebas, tipos y estilo, y convierte su
+  salida en avisos con archivo y línea en los que se puede pulsar. Lee `tsc`, ESLint, vitest, jest,
+  TAP y el corredor propio de Node
 - Vista previa de HTML/CSS/JS con consola y errores reales
-- Arranque del servidor de desarrollo del propio proyecto (Vite, Next, Angular, Vue, Svelte...)
-  con registro en vivo y detección automática de la URL
-- Navegador integrado para ver esa página dentro del editor, con sondeo previo que avisa cuando
-  un sitio prohíbe mostrarse incrustado
+- Arranque del servidor de desarrollo del propio proyecto, con registro en vivo y detección de la URL
+- Navegador integrado, con sondeo previo que avisa cuando un sitio prohíbe mostrarse incrustado
 
 ### Organización de la interfaz
 
-Una barra de actividad a la izquierda con cinco vistas excluyentes (Explorador, Funciones, Git,
-GitHub, Ejecutar), el editor y el navegador integrado en el centro compartiendo pestañas, el panel
-inferior con seis registros (Consola, Errores, Vista previa, Procesos, Registro de Git,
-Documentación) y el panel del asistente a la derecha, **que se puede ocultar** desde su aspa o desde
-la barra superior y recuperar con el asa del borde.
+Una barra de actividad a la izquierda con seis vistas excluyentes (Explorador, Buscar, Elementos,
+Git, GitHub, Ejecutar), el editor —que puede partirse en dos— y el navegador integrado en el centro,
+el panel inferior con ocho pestañas (Consola, Errores, Comprobaciones, Terminal, Vista previa,
+Procesos, Registro de Git, Documentación) y el panel del asistente a la derecha, que se puede
+ocultar y recuperar con el asa del borde.
 
-### Límites reconocidos
+---
 
+## Límites reconocidos
+
+Lo que esta versión **no** hace, dicho sin adornos.
+
+- **El terminal es real y no tiene lista blanca.** Es lo que pide un terminal: si solo dejara
+  escribir ciertos comandos, no sería uno. Ejecuta lo que escribas, con tus permisos. El backend
+  escucha solo en `127.0.0.1` y cada sesión vive en la carpeta del proyecto, pero conviene saberlo.
+  El panel *Ejecutar* sigue teniendo lista blanca: ahí solo corren los scripts de tu `package.json`.
+- **Ollama no se ha probado contra una instalación real de Ollama.** Se ha probado nuestro lado del
+  protocolo contra un servidor que habla su mismo dialecto, por un socket real, y también el camino
+  de error cuando no está. Si falla con Ollama de verdad, es un fallo que queda por descubrir.
+- **El instalador no está firmado digitalmente.** Windows mostrará SmartScreen la primera vez.
+  Firmarlo exige un certificado de pago.
 - **GitHub usa un token personal, no OAuth.** OAuth exigiría registrar y alojar una aplicación; el
-  token lo emite y revoca el propio usuario y es lo que permite una arquitectura local.
-- **No hay terminal libre.** Solo se ejecutan scripts declarados en el `package.json` del proyecto
-  y la instalación de dependencias. Es una lista blanca deliberada: una terminal libre expuesta por
-  HTTP sería un agujero de seguridad.
+  token lo emite y revoca el propio usuario, y es lo que permite una arquitectura local.
 - **Traer cambios solo avanza (fast-forward).** Si el historial ha divergido, la aplicación se
   detiene y lo dice; no fusiona ni rebasea por su cuenta.
+- **El mapa solo dibuja lo que está escrito.** Una dependencia cargada dinámicamente o por nombre no
+  aparece, y se avisa de ello en el propio mapa.
+- **Las sospechas de código sin usar son sospechas.** Se busca el nombre por el proyecto sin analizar
+  ámbitos. Nunca se propone borrar nada.
+- Con la ventana en segundo plano, xterm puede dejar un error suelto en la consola del navegador al
+  recalcular su área de desplazamiento. Es interno de la librería, no rompe nada y el terminal sigue
+  funcionando al volver.
 - El análisis recorre como máximo 250 archivos por proyecto y el árbol 6000 entradas; ambos avisan.
 - Los archivos de más de 2 MB y los binarios no se abren en el editor.
 - No hay autenticación: el backend escucha solo en `127.0.0.1` porque puede leer tu disco y ejecutar
-  los scripts de tus proyectos.
+  procesos.
+- **No se puede alojar en un servidor.** No es una limitación pendiente de resolver, es lo que es:
+  esta aplicación navega por tu disco, ejecuta tus procesos y abre tu terminal. Su forma correcta de
+  distribución es una aplicación de escritorio.
+
+---
+
+## Pruebas
+
+Siete pruebas, todas ejecutables y todas contra cosas reales. Están documentadas una por una en
+[`tests/README.md`](tests/README.md).
+
+```bash
+node tests/analizador.mjs      # los analizadores de JS, HTML, CSS y Markdown
+node tests/lenguajes.mjs       # Python, Java, C#, Go, Rust, PHP, Ruby y Bash con tree-sitter
+node tests/mapa.mjs            # grafo de dependencias, ciclos y disposición reproducible
+node tests/comprobaciones.mjs  # lectura de las salidas de tsc, ESLint, vitest, jest y node --test
+node tests/terminal.mjs        # una consola de verdad: comandos, interrupción y cierre
+node tests/proveedores.mjs     # los dos protocolos, Ollama y que ninguna clave se filtre
+node tests/busqueda.mjs        # que la vista previa del reemplazo no escriba nada
+```
+
+Y la que hay que ejecutar **antes de publicar**, porque comprueba el programa que va a recibir el
+usuario y no el que tenemos en el repositorio:
+
+```bash
+npm run desktop:build
+node tests/escritorio.mjs --paquete
+```
+
+Ahi es donde aparecen los fallos de empaquetado, que no se ven de ninguna otra manera: que falte un
+archivo por el limite de rutas de Windows, que el terminal nativo no cargue, o que las gramaticas de
+tree-sitter no lleguen al navegador.
+
+Las de lenguajes necesitan las gramáticas: `npm run gramaticas` (lo hacen solos `npm run dev` y
+`npm run build`).
+
+---
+
+## Licencia
+
+MIT. Ver [LICENSE](LICENSE).

@@ -1,7 +1,7 @@
 {
   "name": "codemind-desktop",
   "private": true,
-  "version": "0.2.0",
+  "version": "1.0.0",
   "description": "Aplicacion de escritorio de CodeMind AI",
   "main": "main.cjs",
   "license": "MIT",

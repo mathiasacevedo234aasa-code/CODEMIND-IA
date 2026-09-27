@@ -10,7 +10,17 @@ const ok = (n, m = '') => console.log(`  OK  ${n}${m ? ' — ' + m : ''}`);
 
 const { projects } = await j('/projects');
 if (!projects.length) throw new Error('No hay ningun proyecto con el que probar.');
-const id = projects[0].id;
+
+// No vale el primero a ciegas: un proyecto puede apuntar a una carpeta que ya
+// no existe (movida, renombrada, unidad desconectada), y entonces esta prueba
+// fallaria por algo que no tiene nada que ver con la busqueda. Se busca uno
+// que responda de verdad.
+let id = null;
+for (const candidato of projects) {
+  const res = await fetch(`${B}/projects/${candidato.id}/tree`);
+  if (res.ok) { id = candidato.id; break; }
+}
+if (!id) throw new Error('Ningun proyecto tiene su carpeta disponible ahora mismo.');
 
 const res = await j(`/projects/${id}/search`, { method: 'POST', body: JSON.stringify({ query: 'function' }) });
 ok('Busqueda simple', `${res.totalMatches} coincidencia(s) en ${res.totalFiles} archivo(s)`);

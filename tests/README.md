@@ -53,11 +53,20 @@ npm run build          # el frontend compilado es lo que carga la ventana
 node tests/escritorio.mjs
 ```
 
-Verifica que el backend arranca dentro de Electron con un puerto libre, que la ventana carga la
-aplicación, que el paquete del frontend se sirve, y que el explorador de disco responde.
+Comprueba que el backend arranca dentro de Electron con un puerto libre, que la ventana carga la
+aplicación, que se sirve el paquete del frontend, que el explorador de disco responde, **que el
+terminal nativo carga** y **que las gramáticas de tree-sitter llegan al navegador**.
 
-Para comprobar el **paquete ya construido** en lugar del código, cambia la constante `electron` del
-archivo por `release/win-unpacked/CodeMind AI.exe` y quita el argumento de la carpeta `desktop`.
+Con `--paquete` examina el ejecutable ya construido en `release/win-unpacked/` en lugar del código
+del repositorio. **Esa es la forma que hay que ejecutar antes de publicar**: comprueba el programa
+que va a recibir el usuario, y ahí es donde aparecen los fallos de empaquetado, que no se ven de
+ninguna otra manera —que falte un archivo por el límite de rutas de Windows, que un módulo nativo no
+cargue, o que un binario copiado aparte se haya quedado fuera—.
+
+```bash
+npm run desktop:build
+node tests/escritorio.mjs --paquete
+```
 
 ---
 
