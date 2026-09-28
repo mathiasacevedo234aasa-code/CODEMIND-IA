@@ -47,6 +47,8 @@ const TEMA_CLARO = {
 export function TerminalPanel({ visible }: { visible: boolean }) {
   const project = useStore((s) => s.project);
   const temaOscuro = useStore((s) => s.settings.editor.theme === 'dark');
+  const terminalSesionId = useStore((s) => s.terminalSesionId);
+  const setTerminalSesion = useStore((s) => s.setTerminalSesion);
 
   const contenedor = useRef<HTMLDivElement | null>(null);
   const term = useRef<Terminal | null>(null);
@@ -85,24 +87,37 @@ export function TerminalPanel({ visible }: { visible: boolean }) {
   }, []);
 
   /**
-   * Al volver a esta pestaña, la consola sigue viva en el backend aunque este
-   * panel se haya desmontado. Se retoma la que quedo abierta en lugar de pedir
-   * al usuario que abra otra y dejar la anterior olvidada.
+   * A que consola se engancha el panel.
+   *
+   * La que diga el estado compartido, si sigue viva; si no, cualquiera que
+   * quede abierta de antes. Esto importa porque el boton de ejecutar un
+   * archivo abre una consola en el backend y deja aqui su id: sin mirarlo, el
+   * panel seguiria enseñando "Abrir la consola" mientras el programa corria
+   * sin que se viera nada, que es exactamente lo que pasaba.
    */
   useEffect(() => {
     if (!project) return;
+    if (sesion && sesion.id === terminalSesionId) return;
     let vigente = true;
+
     api.terminalListar(project.id)
       .then(({ sesiones }) => {
-        const viva = sesiones.find((s) => s.estado === 'viva');
-        if (!vigente || !viva) return;
+        if (!vigente) return;
+        const pedida = terminalSesionId && sesiones.find((s) => s.id === terminalSesionId && s.estado === 'viva');
+        const elegida = pedida || sesiones.find((s) => s.estado === 'viva');
+        if (!elegida) return;
+        // Desde cero: asi se pinta tambien lo que salio antes de mirar, como
+        // el comando que acaba de lanzarse.
         seq.current = 0;
-        sesionRef.current = viva.id;
-        setSesion(viva);
+        term.current?.clear();
+        sesionRef.current = elegida.id;
+        setSesion(elegida);
+        if (elegida.id !== terminalSesionId) setTerminalSesion(elegida.id);
       })
       .catch(() => {});
+
     return () => { vigente = false; };
-  }, [project]);
+  }, [project, terminalSesionId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // --- creación del terminal visual, la primera vez que la pestaña se ve
   //
@@ -234,6 +249,7 @@ export function TerminalPanel({ visible }: { visible: boolean }) {
       term.current.clear();
       sesionRef.current = nueva.id;
       setSesion(nueva);
+      setTerminalSesion(nueva.id);
       term.current.focus();
     } catch (e) {
       setError((e as Error).message);
@@ -247,6 +263,7 @@ export function TerminalPanel({ visible }: { visible: boolean }) {
     await api.terminalCerrar(project.id, sesion.id).catch(() => {});
     sesionRef.current = null;
     setSesion(null);
+    setTerminalSesion(null);
     term.current?.clear();
   };
 

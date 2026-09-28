@@ -1,4 +1,4 @@
-# CodeMind AI 1.1.0
+# CodeMind AI 1.1.1
 
 Entorno de desarrollo con documentación asistida por IA.
 

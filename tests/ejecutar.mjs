@@ -102,6 +102,65 @@ const salida = await new Promise((resolve) => {
 console.log('  ' + salida.trim().split('\n').slice(-2).join(' | '));
 comprobar(salida.includes('resultado: 42'), `el comando generado no funciona: ${planJs.comando} -> ${salida.slice(0, 200)}`);
 
+/**
+ * El contrato del que depende la interfaz.
+ *
+ * Ejecutar un archivo abre una consola en el backend, y la respuesta tiene que
+ * decir CUAL, para que el panel del Terminal se enganche a esa. Este fue un
+ * fallo real: el archivo se ejecutaba de verdad, pero el panel seguia
+ * enseñando "Abrir la consola" y parecia que no pasaba nada.
+ *
+ * Necesita el backend en marcha, porque es una prueba de la ruta HTTP.
+ */
+console.log(String.fromCharCode(10) + '=== La respuesta dice en que consola se ejecuto');
+const API = 'http://localhost:5174/api';
+const backendVivo = await fetch(`${API}/health`, { signal: AbortSignal.timeout(2000) })
+  .then((r) => r.ok).catch(() => false);
+
+if (!backendVivo) {
+  console.log('  Sin backend en marcha: esta parte no se comprueba. Arranca "npm run dev" para incluirla.');
+  fallos.push('el backend no estaba en marcha: la comprobacion de la ruta HTTP no se ejecuto');
+} else {
+  const pedir = async (ruta, init) => {
+    const r = await fetch(API + ruta, { ...init, headers: { 'Content-Type': 'application/json' } });
+    const t = await r.text();
+    const d = t ? JSON.parse(t) : {};
+    if (!r.ok) throw new Error(`${ruta} -> ${r.status} ${JSON.stringify(d).slice(0, 160)}`);
+    return d;
+  };
+
+  const carpeta = await fs.mkdtemp(path.join(os.tmpdir(), 'codemind-ejec-http-'));
+  await fs.writeFile(path.join(carpeta, 'marca.js'), 'console.log(\"MARCA-DE-LA-PRUEBA\");' + String.fromCharCode(10));
+  const creado = await pedir('/projects', {
+    method: 'POST',
+    body: JSON.stringify({ name: `Ejecutar ${Date.now()}`, objective: 'prueba', root: carpeta }),
+  });
+  const pid = creado.project.id;
+
+  try {
+    const res = await pedir(`/projects/${pid}/ejecutar/archivo`, {
+      method: 'POST',
+      body: JSON.stringify({ path: 'marca.js' }),
+    });
+    comprobar(Boolean(res.sesion?.id), 'la respuesta no dice en que consola se ejecuto');
+
+    // Y esa consola, justamente esa, tiene que acabar teniendo la salida.
+    let visto = '';
+    const limite = Date.now() + 25000;
+    while (Date.now() < limite && !visto.includes('MARCA-DE-LA-PRUEBA')) {
+      const lectura = await pedir(`/projects/${pid}/terminal/${res.sesion.id}?desde=0`);
+      visto = lectura.trozos.map((t) => t.texto).join('');
+      if (!visto.includes('MARCA-DE-LA-PRUEBA')) await new Promise((r) => setTimeout(r, 400));
+    }
+    console.log('  la consola devuelta contiene la salida: ' + (visto.includes('MARCA-DE-LA-PRUEBA') ? 'si' : 'NO'));
+    comprobar(visto.includes('MARCA-DE-LA-PRUEBA'),
+      'la consola que devuelve la respuesta no es donde se ejecuto: el panel se engancharia a la equivocada');
+  } finally {
+    await pedir(`/projects/${pid}`, { method: 'DELETE' }).catch(() => {});
+    await fs.rm(carpeta, { recursive: true, force: true }).catch(() => {});
+  }
+}
+
 await fs.rm(temporal, { recursive: true, force: true });
 
 console.log('\n=== Comprobaciones');

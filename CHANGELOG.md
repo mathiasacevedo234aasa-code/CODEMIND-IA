@@ -4,6 +4,26 @@ Todo lo que aparece aquí está comprobado ejecutándolo, no solo escrito.
 
 ---
 
+## 1.1.1
+
+### El boton de ejecutar parecia no hacer nada
+
+Se ejecutaba de verdad —Python corria y daba su salida— pero el panel del
+Terminal no se enganchaba a la consola que acababa de abrirse: seguia
+enseñando "Abrir la consola", vacio. Desde fuera era indistinguible de que no
+funcionara.
+
+La causa: el panel buscaba una consola viva solo al abrir el proyecto, y la
+que crea el boton de ejecutar aparecia despues. Ahora cual es la consola
+actual es estado compartido, asi que el boton deja dicho a cual engancharse y
+el panel la muestra.
+
+Es culpa mia de dos maneras. La primera, el fallo. La segunda, que al
+comprobarlo mire la salida en el backend en lugar de mirar la pantalla, y di
+por bueno algo que el usuario no podia ver.
+
+---
+
 ## 1.1.0
 
 ### Ejecutar un archivo, en el lenguaje que sea

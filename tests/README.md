@@ -144,4 +144,11 @@ puede partir el comando en dos, y que no se puede apuntar fuera del proyecto (`.
 absolutas). Esa última comprobación encontró un caso real: una ruta absoluta se reinterpretaba en
 silencio como relativa.
 
-Al final ejecuta de verdad el comando que genera para un `.js` y comprueba su salida.
+Al final ejecuta de verdad el comando que genera para un `.js` y comprueba su salida, y —con el
+backend en marcha— que **la respuesta dice en qué consola se ejecutó**. Eso último es el contrato
+del que depende la interfaz: el panel del Terminal se engancha a esa consola. Cuando no se cumplía,
+el archivo se ejecutaba de verdad pero el usuario veía un terminal vacío y parecía que no pasaba
+nada.
+
+Esa última parte necesita `npm run dev`; si el backend no responde, la prueba **falla** en lugar de
+darla por buena.

@@ -48,6 +48,7 @@ export function useEjecutarArchivo() {
   const saveFile = useStore((s) => s.saveFile);
   const setError = useStore((s) => s.setError);
   const log = useStore((s) => s.log);
+  const setTerminalSesion = useStore((s) => s.setTerminalSesion);
   const [lanzando, setLanzando] = useState(false);
 
   const ejecutar = async (ruta: string) => {
@@ -58,6 +59,9 @@ export function useEjecutarArchivo() {
       // delante sería desconcertante.
       await saveFile(ruta);
       const res = await api.ejecutarArchivo(project.id, ruta);
+      // Se le dice al panel a que consola engancharse: es la que acaba de
+      // recibir el comando, y sin esto el usuario veria un terminal vacio.
+      setTerminalSesion(res.sesion.id);
       setBottomTab('terminal');
       log('procesos', 'info', `Ejecutando ${res.plan.nombre ?? ruta}: ${res.plan.comando}`);
     } catch (err) {

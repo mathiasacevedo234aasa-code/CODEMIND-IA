@@ -47,6 +47,15 @@ interface State {
 
   /** Pestanas del area central: archivos del proyecto y paginas web. */
   tabs: CenterTab[];
+  /**
+   * La consola del Terminal que se esta viendo.
+   *
+   * Tiene que ser estado compartido y no privado del panel: cuando se ejecuta
+   * un archivo, el backend abre una consola y el panel tiene que engancharse
+   * a ESA. Sin esto, el archivo se ejecutaba de verdad pero el usuario veia un
+   * terminal vacio y "Abrir la consola", asi que parecia que no pasaba nada.
+   */
+  terminalSesionId: string | null;
   /** Mitad del editor en la que se abre lo siguiente y donde esta el foco. */
   panelActivo: PanelEditor;
   /** Ultima pestana usada en cada mitad, para que cada una recuerde la suya. */
@@ -118,6 +127,7 @@ interface Actions {
   moverTabAPanel: (id: string, panel: PanelEditor) => void;
   unirEditor: () => void;
   setPanelActivo: (panel: PanelEditor) => void;
+  setTerminalSesion: (id: string | null) => void;
   setActiveTab: (id: string) => void;
   updateWebTab: (id: string, url: string) => void;
   editFile: (path: string, content: string) => void;
@@ -217,6 +227,7 @@ export const useStore = create<State & Actions>((set, get) => ({
   treeTruncated: false,
   loadingProject: false,
   tabs: [],
+  terminalSesionId: null,
   panelActivo: 'a',
   ultimoPorPanel: { a: null, b: null },
   activeTabId: null,
@@ -582,6 +593,8 @@ export const useStore = create<State & Actions>((set, get) => ({
    * todo al recuperar una sesion, donde la pestana activa y la ultima abierta
    * casi nunca coinciden.
    */
+  setTerminalSesion: (id) => set({ terminalSesionId: id }),
+
   setPanelActivo: (panel) =>
     set((s) => {
       const actual = s.tabs.find((t) => t.id === s.activeTabId);
