@@ -1,8 +1,13 @@
+import { useState } from 'react';
 import { useStore } from '../state/useStore';
+import { api } from '../lib/api';
 import { Icon } from './Icon';
 
 export function TopBar() {
+  const [abriendoPreview, setAbriendoPreview] = useState(false);
   const project = useStore((s) => s.project);
+  const openWebTab = useStore((s) => s.openWebTab);
+  const log = useStore((s) => s.log);
   const files = useStore((s) => s.files);
   const saving = useStore((s) => s.saving);
   const saveAll = useStore((s) => s.saveAll);
@@ -23,6 +28,29 @@ export function TopBar() {
 
   const dirty = Object.values(files).filter((f) => f.content !== f.saved);
   const theme = settings.editor.theme;
+
+  /**
+   * Abrir la vista previa es levantar el servidor del proyecto y enseñarlo.
+   *
+   * Si por lo que sea no se puede levantar (una carpeta sin permisos, un
+   * sistema de archivos raro), se cae a la vista previa simple del panel de
+   * abajo en lugar de quedarse sin nada, y se dice lo que ha pasado.
+   */
+  const abrirVistaPrevia = async () => {
+    if (!project) return;
+    setAbriendoPreview(true);
+    try {
+      const res = await api.previewArrancar(project.id);
+      openWebTab(res.entrada ? `${res.url}/${res.entrada}` : res.url, `Vista previa · ${project.name}`);
+      log('procesos', 'info', `Vista previa en ${res.url}. Se recarga sola al guardar.`);
+    } catch (err) {
+      log('procesos', 'warn', `No se pudo levantar el servidor de vista previa: ${(err as Error).message}. Se usa la vista previa simple.`);
+      setBottomTab('preview');
+      refreshPreview();
+    } finally {
+      setAbriendoPreview(false);
+    }
+  };
 
   return (
     <header className="topbar">
@@ -54,10 +82,11 @@ export function TopBar() {
 
           <button
             className="btn"
-            onClick={() => { setBottomTab('preview'); refreshPreview(); }}
-            title="Vista previa de HTML, CSS y JavaScript"
+            disabled={abriendoPreview}
+            onClick={() => void abrirVistaPrevia()}
+            title="Levanta un servidor de verdad sobre tu proyecto y lo abre aquí. Se recarga solo al guardar."
           >
-            <Icon name="play" />
+            {abriendoPreview ? <span className="spinner" /> : <Icon name="play" />}
             Vista previa
           </button>
 

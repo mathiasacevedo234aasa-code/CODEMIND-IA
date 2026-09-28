@@ -1,0 +1,262 @@
+/*
+ * Capa visual de la versión 1.2.
+ *
+ * Va aparte y encima de app.css a propósito: el sistema de tokens y la
+ * estructura no cambian, así que si algo de aquí molesta se quita este archivo
+ * y la aplicación sigue funcionando exactamente igual. Lo que cambia es el
+ * acabado —profundidad, ritmo, movimiento y los estados vacíos— que es lo que
+ * hace que un programa se sienta terminado o a medias.
+ */
+
+:root {
+  /* Escala de sombras, en vez de una sola sombra para todo. */
+  --sombra-1: 0 1px 2px rgba(0, 0, 0, 0.28);
+  --sombra-2: 0 4px 14px rgba(0, 0, 0, 0.30);
+  --sombra-3: 0 18px 48px rgba(0, 0, 0, 0.48);
+  --anillo: 0 0 0 3px var(--accent-soft);
+  --curva: cubic-bezier(0.22, 0.61, 0.36, 1);
+  --rapido: 0.14s var(--curva);
+  --medio: 0.24s var(--curva);
+  /* Un degradado sutil para las superficies elevadas. */
+  --superficie: linear-gradient(180deg,
+    color-mix(in srgb, var(--bg-elev) 100%, #fff 3%),
+    var(--bg-elev));
+}
+
+:root[data-theme='light'] {
+  --sombra-1: 0 1px 2px rgba(20, 30, 50, 0.07);
+  --sombra-2: 0 4px 14px rgba(20, 30, 50, 0.09);
+  --sombra-3: 0 18px 48px rgba(20, 30, 50, 0.16);
+  --superficie: linear-gradient(180deg, #fff, color-mix(in srgb, var(--bg-elev) 100%, var(--bg) 35%));
+}
+
+/* Quien prefiera menos movimiento, que no lo tenga. */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.001ms !important;
+    transition-duration: 0.001ms !important;
+  }
+}
+
+/* ------------------------------------------------------------- foco */
+
+/* Un foco visible de verdad, igual en todas partes. Antes cada control
+   heredaba el del navegador y no se veía en el tema oscuro. */
+:focus-visible {
+  outline: none;
+  box-shadow: var(--anillo);
+  border-radius: 6px;
+}
+
+/* --------------------------------------------------------- botones */
+
+.btn {
+  transition: background var(--rapido), color var(--rapido),
+              border-color var(--rapido), box-shadow var(--rapido), transform var(--rapido);
+  font-weight: 500;
+}
+.btn:active:not(:disabled) { transform: translateY(0.5px); }
+
+.btn.primary, .btn.ok {
+  box-shadow: var(--sombra-1);
+  /* Un degradado leve da volumen sin convertirse en un botón de los 2000. */
+  background-image: linear-gradient(180deg, rgba(255, 255, 255, 0.14), rgba(255, 255, 255, 0));
+}
+.btn.primary:hover:not(:disabled), .btn.ok:hover:not(:disabled) {
+  box-shadow: var(--sombra-2);
+  transform: translateY(-0.5px);
+}
+.btn.outline:hover:not(:disabled) { border-color: var(--accent); color: var(--text); }
+
+/* ---------------------------------------------------- superficies */
+
+.card {
+  background: var(--superficie);
+  box-shadow: var(--sombra-1);
+  transition: box-shadow var(--medio), border-color var(--medio);
+}
+.card:hover { box-shadow: var(--sombra-2); }
+.card h4 {
+  font-size: 12.5px;
+  letter-spacing: 0.01em;
+  color: var(--text);
+}
+
+.modal {
+  box-shadow: var(--sombra-3);
+  animation: entrar-modal 0.2s var(--curva);
+}
+@keyframes entrar-modal {
+  from { opacity: 0; transform: translateY(8px) scale(0.99); }
+  to { opacity: 1; transform: none; }
+}
+.overlay { animation: aparecer 0.16s var(--curva); backdrop-filter: blur(2px); }
+@keyframes aparecer { from { opacity: 0; } to { opacity: 1; } }
+
+/* ------------------------------------------------------ etiquetas */
+
+.tag {
+  border-radius: 999px;
+  padding: 1px 8px;
+  font-size: 10.5px;
+  font-weight: 550;
+  letter-spacing: 0.02em;
+  border: 1px solid transparent;
+}
+.tag.ok { background: color-mix(in srgb, var(--ok) 16%, transparent); color: var(--ok); border-color: color-mix(in srgb, var(--ok) 28%, transparent); }
+.tag.warn { background: color-mix(in srgb, var(--warn) 16%, transparent); color: var(--warn); border-color: color-mix(in srgb, var(--warn) 28%, transparent); }
+.tag.info { background: var(--accent-soft); color: var(--accent); border-color: color-mix(in srgb, var(--accent) 26%, transparent); }
+.tag.muted { background: var(--bg-hover); color: var(--text-faint); border-color: var(--border); }
+
+.status-dot { box-shadow: 0 0 0 3px color-mix(in srgb, currentColor 18%, transparent); }
+/* Lo que está vivo, late. Es la señal más rápida de "esto está funcionando". */
+.status-dot.ok { animation: latir 2.4s ease-in-out infinite; }
+@keyframes latir {
+  0%, 100% { box-shadow: 0 0 0 3px color-mix(in srgb, var(--ok) 16%, transparent); }
+  50% { box-shadow: 0 0 0 5px color-mix(in srgb, var(--ok) 8%, transparent); }
+}
+
+/* -------------------------------------------------- barra lateral */
+
+.rail-btn {
+  border-radius: 8px;
+  transition: background var(--rapido), color var(--rapido), box-shadow var(--rapido);
+  position: relative;
+}
+.rail-btn.active {
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+/* La marca de la vista activa, a la izquierda, como en los editores. */
+.rail-btn.active::before {
+  content: '';
+  position: absolute;
+  left: -8px; top: 50%;
+  width: 3px; height: 18px;
+  margin-top: -9px;
+  border-radius: 0 3px 3px 0;
+  background: var(--accent);
+}
+
+.rail-badge {
+  box-shadow: 0 0 0 2px var(--bg);
+  font-weight: 650;
+}
+
+/* ------------------------------------------------------- pestañas */
+
+.tab {
+  transition: background var(--rapido), color var(--rapido), box-shadow var(--rapido);
+  border-right-color: transparent;
+}
+.tab:not(.active):hover { background: var(--bg-hover); }
+.tab.active { background: var(--bg); }
+
+.bottom-tab {
+  border-radius: 6px 6px 0 0;
+  transition: background var(--rapido), color var(--rapido);
+}
+
+.tab-btn { transition: background var(--rapido), color var(--rapido); border-radius: 6px; }
+
+/* ------------------------------------------ listas de elementos */
+
+.fn-item {
+  border-left: 2px solid transparent;
+  transition: background var(--rapido), border-color var(--rapido);
+}
+.fn-item:hover { background: var(--bg-hover); }
+.fn-item.selected {
+  background: var(--accent-soft);
+  border-left-color: var(--accent);
+}
+/* Las acciones NO se esconden hasta pasar el ratón.
+   Lo probé y quedaba más limpio, pero esta aplicación tuvo justo el problema
+   contrario: la documentación estaba y no se encontraba. Un botón que solo
+   aparece si aciertas a pasar por encima es un botón que la mitad de la gente
+   no descubre. Se quedan a la vista, y se distinguen por peso, no por
+   aparecer y desaparecer. */
+.fn-item .fn-actions { opacity: 1; }
+
+.mapa-fila { border-radius: 6px; transition: background var(--rapido); padding: 4px 6px; }
+.mapa-fila:hover { background: var(--bg-hover); }
+
+/* ------------------------------------------------- estados vacíos */
+
+.empty h3 { font-size: 14px; letter-spacing: -0.01em; }
+.empty > svg {
+  opacity: 0.35;
+  padding: 14px;
+  border-radius: 50%;
+  background: var(--bg-hover);
+  box-sizing: content-box;
+}
+
+/* ------------------------------------------------- documentación */
+
+.doc-section h4 {
+  font-size: 10.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: var(--text-faint);
+  font-weight: 650;
+}
+.doc-section { padding-bottom: 12px; margin-bottom: 12px; border-bottom: 1px solid var(--border); }
+.doc-section:last-child { border-bottom: none; }
+.doc-section p, .doc-section li { line-height: 1.68; }
+
+.doc-lectura-cabecera {
+  position: sticky; top: 0; z-index: 2;
+  background: var(--bg-panel);
+  padding-top: 2px;
+}
+
+/* ------------------------------------------------------- consola */
+
+.log-line { border-radius: 4px; padding: 2px 4px; }
+.log-line:hover { background: var(--bg-hover); }
+.log-line.error { color: var(--danger); }
+.log-line.warn { color: var(--warn); }
+
+.log-raw {
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.18);
+  background: var(--bg);
+}
+
+/* --------------------------------------------- vista previa viva */
+
+.tarjeta-preview .preview-url {
+  display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+  margin-top: 8px; padding: 7px 10px;
+  border-radius: 6px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+}
+.tarjeta-preview .preview-url code {
+  font-family: var(--mono);
+  color: var(--accent);
+  font-size: 12.5px;
+}
+
+/* ------------------------------------------------------ entradas */
+
+input[type='text']:focus, input[type='number']:focus, input[type='password']:focus,
+select:focus, textarea:focus {
+  border-color: var(--accent);
+  box-shadow: var(--anillo);
+}
+
+.mode-chip {
+  border-radius: 999px;
+  transition: background var(--rapido), color var(--rapido), border-color var(--rapido);
+}
+.mode-chip.active { box-shadow: var(--sombra-1); }
+
+/* ------------------------------------------------------ separadores */
+
+.resizer { transition: background var(--rapido); }
+.resizer:hover { background: var(--accent); }
+
+/* Lo que aparece, aparece con intención y una sola vez. */
+.panel.right, .panel.left { animation: entrar-lateral 0.2s var(--curva); }
+@keyframes entrar-lateral { from { opacity: 0; } to { opacity: 1; } }

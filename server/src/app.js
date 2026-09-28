@@ -9,6 +9,7 @@ import { gitAvailable } from './services/git.js';
 import { getToken as getGithubToken } from './services/github.js';
 import { stopAll } from './services/runner.js';
 import { cerrarTodas } from './services/terminal.js';
+import { detenerTodos } from './services/liveserver.js';
 import projectsRouter from './routes/projects.js';
 import docsRouter from './routes/docs.js';
 import aiRouter from './routes/ai.js';
@@ -102,6 +103,7 @@ export async function startServer({ port = 0, host = '127.0.0.1' } = {}) {
     async close({ timeoutMs = 3000 } = {}) {
       stopAll();
       cerrarTodas();
+      detenerTodos();
       server.closeAllConnections?.();
       await Promise.race([
         new Promise((resolve) => server.close(resolve)),

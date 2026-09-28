@@ -24,6 +24,7 @@ import type {
   TreeNode,
   UrlProbe,
   ChecksInfo,
+  EstadoPreview,
   PlanEjecucion,
   LenguajeDisponible,
   ProveedorIA,
@@ -282,6 +283,13 @@ export const api = {
     request<{ sesion: TerminalSesion }>(`/api/projects/${id}/terminal/${sid}/interrumpir`, { method: 'POST' }),
   terminalCerrar: (id: string, sid: string) =>
     request<{ ok: true }>(`/api/projects/${id}/terminal/${sid}`, { method: 'DELETE' }),
+
+  previewEstado: (id: string) => request<EstadoPreview>(`/api/projects/${id}/preview`),
+  previewArrancar: (id: string, puerto?: number) =>
+    request<EstadoPreview & { url: string }>(`/api/projects/${id}/preview`, { method: 'POST', ...json({ puerto }) }),
+  previewRecargar: (id: string) =>
+    request<{ ok: true; clientes: number }>(`/api/projects/${id}/preview/recargar`, { method: 'POST' }),
+  previewDetener: (id: string) => request<{ ok: true }>(`/api/projects/${id}/preview`, { method: 'DELETE' }),
 
   lenguajes: (refrescar = false) =>
     request<{ lenguajes: LenguajeDisponible[] }>(`/api/lenguajes${refrescar ? '?refrescar=1' : ''}`),

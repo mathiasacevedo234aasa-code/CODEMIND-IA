@@ -9,6 +9,7 @@ import * as search from '../services/search.js';
 import * as quality from '../services/quality.js';
 import * as terminal from '../services/terminal.js';
 import * as lenguajes from '../services/lenguajes.js';
+import * as live from '../services/liveserver.js';
 import { exportarDocumentacion } from '../services/export.js';
 
 /**
@@ -181,6 +182,31 @@ router.get('/projects/:id/run/processes', wrap(async (req, res) => {
 
 router.get('/projects/:id/run/processes/:processId/logs', wrap(async (req, res) => {
   res.json(runner.logs(req.params.id, req.params.processId, Number(req.query.since) || 0));
+}));
+
+// ------------------------------------------- vista previa en vivo
+
+/**
+ * Un servidor HTTP de verdad sobre la carpeta del proyecto.
+ *
+ * No es un iframe con el HTML dentro: es http://127.0.0.1 con su origen, asi
+ * que las rutas relativas, fetch y los modulos de JavaScript se comportan como
+ * se comportaran de verdad. Ademas recarga sola al guardar.
+ */
+router.get('/projects/:id/preview', wrap(async (req, res) => {
+  res.json(live.estado(req.params.id));
+}));
+
+router.post('/projects/:id/preview', wrap(async (req, res) => {
+  res.json(await live.arrancar(req.params.id, await rootOf(req), { puerto: req.body?.puerto }));
+}));
+
+router.post('/projects/:id/preview/recargar', wrap(async (req, res) => {
+  res.json(live.recargar(req.params.id));
+}));
+
+router.delete('/projects/:id/preview', wrap(async (req, res) => {
+  res.json(await live.detener(req.params.id));
 }));
 
 // ------------------------------------------------- ejecutar un archivo

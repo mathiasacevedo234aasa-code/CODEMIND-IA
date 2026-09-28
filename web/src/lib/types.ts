@@ -664,3 +664,20 @@ export interface LenguajeDisponible {
   donde: string | null;
   aviso: string | null;
 }
+
+// --------------------------------------------- vista previa en vivo
+
+/** Estado del servidor de vista previa del proyecto. */
+export interface EstadoPreview {
+  activo: boolean;
+  url?: string;
+  puerto?: number;
+  raiz?: string;
+  /** La pagina por la que tiene sentido empezar, si se encontro alguna. */
+  entrada?: string | null;
+  peticiones?: number;
+  arrancado?: string;
+  ultimaRecarga?: string | null;
+  /** Por ejemplo, que no se pueden vigilar los cambios en esa carpeta. */
+  aviso?: string | null;
+}

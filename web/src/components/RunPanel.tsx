@@ -5,6 +5,7 @@ import type { RunLogLine, RunProcess, RunScriptsInfo } from '../lib/types';
 import { Icon } from './Icon';
 import { TarjetaEjecutarArchivo } from './EjecutarArchivo';
 import { LenguajesInstalados } from './LenguajesInstalados';
+import { VistaPreviaViva } from './VistaPreviaViva';
 
 const STATUS_DOT: Record<RunProcess['status'], string> = {
   iniciando: 'warn',
@@ -182,6 +183,7 @@ export function RunPanel() {
 
   return (
     <div className="panel-body" style={{ padding: 12 }}>
+      <VistaPreviaViva />
       <TarjetaEjecutarArchivo />
       <LenguajesInstalados />
 

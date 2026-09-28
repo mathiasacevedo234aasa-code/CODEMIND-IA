@@ -1,4 +1,4 @@
-# CodeMind AI 1.1.1
+# CodeMind AI 1.2.0
 
 Entorno de desarrollo con documentación asistida por IA.
 
@@ -267,8 +267,9 @@ Todo lo que sigue está implementado y **comprobado ejecutándolo**, no solo esc
 **Comprensión del código**
 - Análisis por AST (`@babel/parser`) de `.js .jsx .ts .tsx .mjs .cjs`, del `<script>` y el `<style>`
   **dentro del HTML**, de las reglas CSS y de los encabezados Markdown
-- **Catorce lenguajes más con tree-sitter**: Python, Java, C#, Go, PHP, Ruby, Rust, C, C++, Bash,
-  Lua, Kotlin, Swift y Dart — clases, funciones, métodos, constructores, propiedades, interfaces,
+- **Veintidós lenguajes más con tree-sitter**: Python, Java, C#, Go, PHP, Ruby, Rust, C, C++, Bash,
+  Lua, Kotlin, Swift, Dart, Scala, Elixir, OCaml, Objective-C, Zig, Solidity, y los formatos JSON
+  y TOML — clases, funciones, métodos, constructores, propiedades, interfaces,
   enumeraciones y constantes, con su línea real. La gramática corre en tu equipo
 - **Todas las etiquetas de tus páginas**, con sus atributos: secciones, formularios, tablas, listas,
   enlaces, imágenes, controles, contenedores, metadatos y texto, además de los manejadores en línea.
@@ -281,6 +282,9 @@ Todo lo que sigue está implementado y **comprobado ejecutándolo**, no solo esc
 - Explicar **cualquier selección** de código, no solo las funciones detectadas
 
 **Documentación**
+- **Se lee sin buscarla**: una pestaña con lo documentado del archivo abierto, un botón en cada
+  elemento, y **al pasar el cursor por encima en el editor** sale su propósito, sus parámetros y lo
+  que devuelve
 - Propuestas de documentación con aprobación manual obligatoria
 - Centro de documentación: descripción general, arquitectura, **glosario**, documentación de
   elementos, decisiones, progreso e historial
@@ -323,7 +327,10 @@ Todo lo que sigue está implementado y **comprobado ejecutándolo**, no solo esc
 - **Comprobaciones del proyecto**: ejecuta tus scripts de pruebas, tipos y estilo, y convierte su
   salida en avisos con archivo y línea en los que se puede pulsar. Lee `tsc`, ESLint, vitest, jest,
   TAP y el corredor propio de Node
-- Vista previa de HTML/CSS/JS con consola y errores reales
+- **Vista previa con servidor propio**, como Live Server: levanta un `http://127.0.0.1` sobre tu
+  carpeta y **recarga la página sola al guardar**. A diferencia de un iframe, aquí funcionan las
+  rutas relativas, `fetch` y los módulos de JavaScript, porque hay un origen real
+- Vista previa simple de HTML/CSS/JS en iframe, con consola y errores reales
 - Arranque del servidor de desarrollo del propio proyecto, con registro en vivo y detección de la URL
 - Navegador integrado, con sondeo previo que avisa cuando un sitio prohíbe mostrarse incrustado
 
@@ -373,7 +380,7 @@ Lo que esta versión **no** hace, dicho sin adornos.
 
 ## Pruebas
 
-Ocho pruebas, todas ejecutables y todas contra cosas reales. Están documentadas una por una en
+Nueve pruebas, todas ejecutables y todas contra cosas reales. Están documentadas una por una en
 [`tests/README.md`](tests/README.md).
 
 ```bash
@@ -384,6 +391,7 @@ node tests/comprobaciones.mjs  # lectura de las salidas de tsc, ESLint, vitest, 
 node tests/terminal.mjs        # una consola de verdad: comandos, interrupción y cierre
 node tests/proveedores.mjs     # los dos protocolos, Ollama y que ninguna clave se filtre
 node tests/ejecutar.mjs        # ejecutar un archivo: detección, comandos y límites
+node tests/vistaprevia.mjs     # el servidor: tipos, recarga y que no sirva nada de fuera
 node tests/busqueda.mjs        # que la vista previa del reemplazo no escriba nada
 ```
 

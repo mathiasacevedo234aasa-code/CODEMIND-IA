@@ -45,6 +45,14 @@ const GRAMATICA_DE: Record<string, string> = {
   kt: 'kotlin', kts: 'kotlin',
   swift: 'swift',
   dart: 'dart',
+  scala: 'scala', sc: 'scala', sbt: 'scala',
+  ex: 'elixir', exs: 'elixir',
+  ml: 'ocaml', mli: 'ocaml',
+  m: 'objc', mm: 'objc',
+  zig: 'zig',
+  sol: 'solidity',
+  json: 'json', jsonc: 'json',
+  toml: 'toml',
 };
 
 /** Nombre legible del lenguaje, para enseñarlo en la interfaz. */
@@ -52,6 +60,8 @@ export const NOMBRE_LENGUAJE: Record<string, string> = {
   python: 'Python', java: 'Java', c_sharp: 'C#', go: 'Go', php: 'PHP',
   ruby: 'Ruby', rust: 'Rust', c: 'C', cpp: 'C++', bash: 'Bash',
   lua: 'Lua', kotlin: 'Kotlin', swift: 'Swift', dart: 'Dart',
+  scala: 'Scala', elixir: 'Elixir', ocaml: 'OCaml', objc: 'Objective-C',
+  zig: 'Zig', solidity: 'Solidity', json: 'JSON', toml: 'TOML',
 };
 
 /**
@@ -66,8 +76,12 @@ interface Descripcion {
   declaraciones: Record<string, SymbolKind>;
   contenedores: Record<string, SymbolKind>;
   importaciones: string[];
-  /** Nodos cuyo contenido no interesa recorrer (cuerpos de función ajenos). */
+  /** Cuando algo declarado dentro de un contenedor pasa a ser un método. */
   metodoEnContenedor?: SymbolKind;
+  /** Solo lo de primer nivel: para formatos de datos, lo hondo es ruido. */
+  soloNivelSuperior?: boolean;
+  /** Lenguajes cuya forma no encaja en el modelo general. */
+  especial?: 'elixir';
 }
 
 const COMUN_CLASE: SymbolKind = 'clase';
@@ -195,6 +209,93 @@ const DESCRIPCIONES: Record<string, Descripcion> = {
     importaciones: ['import_or_export'],
     metodoEnContenedor: 'metodo de clase',
   },
+  scala: {
+    declaraciones: {
+      class_definition: COMUN_CLASE, object_definition: 'modulo',
+      trait_definition: 'interfaz', function_definition: 'funcion',
+      function_declaration: 'funcion', val_definition: 'constante',
+      type_definition: 'tipo',
+    },
+    contenedores: { class_definition: COMUN_CLASE, object_definition: 'modulo', trait_definition: 'interfaz' },
+    importaciones: ['import_declaration'],
+    metodoEnContenedor: 'metodo de clase',
+  },
+  ocaml: {
+    declaraciones: {
+      // El nombre vive en el let_binding, no en el value_definition que lo
+      // envuelve: declarando el de fuera no se encuentra nada.
+      let_binding: 'funcion', module_definition: 'modulo', type_definition: 'tipo',
+    },
+    contenedores: { module_definition: 'modulo' },
+    importaciones: ['open_module'],
+  },
+  objc: {
+    declaraciones: {
+      class_interface: 'interfaz', class_implementation: COMUN_CLASE,
+      method_declaration: 'funcion', method_definition: 'funcion',
+      protocol_declaration: 'interfaz',
+    },
+    contenedores: { class_interface: 'interfaz', class_implementation: COMUN_CLASE },
+    importaciones: ['preproc_import', 'preproc_include'],
+    metodoEnContenedor: 'metodo de clase',
+  },
+  zig: {
+    declaraciones: {
+      function_declaration: 'funcion', struct_declaration: COMUN_CLASE,
+      variable_declaration: 'constante', container_field: 'propiedad',
+      enum_declaration: 'enumeracion',
+    },
+    contenedores: { struct_declaration: COMUN_CLASE },
+    importaciones: [],
+  },
+  solidity: {
+    declaraciones: {
+      contract_declaration: COMUN_CLASE, interface_declaration: 'interfaz',
+      library_declaration: 'modulo', function_definition: 'funcion',
+      modifier_definition: 'funcion', event_definition: 'enumeracion',
+      state_variable_declaration: 'propiedad', struct_declaration: COMUN_CLASE,
+      constructor_definition: 'constructor de clase',
+    },
+    contenedores: { contract_declaration: COMUN_CLASE, interface_declaration: 'interfaz', library_declaration: 'modulo' },
+    importaciones: ['import_directive'],
+    metodoEnContenedor: 'metodo de clase',
+  },
+  elixir: {
+    declaraciones: {},
+    contenedores: {},
+    importaciones: [],
+    especial: 'elixir',
+  },
+  // Los formatos de datos no tienen funciones: lo util es su estructura, y
+  // solo la de primer nivel. Un package.json entero como lista de elementos
+  // seria ruido, no informacion.
+  json: {
+    declaraciones: { pair: 'propiedad' },
+    contenedores: {},
+    importaciones: [],
+    soloNivelSuperior: true,
+  },
+  toml: {
+    declaraciones: { table: 'seccion', pair: 'propiedad' },
+    contenedores: {},
+    importaciones: [],
+    soloNivelSuperior: true,
+  },
+};
+
+/**
+ * Elixir se declara con macros, asi que para la gramatica todo es una
+ * "llamada": `defmodule`, `def` y `defp` son el mismo tipo de nodo. Hay que
+ * mirar como se llama esa llamada para saber que es.
+ */
+const ELIXIR_DECLARA: Record<string, SymbolKind> = {
+  defmodule: 'modulo',
+  defprotocol: 'interfaz',
+  defstruct: COMUN_CLASE,
+  def: 'funcion',
+  defp: 'funcion',
+  defmacro: 'funcion',
+  defmacrop: 'funcion',
 };
 
 export const extensionesConGramatica = () => Object.keys(GRAMATICA_DE);
@@ -248,7 +349,12 @@ const IDENTIFICADORES = new Set([
   'identifier', 'type_identifier', 'field_identifier', 'constant',
   'simple_identifier', 'type_declaration', 'word', 'name', 'namespace',
   'qualified_identifier', 'scoped_identifier', 'dotted_name',
+  // Formatos de datos: la clave es el nombre.
+  'bare_key', 'dotted_key', 'quoted_key', 'value_name',
 ]);
+
+/** Las comillas de una clave de JSON no forman parte de su nombre. */
+const sinComillas = (texto: string) => texto.replace(/^["']|["']$/g, '');
 
 /**
  * El nombre de una declaración. Casi siempre está en el campo "name"; cuando
@@ -256,8 +362,9 @@ const IDENTIFICADORES = new Set([
  * busca el primer identificador que cuelgue del nodo.
  */
 function nombreDe(nodo: Nodo): string | null {
-  const campo = nodo.childForFieldName('name');
-  if (campo) return campo.text.trim() || null;
+  // "name" en casi todos; "key" en los formatos de datos.
+  const campo = nodo.childForFieldName('name') ?? nodo.childForFieldName('key');
+  if (campo) return sinComillas(campo.text.trim()) || null;
 
   const declarador = nodo.childForFieldName('declarator');
   if (declarador) {
@@ -272,7 +379,7 @@ function nombreDe(nodo: Nodo): string | null {
     const siguiente: Nodo[] = [];
     for (const actual of nivel) {
       for (const hijo of actual.namedChildren) {
-        if (IDENTIFICADORES.has(hijo.type)) return hijo.text.trim() || null;
+        if (IDENTIFICADORES.has(hijo.type)) return sinComillas(hijo.text.trim()) || null;
         siguiente.push(hijo);
       }
     }
@@ -316,20 +423,42 @@ function recorrer(
   const ocurrencias = new Map<string, number>();
   const importaciones = new Set(descripcion.importaciones);
 
-  const visitar = (nodo: Nodo, contenedor: string | null, dentroDeFuncion: boolean) => {
+  /** El nombre de una declaracion de Elixir: `def total(...)` -> "total". */
+  const nombreElixir = (nodo: Nodo): { kind: SymbolKind; nombre: string } | null => {
+    const primero = nodo.child(0);
+    const macro = primero?.text?.trim();
+    const kind = macro ? ELIXIR_DECLARA[macro] : undefined;
+    if (!kind) return null;
+    // El nombre esta en los argumentos: puede ser `total(items)` o `Tienda`.
+    const args = nodo.namedChildren.find((h) => h.type === 'arguments');
+    const objetivo = args?.namedChildren[0];
+    if (!objetivo) return null;
+    const texto = (objetivo.type === 'call' ? objetivo.child(0)?.text : objetivo.text) ?? '';
+    const nombre = texto.trim().split(/[\s(,]/)[0];
+    return nombre ? { kind, nombre } : null;
+  };
+
+  const visitar = (nodo: Nodo, contenedor: string | null, dentroDeFuncion: boolean, nivel = 0) => {
     if (importaciones.has(nodo.type)) {
       const especificador = extraerImport(nodo);
       if (especificador) imports.push(especificador);
     }
 
-    const kindBase = descripcion.declaraciones[nodo.type];
+    // Los formatos de datos solo interesan por arriba: un package.json entero
+    // desmenuzado seria ruido, no informacion.
+    if (descripcion.soloNivelSuperior && nivel > 3) return;
+
+    const especialElixir = descripcion.especial === 'elixir' && nodo.type === 'call'
+      ? nombreElixir(nodo)
+      : null;
+    const kindBase = especialElixir?.kind ?? descripcion.declaraciones[nodo.type];
     const esContenedor = nodo.type in descripcion.contenedores;
     let nombreCompleto = contenedor;
 
     let enFuncion = dentroDeFuncion;
 
     if (kindBase && esAsignacionUtil(nodo, dentroDeFuncion)) {
-      const nombre = nombreDe(nodo);
+      const nombre = especialElixir?.nombre ?? nombreDe(nodo);
       if (nombre) {
         // Dentro de una clase, una función es un método y lleva su apellido.
         const kind: SymbolKind =
@@ -358,7 +487,7 @@ function recorrer(
           detail: resumen(nodo),
         });
         if (kind === 'clase') classes.push(cualificado);
-        if (esContenedor) nombreCompleto = cualificado;
+        if (esContenedor || especialElixir?.kind === 'modulo') nombreCompleto = cualificado;
         if (ES_FUNCION.has(kind)) enFuncion = true;
       }
     } else if (esContenedor) {
@@ -367,10 +496,10 @@ function recorrer(
       if (nombre) nombreCompleto = contenedor ? `${contenedor}.${nombre}` : nombre;
     }
 
-    for (const hijo of nodo.namedChildren) visitar(hijo, nombreCompleto, enFuncion);
+    for (const hijo of nodo.namedChildren) visitar(hijo, nombreCompleto, enFuncion, nivel + 1);
   };
 
-  visitar(raiz, null, false);
+  visitar(raiz, null, false, 0);
   return { simbolos, imports, classes };
 }
 

@@ -82,6 +82,7 @@ export function SymbolsPanel() {
   const applyRelink = useStore((s) => s.applyRelink);
   const dismissRelink = useStore((s) => s.dismissRelink);
   const proposals = useStore((s) => s.proposals);
+  const verDocumentacion = useStore((s) => s.verDocumentacion);
   const orphansFn = useStore((s) => s.orphans);
 
   const [query, setQuery] = useState('');
@@ -249,7 +250,13 @@ export function SymbolsPanel() {
             <div
               key={sym.id}
               className={`fn-item ${selected === sym.id ? 'selected' : ''}`}
-              onClick={() => { setSelected(sym.id); void goToSymbol(sym); }}
+              onClick={() => {
+                setSelected(sym.id);
+                // Si ya tiene documentacion, el panel de la derecha la enseña
+                // sin pedir nada mas: es lo que uno quiere al pulsar encima.
+                if (approved[sym.id]) useStore.getState().setSymbolSeleccionado(sym.id);
+                void goToSymbol(sym);
+              }}
             >
               <div className="fn-head">
                 <Icon name={ICONO_DE[sym.kind] ?? 'fn'} size={13} />
@@ -291,6 +298,15 @@ export function SymbolsPanel() {
                   {generating ? <span className="spinner" /> : <Icon name="brain" size={12} />}
                   {status === 'sin-documentar' ? 'Documentar' : 'Nueva explicación'}
                 </button>
+                {doc && (
+                  <button
+                    className="btn sm ok"
+                    title="Leerla aquí mismo, en el panel de la derecha"
+                    onClick={() => verDocumentacion(sym.id)}
+                  >
+                    <Icon name="docs" size={12} /> Ver documentación
+                  </button>
+                )}
                 <button className="btn sm outline" onClick={() => void goToSymbol(sym)}>Ir al código</button>
               </div>
             </div>

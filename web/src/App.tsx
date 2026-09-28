@@ -11,6 +11,7 @@ import { GitPanel } from './components/GitPanel';
 import { GitHubPanel } from './components/GitHubPanel';
 import { RunPanel } from './components/RunPanel';
 import { ReviewPanel } from './components/ReviewPanel';
+import { DocLectura, useDocumentadosDelArchivo } from './components/DocLectura';
 import { AssistantPanel } from './components/AssistantPanel';
 import { BottomPanel } from './components/BottomPanel';
 import { DocCenter } from './components/DocCenter';
@@ -63,6 +64,7 @@ export default function App() {
   const leftOpen = useStore((s) => s.leftOpen);
   const toggleLeft = useStore((s) => s.toggleLeft);
   const rightTab = useStore((s) => s.rightTab);
+  const documentadosAqui = useDocumentadosDelArchivo();
   const rightOpen = useStore((s) => s.rightOpen);
   const setRightTab = useStore((s) => s.setRightTab);
   const setRightOpen = useStore((s) => s.setRightOpen);
@@ -157,6 +159,14 @@ export default function App() {
                     {proposals.length > 0 && <span className="tag info">{proposals.length}</span>}
                   </button>
                   <button
+                    className={`tab-btn ${rightTab === 'documentacion' ? 'active' : ''}`}
+                    onClick={() => setRightTab('documentacion')}
+                    title="Lo documentado del archivo que tienes abierto"
+                  >
+                    Documentación
+                    {documentadosAqui > 0 && <span className="tag ok">{documentadosAqui}</span>}
+                  </button>
+                  <button
                     className={`tab-btn ${rightTab === 'asistente' ? 'active' : ''}`}
                     onClick={() => setRightTab('asistente')}
                   >
@@ -169,6 +179,7 @@ export default function App() {
                 </div>
                 <div className="panel-body" style={{ display: 'flex', flexDirection: 'column' }}>
                   {rightTab === 'revision' && <ReviewPanel />}
+                  {rightTab === 'documentacion' && <DocLectura />}
                   {rightTab === 'asistente' && <AssistantPanel />}
                 </div>
               </aside>

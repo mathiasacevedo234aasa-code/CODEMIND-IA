@@ -152,3 +152,14 @@ nada.
 
 Esa última parte necesita `npm run dev`; si el backend no responde, la prueba **falla** en lugar de
 darla por buena.
+
+## `vistaprevia.mjs`
+
+Prueba el servidor de vista previa. Como sirve archivos del disco del usuario, lo que más importa
+es que **no sirva nada de fuera de la carpeta del proyecto**, por retorcida que venga la ruta: se
+prueban cinco formas de intentar escaparse, incluidas las codificadas (`..%2f`, `%2e%2e%2f`).
+
+Además comprueba que cada tipo de archivo se sirve con su `Content-Type` —un `.js` servido como
+texto plano no lo ejecuta el navegador—, que el script de recarga se inyecta en el HTML **y no
+dentro de un `.js`**, que guardar un archivo avisa a la página, y que al detener el servidor el
+puerto queda libre de verdad.

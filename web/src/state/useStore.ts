@@ -35,7 +35,7 @@ interface RelinkSuggestion {
 
 /** Vistas del panel lateral izquierdo, seleccionadas desde la barra de actividad. */
 export type LeftView = 'explorador' | 'buscar' | 'funciones' | 'git' | 'github' | 'ejecutar';
-export type RightTab = 'revision' | 'asistente';
+export type RightTab = 'revision' | 'documentacion' | 'asistente';
 export type BottomTab = 'consola' | 'errores' | 'comprobaciones' | 'terminal' | 'preview' | 'documentacion' | 'git' | 'procesos';
 
 interface State {
@@ -56,6 +56,8 @@ interface State {
    * terminal vacio y "Abrir la consola", asi que parecia que no pasaba nada.
    */
   terminalSesionId: string | null;
+  /** El elemento cuya documentacion se esta leyendo en el panel derecho. */
+  symbolSeleccionado: string | null;
   /** Mitad del editor en la que se abre lo siguiente y donde esta el foco. */
   panelActivo: PanelEditor;
   /** Ultima pestana usada en cada mitad, para que cada una recuerde la suya. */
@@ -128,6 +130,9 @@ interface Actions {
   unirEditor: () => void;
   setPanelActivo: (panel: PanelEditor) => void;
   setTerminalSesion: (id: string | null) => void;
+  setSymbolSeleccionado: (id: string | null) => void;
+  /** Abre la documentacion de un elemento donde se lee: el panel derecho. */
+  verDocumentacion: (symbolId: string) => void;
   setActiveTab: (id: string) => void;
   updateWebTab: (id: string, url: string) => void;
   editFile: (path: string, content: string) => void;
@@ -228,6 +233,7 @@ export const useStore = create<State & Actions>((set, get) => ({
   loadingProject: false,
   tabs: [],
   terminalSesionId: null,
+  symbolSeleccionado: null,
   panelActivo: 'a',
   ultimoPorPanel: { a: null, b: null },
   activeTabId: null,
@@ -594,6 +600,11 @@ export const useStore = create<State & Actions>((set, get) => ({
    * casi nunca coinciden.
    */
   setTerminalSesion: (id) => set({ terminalSesionId: id }),
+
+  setSymbolSeleccionado: (id) => set({ symbolSeleccionado: id }),
+
+  verDocumentacion: (symbolId) =>
+    set({ symbolSeleccionado: symbolId, rightTab: 'documentacion', rightOpen: true }),
 
   setPanelActivo: (panel) =>
     set((s) => {

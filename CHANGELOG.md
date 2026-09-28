@@ -4,6 +4,71 @@ Todo lo que aparece aquí está comprobado ejecutándolo, no solo escrito.
 
 ---
 
+## 1.2.0
+
+### La documentacion, por fin, se lee
+
+Estaba guardada y era practicamente inalcanzable: para leer algo documentado
+habia que abrir el centro de documentacion, entrar en su seccion, buscar el
+elemento y desplegarlo. Cuatro pasos y saber donde mirar. En la practica,
+nadie la leia.
+
+Ahora hay tres formas, todas de un paso:
+
+- Una pestana **Documentacion** en el panel derecho, con lo documentado del
+  archivo que tienes abierto y un contador de cuantos son.
+- Un boton **Ver documentacion** en cada elemento documentado del panel.
+- **Pasando el cursor por encima en el editor**: el proposito, los parametros
+  y lo que devuelve, sin ir a ninguna parte. Si hay que buscarla, no se lee.
+
+### Vista previa con servidor propio, como Live Server
+
+Antes la vista previa era un iframe con el HTML metido dentro. Sirve para
+mirar una pagina suelta y se queda corta en cuanto el proyecto es un proyecto:
+las rutas relativas no resuelven igual, `fetch` no funciona y los modulos de
+JavaScript no cargan, porque nada de eso existe sin un origen http de verdad.
+
+Ahora se levanta un servidor HTTP sobre tu carpeta, uno por proyecto, en
+`127.0.0.1` y en un puerto suyo, **y recarga la pagina sola al guardar**. El
+boton "Vista previa" de arriba lo arranca y lo abre dentro del editor.
+
+Solo escucha en 127.0.0.1 y no sirve nada de fuera de la carpeta del
+proyecto; hay una prueba que intenta escaparse de cinco formas distintas.
+
+### Ocho lenguajes mas
+
+Scala, Elixir, OCaml, Objective-C, Zig, Solidity, JSON y TOML, ademas de los
+catorce que ya habia: veintidos en total.
+
+No estan todos los que tiene la libreria, y no por pereza: **Elm y YAML no
+cargan** con esta version del motor (Elm dice "Incompatible language version
+12" y el de YAML falla al inicializarse), y QL, ReScript, Emacs Lisp, TLA+ y
+SystemRDL pesarian sin que nadie los fuera a usar aqui. Cada uno de los que
+entran se probo cargando su gramatica y mirando que produce: incluir una
+gramatica de la que no se extrae nada solo hace el paquete mas grande.
+
+Elixir necesito un caso aparte: como todo se declara con macros, para la
+gramatica `defmodule` y `def` son el mismo nodo y hay que mirar el nombre de
+la macro para saber que es.
+
+### Aspecto
+
+Una capa visual nueva sobre los mismos tokens: profundidad con una escala de
+sombras en vez de una sola, foco visible de verdad en los dos temas, marca de
+la vista activa en la barra lateral, etiquetas redondeadas, el punto verde de
+lo que esta en marcha late, y las secciones de la documentacion con
+encabezados que se distinguen del texto.
+
+Va en un archivo aparte a proposito: si algo molesta, se quita ese archivo y
+la aplicacion sigue funcionando igual.
+
+Probe esconder los botones de cada elemento hasta pasar el raton. Quedaba mas
+limpio y lo descarte: esta aplicacion acaba de tener el problema contrario, y
+un boton que solo aparece si aciertas a pasar por encima es un boton que la
+mitad de la gente no descubre.
+
+---
+
 ## 1.1.1
 
 ### El boton de ejecutar parecia no hacer nada

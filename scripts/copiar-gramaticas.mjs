@@ -18,9 +18,24 @@ import { fileURLToPath } from 'node:url';
 const RAIZ = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const DESTINO = path.join(RAIZ, 'web', 'public', 'gramaticas');
 
+/**
+ * Solo se copian los lenguajes que de verdad se pueden leer.
+ *
+ * Cada uno de estos se probo cargando su gramatica y mirando que nodos
+ * produce, y tiene su descripcion en treesitter.ts. Quedan fuera dos que no
+ * cargan con esta version del motor —Elm dice "Incompatible language version
+ * 12" y el de YAML falla al inicializarse— y unos cuantos muy especializados
+ * (QL, ReScript, Emacs Lisp, TLA+, SystemRDL) que pesarian sin que nadie los
+ * fuera a usar aqui. Incluir una gramatica de la que no se extrae nada solo
+ * hace el paquete mas grande.
+ */
 const LENGUAJES = [
   'python', 'java', 'c_sharp', 'go', 'php', 'ruby', 'rust',
   'c', 'cpp', 'bash', 'lua', 'kotlin', 'swift', 'dart',
+  'scala', 'elixir', 'ocaml', 'objc', 'zig', 'solidity',
+  // Configuracion y datos: no son lenguajes de programacion, pero un proyecto
+  // se entiende tambien por como esta configurado.
+  'json', 'toml',
 ];
 
 /** Busca un archivo subiendo por las carpetas node_modules del monorepo. */
