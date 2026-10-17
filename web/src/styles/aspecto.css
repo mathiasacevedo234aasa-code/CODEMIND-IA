@@ -377,3 +377,5 @@ kbd {
   background: var(--panel, var(--bg)); border: 1px solid var(--border); border-radius: 10px;
   padding: 10px 12px; box-shadow: 0 8px 28px rgba(0,0,0,.25);
 }
+.diagrama-svg { overflow: auto; max-height: 520px; margin-top: 8px; padding: 8px; border-radius: 8px; background: var(--bg); }
+.diagrama-svg svg { max-width: 100%; height: auto; }

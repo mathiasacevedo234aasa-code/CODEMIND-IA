@@ -85,6 +85,12 @@ function generarMarkdown(project, memory, aprobadas, history) {
     out.push('## Arquitectura', '', memory.architectureNotes.trim(), '');
   }
 
+  // El diagrama va como bloque mermaid: GitHub y muchos visores lo dibujan.
+  if (memory.architectureDiagram?.trim()) {
+    if (!memory.architectureNotes?.trim()) out.push('## Arquitectura', '');
+    out.push('### Dependencias entre archivos', '', '```mermaid', memory.architectureDiagram.trim(), '```', '');
+  }
+
   const porArchivo = new Map();
   for (const doc of aprobadas) {
     if (!porArchivo.has(doc.filePath)) porArchivo.set(doc.filePath, []);

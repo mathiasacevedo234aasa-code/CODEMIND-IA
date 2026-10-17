@@ -4,6 +4,7 @@ import { api } from '../lib/api';
 import type { ApprovedDoc, ProjectMemory } from '../lib/types';
 import { DocView } from './DocView';
 import { Icon } from './Icon';
+import { DiagramaArquitectura } from './DiagramaArquitectura';
 const ProjectMap = lazy(() => import('./ProjectMap').then((m) => ({ default: m.ProjectMap })));
 import { GlosarioPanel } from './GlosarioPanel';
 
@@ -173,6 +174,7 @@ function ArchitectureSection() {
   return (
     <>
       <Suspense fallback={<p className="hint">Dibujando el mapa...</p>}><ProjectMap /></Suspense>
+      <DiagramaArquitectura />
 
       <h4 style={{ margin: '20px 0 8px' }}>Archivos analizados</h4>
       <div className="card">

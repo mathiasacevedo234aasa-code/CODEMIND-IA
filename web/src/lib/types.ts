@@ -433,6 +433,8 @@ export interface ProjectMemory {
     pending: string;
   };
   architectureNotes: string;
+  /** Diagrama Mermaid aprobado por el usuario, generado del mapa de dependencias. */
+  architectureDiagram?: string;
   decisions: Decision[];
   progress: ProgressEntry[];
   updatedAt: string | null;
