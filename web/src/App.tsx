@@ -14,6 +14,7 @@ import { BuscarSimbolo } from './components/BuscarSimbolo';
 import { Bienvenida } from './components/Bienvenida';
 import { ColaCarpetaFlotante, OfertaBorrador } from './components/DocArchivoBarra';
 import { ComparacionAbierta } from './components/Comparacion';
+import { BarraEstado } from './components/BarraEstado';
 import { DocLectura, useDocumentadosDelArchivo } from './components/DocLectura';
 import { AssistantPanel } from './components/AssistantPanel';
 import { BottomPanel } from './components/BottomPanel';
@@ -236,6 +237,7 @@ export default function App() {
         </div>
       )}
 
+      <BarraEstado />
       {docCenterOpen && <Suspense fallback={null}><DocCenter /></Suspense>}
       <SettingsDialog />
       <DialogHost />
