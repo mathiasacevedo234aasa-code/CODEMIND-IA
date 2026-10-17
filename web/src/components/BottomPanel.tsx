@@ -7,6 +7,7 @@ import type { LogChannel } from '../lib/types';
 import { Icon } from './Icon';
 import { ChecksPanel } from './ChecksPanel';
 import { useT } from '../lib/i18n';
+import { explicarError } from '../lib/explicarError';
 // xterm solo hace falta cuando hay panel inferior: va en su propio trozo.
 const TerminalPanel = lazy(() => import('./TerminalPanel').then((m) => ({ default: m.TerminalPanel })));
 
@@ -207,6 +208,15 @@ export function BottomPanel() {
               <div key={l.id} className={`log-line ${l.level}`}>
                 <span className="at">{new Date(l.at).toLocaleTimeString('es')}</span>
                 <span className="msg">{l.message}</span>
+                {(l.level === 'error' || (l.level === 'warn' && /^[\w./\-]+\.\w+:\d+ /.test(l.message))) && (
+                  <button
+                    className="btn sm outline explicar-error"
+                    title="La IA explica la causa probable. No toca tu código."
+                    onClick={() => void explicarError(l.message)}
+                  >
+                    Explicar
+                  </button>
+                )}
               </div>
             ))
           )}

@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useStore } from '../state/useStore';
+import { explicarError } from '../lib/explicarError';
 import { api } from '../lib/api';
 import type { CheckIssue, CheckResult, ChecksInfo } from '../lib/types';
 import { Icon } from './Icon';
@@ -113,6 +114,16 @@ export function ChecksPanel() {
                     <code>{a.archivo}:{a.linea}</code>
                     <span style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis' }}>{a.mensaje}</span>
                     {a.regla && <span className="tag muted">{a.regla}</span>}
+                    <button
+                      className="btn sm outline"
+                      title="La IA explica la causa probable. No toca tu código."
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        void explicarError(`${a.mensaje}${a.regla ? ` (${a.regla})` : ''}`, { archivo: a.archivo, linea: a.linea });
+                      }}
+                    >
+                      Explicar
+                    </button>
                   </div>
                 ))}
 

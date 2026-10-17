@@ -17,6 +17,7 @@ interface Message { who: 'user' | 'ai'; text: string; model?: string; escribiend
 export function AssistantPanel() {
   const project = useStore((s) => s.project);
   const files = useStore((s) => s.files);
+  const settings = useStore((s) => s.settings);
   const tabs = useStore((s) => s.tabs);
   const activeTabId = useStore((s) => s.activeTabId);
   const apiKeyConfigured = useStore((s) => s.apiKeyConfigured);
@@ -137,6 +138,42 @@ export function AssistantPanel() {
     return `Funciones detectadas en el codigo actual (${list.length}), con su estado de documentacion:\n${lines.join('\n')}`;
   }, [symbolsFn, analysis, statusOf]);
 
+  /** Lo que acompaña a la pregunta: inventario y archivo abierto, según el modo. */
+  const construirContexto = () => {
+    const parts: string[] = [];
+    if (mode !== 'technical' && inventory) parts.push(inventory);
+    if (includeFile && active && mode !== 'technical') {
+      parts.push(`Archivo actualmente abierto (${active.path}):\n\`\`\`\n${active.content.slice(0, 12000)}\n\`\`\``);
+    }
+    return parts.join('\n\n');
+  };
+
+  /**
+   * Tokens y coste ANTES de enviar.
+   *
+   * Es una estimación (unos 4 caracteres por token, más ~350 de las
+   * instrucciones fijas): cada modelo trocea el texto a su manera y contar
+   * exacto exigiría su tokenizador. El coste solo se enseña si el usuario
+   * ha puesto el precio de su modelo; Ollama es local y no cuesta nada.
+   */
+  const estimacion = useMemo(() => {
+    const previos = messages.slice(-8).reduce((n, m) => n + Math.min(m.text.length, 4000), 0);
+    const entrada = Math.round((construirContexto().length + question.length + previos) / 4) + 350;
+    const proveedor = settings.proveedor;
+    const modelo = settings.modelos?.[proveedor] ?? '';
+    const precio = settings.precios?.[`${proveedor}:${modelo}`];
+    const salidaMax = settings.maxTokens;
+    let coste: string | null = null;
+    if (proveedor === 'ollama') coste = 'gratis (local)';
+    else if (precio && (precio.entrada || precio.salida)) {
+      const min = (entrada * precio.entrada) / 1e6;
+      const max = min + (salidaMax * precio.salida) / 1e6;
+      const f = (n: number) => (n < 0.01 ? n.toFixed(4) : n.toFixed(3));
+      coste = `$${f(min)}–$${f(max)}`;
+    }
+    return { entrada, salidaMax, coste };
+  }, [messages, question, mode, includeFile, active?.path, active?.content, inventory, settings]); // eslint-disable-line react-hooks/exhaustive-deps
+
   /**
    * Envia una consulta. `contextoDirecto` permite lanzarla desde fuera (por
    * ejemplo "explicar esta seleccion") sin depender del archivo abierto.
@@ -149,18 +186,9 @@ export function AssistantPanel() {
     setMessages((m) => [...m, { who: 'user', text: texto }]);
     setBusy(true);
     try {
-      const parts: string[] = [];
-      if (contextoDirecto) {
-        // Viene del editor con su propio contexto: no se mezcla con el archivo
-        // abierto, que podría ser otro distinto del que el usuario seleccionó.
-        parts.push(contextoDirecto);
-      } else {
-        if (mode !== 'technical' && inventory) parts.push(inventory);
-        if (includeFile && active && mode !== 'technical') {
-          parts.push(`Archivo actualmente abierto (${active.path}):\n\`\`\`\n${active.content.slice(0, 12000)}\n\`\`\``);
-        }
-      }
-      const contextText = parts.join('\n\n');
+      // Viene del editor con su propio contexto: no se mezcla con el archivo
+      // abierto, que podría ser otro distinto del que el usuario seleccionó.
+      const contextText = contextoDirecto ?? construirContexto();
 
       // La respuesta se va escribiendo según llega: el mensaje de la IA se
       // crea vacío y se le van añadiendo trozos. Esperar el texto entero hace
@@ -368,6 +396,12 @@ export function AssistantPanel() {
           }}
           style={{ minHeight: 60 }}
         />
+        {question.trim() && (
+          <p className="hint estimacion" title="Estimación: unos 4 caracteres por token. El coste usa el precio que pusiste para este modelo en Configuración.">
+            ≈ {estimacion.entrada.toLocaleString()} tokens de entrada · hasta {estimacion.salidaMax.toLocaleString()} de respuesta
+            {' · '}{estimacion.coste ?? 'sin precio configurado para este modelo'}
+          </p>
+        )}
         {busy ? (
           <button className="btn outline" onClick={detener} title="La parte que ya llegó se conserva">
             <span className="spinner" /> Detener

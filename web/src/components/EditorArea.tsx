@@ -131,7 +131,11 @@ ${texto.slice(0, 8000)}
         .getModelMarkers({ resource: model.uri })
         .filter((m) => m.severity === monaco.MarkerSeverity.Error);
       if (errors.length) {
-        log('errores', 'warn', `${model.uri.path.slice(1)}: ${errors.length} error(es) de sintaxis detectados por el editor.`);
+        // Con ruta, línea y el mensaje del primero: así se puede ir a él o
+        // pedir que se explique, en vez de un simple recuento.
+        const [primero] = errors;
+        const resto = errors.length > 1 ? ` (y ${errors.length - 1} más)` : '';
+        log('errores', 'warn', `${model.uri.path.slice(1)}:${primero.startLineNumber} ${primero.message}${resto}`);
       }
     });
   };

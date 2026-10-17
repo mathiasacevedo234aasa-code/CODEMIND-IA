@@ -192,6 +192,29 @@ export function ProveedorIADialog() {
         </p>
       </div>
 
+      {!activo.local && (() => {
+        const clave = `${settings.proveedor}:${modeloElegido}`;
+        const precio = settings.precios?.[clave] ?? { entrada: 0, salida: 0 };
+        const poner = (campo: 'entrada' | 'salida', valor: number) => void saveSettings({
+          precios: { ...settings.precios, [clave]: { ...precio, [campo]: Math.max(0, valor || 0) } },
+        });
+        return (
+          <div className="field">
+            <label>Precio de este modelo (USD por millón de tokens)</label>
+            <div className="grid2">
+              <input type="number" min={0} step={0.01} placeholder="Entrada" value={precio.entrada || ''}
+                onChange={(e) => poner('entrada', Number(e.target.value))} />
+              <input type="number" min={0} step={0.01} placeholder="Salida" value={precio.salida || ''}
+                onChange={(e) => poner('salida', Number(e.target.value))} />
+            </div>
+            <p className="hint">
+              Opcional. Con él, el asistente estima cuánto costará cada pregunta antes de enviarla. Los precios
+              cambian, así que no se dan por supuestos: cópialos de la página de tu proveedor.
+            </p>
+          </div>
+        );
+      })()}
+
       <div className="field">
         <button className="btn outline" disabled={probando || !listoParaUsar} onClick={() => void probar()}>
           {probando ? <span className="spinner" /> : <Icon name="check" size={12} />} Probar la conexión

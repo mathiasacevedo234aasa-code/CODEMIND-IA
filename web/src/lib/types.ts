@@ -477,6 +477,8 @@ export interface AppSettings {
   estiloDoc: 'normal' | 'breve' | 'didactico' | 'jsdoc';
   /** Idioma de la interfaz y de lo que escribe la IA. */
   idioma?: 'es' | 'en';
+  /** Precio por millón de tokens (USD) por 'proveedor:modelo', puesto por el usuario. */
+  precios?: Record<string, { entrada: number; salida: number }>;
   maxTokens: number;
   editor: EditorSettings;
 }

@@ -367,3 +367,6 @@ kbd {
 .conv-fila .conv-titulo { flex: 1; }
 .conv-fila:hover { background: var(--hover, rgba(127,127,127,.12)); }
 .conv-fila.activa { background: var(--accent-soft, rgba(91,140,255,.15)); }
+.chat-input .estimacion { margin: 4px 0; font-variant-numeric: tabular-nums; }
+.log-line .explicar-error { margin-left: 8px; padding: 0 8px; font-family: var(--sans); opacity: .75; }
+.log-line:hover .explicar-error { opacity: 1; }
