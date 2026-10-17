@@ -13,7 +13,19 @@ import { fileURLToPath } from 'node:url';
  */
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const packaged = path.join(root, 'release', 'win-unpacked', 'resources', 'app');
+// Cada sistema deja la aplicacion sin empaquetar en un sitio distinto.
+const RELEASE = path.join(root, 'release');
+async function buscarPaquete() {
+  if (process.platform === 'win32') return path.join(RELEASE, 'win-unpacked', 'resources', 'app');
+  if (process.platform === 'linux') return path.join(RELEASE, 'linux-unpacked', 'resources', 'app');
+  // macOS: release/mac/ o release/mac-arm64/, con el .app dentro.
+  for (const dir of (await fs.readdir(RELEASE).catch(() => [])).filter((d) => d.startsWith('mac'))) {
+    const app = (await fs.readdir(path.join(RELEASE, dir)).catch(() => [])).find((f) => f.endsWith('.app'));
+    if (app) return path.join(RELEASE, dir, app, 'Contents', 'Resources', 'app');
+  }
+  return path.join(RELEASE, 'mac', 'CodeMind AI.app', 'Contents', 'Resources', 'app');
+}
+const packaged = await buscarPaquete();
 
 async function countFiles(dir) {
   let total = 0;
@@ -85,11 +97,14 @@ async function longest(dir, prefix = '') {
   return max;
 }
 
-const DESTINO = 'C:\\Program Files\\CodeMind AI\\resources\\app\\';
-const masLarga = await longest(packaged);
-const total = DESTINO.length + masLarga.length;
-console.log(`Ruta mas larga instalada: ${total} de 260 caracteres.`);
-if (total > 240) problemas.push(`Las rutas llegan a ${total} caracteres: demasiado cerca del limite de Windows.`);
+// El limite de 260 caracteres es cosa de Windows.
+if (process.platform === 'win32') {
+  const DESTINO = 'C:\\Program Files\\CodeMind AI\\resources\\app\\';
+  const masLarga = await longest(packaged);
+  const total = DESTINO.length + masLarga.length;
+  console.log(`Ruta mas larga instalada: ${total} de 260 caracteres.`);
+  if (total > 240) problemas.push(`Las rutas llegan a ${total} caracteres: demasiado cerca del limite de Windows.`);
+}
 
 if (problemas.length) {
   console.error('\nEl paquete NO es valido:');

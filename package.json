@@ -19,7 +19,9 @@
     "desktop:build": "npm run build && node scripts/make-icon.mjs && node scripts/pack-runtime.mjs && electron-builder --config electron-builder.yml --publish never && node scripts/verify-package.mjs",
     "gramaticas": "node scripts/copiar-gramaticas.mjs",
     "desktop:publicar": "npm run build && node scripts/make-icon.mjs && node scripts/pack-runtime.mjs && electron-builder --config electron-builder.yml --publish always && node scripts/verify-package.mjs",
-    "fuente": "node scripts/empaquetar-fuente.mjs"
+    "fuente": "node scripts/empaquetar-fuente.mjs",
+    "desktop:build:linux": "npm run build && node scripts/make-icon.mjs && node scripts/pack-runtime.mjs && electron-builder --config electron-builder.yml --linux --publish never && node scripts/verify-package.mjs",
+    "desktop:build:mac": "npm run build && node scripts/make-icon.mjs && node scripts/pack-runtime.mjs && electron-builder --config electron-builder.yml --mac --publish never && node scripts/verify-package.mjs"
   },
   "allowScripts": {
     "esbuild@0.25.12": true,

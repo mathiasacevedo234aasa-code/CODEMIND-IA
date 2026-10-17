@@ -1,0 +1,45 @@
+# Compila la aplicacion de escritorio en los tres sistemas.
+#
+# AppImage solo se puede generar en Linux y el .dmg solo en macOS, y el
+# terminal nativo (node-pty) se instala para el sistema en el que se compila:
+# por eso cada uno se construye en su propia maquina. Se lanza a mano o al
+# subir una etiqueta v*; los instaladores quedan como artefactos del run.
+name: Compilar escritorio
+
+on:
+  workflow_dispatch:
+  push:
+    tags: ['v*']
+
+jobs:
+  compilar:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            script: desktop:build
+          - os: ubuntu-latest
+            script: desktop:build:linux
+          - os: macos-latest
+            script: desktop:build:mac
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run ${{ matrix.script }}
+        env:
+          # Sin certificado: el .dmg sale sin firmar (macOS avisara al abrirlo).
+          CSC_IDENTITY_AUTO_DISCOVERY: 'false'
+      - uses: actions/upload-artifact@v4
+        with:
+          name: codemind-${{ matrix.os }}
+          path: |
+            release/*.exe
+            release/*.AppImage
+            release/*.dmg
+          if-no-files-found: error
