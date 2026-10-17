@@ -127,6 +127,7 @@ export interface Actions {
   openProject: (id: string) => Promise<void>;
   closeProject: () => void;
   deleteProject: (id: string) => Promise<void>;
+  fijarProyecto: (id: string, fijado: boolean) => Promise<void>;
   saveProjectMeta: (patch: Partial<Project>) => Promise<void>;
 
   refreshTree: () => Promise<void>;

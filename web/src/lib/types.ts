@@ -9,6 +9,8 @@ export interface Project {
   mode: 'interno' | 'carpeta';
   /** Idioma de la documentación de este proyecto; null o ausente = el de la aplicación. */
   idiomaDoc?: 'es' | 'en' | null;
+  /** Fijado arriba en la pantalla de inicio. */
+  fijado?: boolean;
 }
 
 export type TreeNode =

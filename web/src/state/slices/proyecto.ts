@@ -73,6 +73,15 @@ export const crearProyecto = (set: PonerTienda, get: ObtenerTienda) => ({
     }
   },
 
+  async fijarProyecto(id: string, fijado: boolean) {
+    try {
+      const { project } = await api.updateProject(id, { fijado });
+      set((s) => ({ projects: s.projects.map((p) => (p.id === id ? project : p)) }));
+    } catch (err) {
+      set({ error: (err as Error).message });
+    }
+  },
+
   async openProject(id) {
     set({ loadingProject: true, error: null });
     try {

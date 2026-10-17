@@ -11,6 +11,7 @@ export function Welcome() {
   const openProject = useStore((s) => s.openProject);
   const createProject = useStore((s) => s.createProject);
   const deleteProject = useStore((s) => s.deleteProject);
+  const fijarProyecto = useStore((s) => s.fijarProyecto);
   const loading = useStore((s) => s.loadingProject);
 
   const [name, setName] = useState('');
@@ -54,9 +55,19 @@ export function Welcome() {
               directamente en ella, y su documentación se guarda aparte, sin ensuciar tu proyecto.
             </p>
 
-            <h3 style={{ fontSize: 13, margin: '24px 0 10px', color: 'var(--text-dim)' }}>{t('Proyectos guardados')}</h3>
-            {projects.length === 0 && <p className="hint">Todavía no hay proyectos. Crea el primero o abre una carpeta.</p>}
-            {projects.map((p) => (
+            {projects.length === 0 && (
+              <>
+                <h3 style={{ fontSize: 13, margin: '24px 0 10px', color: 'var(--text-dim)' }}>{t('Proyectos guardados')}</h3>
+                <p className="hint">Todavía no hay proyectos. Crea el primero o abre una carpeta.</p>
+              </>
+            )}
+            {[
+              { titulo: 'Fijados', lista: projects.filter((p) => p.fijado) },
+              { titulo: projects.some((p) => p.fijado) ? 'Recientes' : t('Proyectos guardados'), lista: projects.filter((p) => !p.fijado) },
+            ].filter((g) => g.lista.length).map((g) => (
+              <div key={g.titulo}>
+                <h3 style={{ fontSize: 13, margin: '24px 0 10px', color: 'var(--text-dim)' }}>{g.titulo}</h3>
+                {[...g.lista].sort((a, b) => b.updatedAt.localeCompare(a.updatedAt)).map((p) => (
               <div className="project-row" key={p.id} onClick={() => void openProject(p.id)}>
                 <Icon name={p.mode === 'carpeta' ? 'folderOpen' : 'folder'} />
                 <div style={{ flex: 1, minWidth: 0 }}>
@@ -67,6 +78,13 @@ export function Welcome() {
                     {new Date(p.updatedAt).toLocaleString('es')}
                   </div>
                 </div>
+                <button
+                  className={`btn sm ${p.fijado ? '' : 'outline'}`}
+                  title={p.fijado ? 'Soltar' : 'Fijar arriba'}
+                  onClick={(e) => { e.stopPropagation(); void fijarProyecto(p.id, !p.fijado); }}
+                >
+                  📌
+                </button>
                 <button
                   className="btn sm danger"
                   onClick={(e) => {
@@ -79,6 +97,8 @@ export function Welcome() {
                 >
                   <Icon name="trash" size={12} />
                 </button>
+              </div>
+                ))}
               </div>
             ))}
           </>

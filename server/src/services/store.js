@@ -157,7 +157,10 @@ export async function updateProject(id, patch) {
   if (typeof patch.objective === 'string') next.objective = patch.objective;
   // Idioma de la documentacion de ESTE proyecto; null = el de la aplicacion.
   if ('idiomaDoc' in patch) next.idiomaDoc = ['es', 'en'].includes(patch.idiomaDoc) ? patch.idiomaDoc : null;
-  next.updatedAt = new Date().toISOString();
+  if ('fijado' in patch) next.fijado = Boolean(patch.fijado);
+  // Fijar no es "usar": no debe mover el proyecto en la lista de recientes.
+  const soloFijar = Object.keys(patch).length === 1 && 'fijado' in patch;
+  if (!soloFijar) next.updatedAt = new Date().toISOString();
   await writeJson(metaFile(id), next);
   return next;
 }
