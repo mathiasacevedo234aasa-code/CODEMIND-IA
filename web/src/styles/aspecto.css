@@ -403,3 +403,4 @@ kbd {
 .md-vista th, .md-vista td { border: 1px solid var(--border); padding: 4px 8px; }
 .md-vista img { max-width: 100%; }
 .md-vista blockquote { margin: 0; padding-left: 12px; border-left: 3px solid var(--border); color: var(--text-dim); }
+.btn.icon.activo { color: var(--accent); background: var(--accent-soft, rgba(91,140,255,.15)); }

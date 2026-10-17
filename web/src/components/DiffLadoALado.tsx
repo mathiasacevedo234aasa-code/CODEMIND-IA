@@ -13,10 +13,23 @@ import { Icon } from './Icon';
  * Con "Anterior" y "Siguiente" se salta de un cambio al otro sin buscarlos con
  * la rueda del ratón. No se puede editar desde aquí: comparar no es cambiar.
  */
-export function DiffLadoALado({ ruta, staged, alCerrar }: { ruta: string; staged: boolean; alCerrar: () => void }) {
+interface Versiones { binary: boolean; antes: string; despues: string }
+
+/**
+ * Sin `cargar`, compara las versiones de Git de `ruta`. Con `cargar`, lo que
+ * devuelva: dos archivos cualquiera, o una versión del historial local.
+ */
+export function DiffLadoALado({ ruta, staged = false, alCerrar, cargar, titulo, etiqueta }: {
+  ruta: string;
+  staged?: boolean;
+  alCerrar: () => void;
+  cargar?: () => Promise<Versiones>;
+  titulo?: string;
+  etiqueta?: string;
+}) {
   const project = useStore((s) => s.project);
   const theme = useStore((s) => s.settings.editor.theme);
-  const [datos, setDatos] = useState<{ binary: boolean; antes: string; despues: string } | null>(null);
+  const [datos, setDatos] = useState<Versiones | null>(null);
   const [fallo, setFallo] = useState<string | null>(null);
   const [cambios, setCambios] = useState(0);
   const [actual, setActual] = useState(-1);
@@ -24,8 +37,10 @@ export function DiffLadoALado({ ruta, staged, alCerrar }: { ruta: string; staged
 
   useEffect(() => {
     if (!project) return;
-    api.gitVersiones(project.id, ruta, staged).then(setDatos).catch((e) => setFallo((e as Error).message));
-  }, [project, ruta, staged]);
+    (cargar ? cargar() : api.gitVersiones(project.id, ruta, staged))
+      .then(setDatos)
+      .catch((e) => setFallo((e as Error).message));
+  }, [project, ruta, staged]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     const alPulsar = (e: KeyboardEvent) => { if (e.key === 'Escape') alCerrar(); };
@@ -49,8 +64,8 @@ export function DiffLadoALado({ ruta, staged, alCerrar }: { ruta: string; staged
     <div className="overlay" onClick={alCerrar}>
       <div className="modal diff-modal" onClick={(e) => e.stopPropagation()}>
         <div className="modal-head">
-          <h2 style={{ fontSize: 14 }}>{ruta}</h2>
-          <span className="tag muted">{staged ? 'último commit → preparado' : 'preparado → tu disco'}</span>
+          <h2 style={{ fontSize: 14 }}>{titulo ?? ruta}</h2>
+          <span className="tag muted">{etiqueta ?? (staged ? 'último commit → preparado' : 'preparado → tu disco')}</span>
           <span style={{ flex: 1 }} />
           <span className="hint">{cambios ? `${actual >= 0 ? actual + 1 : '–'} de ${cambios} cambio(s)` : 'Sin cambios'}</span>
           <button className="btn sm outline" disabled={!cambios} onClick={() => ir(-1)} title="Cambio anterior">↑ Anterior</button>

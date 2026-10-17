@@ -153,6 +153,17 @@ export interface Actions {
   copyEntry: (from: string, to: string) => Promise<void>;
   /** Lo copiado en el explorador, a la espera de pegarse. */
   portapapeles: string | null;
+  /** Primer archivo elegido para comparar, a la espera del segundo. */
+  compararDesde: string | null;
+  setCompararDesde: (ruta: string | null) => void;
+  /** Comparación lado a lado abierta (dos archivos, o una versión del historial local). */
+  comparacion: {
+    ruta: string;
+    titulo: string;
+    etiqueta: string;
+    cargar: () => Promise<{ binary: boolean; antes: string; despues: string }>;
+  } | null;
+  setComparacion: (c: Actions['comparacion']) => void;
   setPortapapeles: (ruta: string | null) => void;
   deleteEntry: (path: string) => Promise<void>;
 

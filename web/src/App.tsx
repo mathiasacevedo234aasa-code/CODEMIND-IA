@@ -13,6 +13,7 @@ import { ReviewPanel } from './components/ReviewPanel';
 import { BuscarSimbolo } from './components/BuscarSimbolo';
 import { Bienvenida } from './components/Bienvenida';
 import { ColaCarpetaFlotante } from './components/DocArchivoBarra';
+import { ComparacionAbierta } from './components/Comparacion';
 import { DocLectura, useDocumentadosDelArchivo } from './components/DocLectura';
 import { AssistantPanel } from './components/AssistantPanel';
 import { BottomPanel } from './components/BottomPanel';
@@ -231,6 +232,7 @@ export default function App() {
       <BuscarSimbolo />
       <Bienvenida proyectoAbierto={Boolean(project)} />
       <ColaCarpetaFlotante />
+      <ComparacionAbierta />
 
       <FolderPicker
         open={folderPickerOpen}

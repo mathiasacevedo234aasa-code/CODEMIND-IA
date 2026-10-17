@@ -5,6 +5,7 @@ import { extensionOf } from '../lib/analyzer';
 import { Icon } from './Icon';
 import { ask, validarRutaRelativa } from '../lib/dialogs';
 import { useCobertura } from '../lib/useCobertura';
+import { compararArchivos } from './Comparacion';
 
 const EXT_COLOR: Record<string, string> = {
   html: '#e2724a', css: '#4a8fe2', scss: '#cf649a', js: '#e0b341', mjs: '#e0b341',
@@ -105,6 +106,8 @@ function Row({ node, depth }: { node: TreeNode; depth: number }) {
   const documentarArchivo = useStore((s) => s.documentarArchivo);
   const portapapeles = useStore((s) => s.portapapeles);
   const setPortapapeles = useStore((s) => s.setPortapapeles);
+  const compararDesde = useStore((s) => s.compararDesde);
+  const setCompararDesde = useStore((s) => s.setCompararDesde);
   const [encima, setEncima] = useState(false);
   const colaActiva = useStore((s) => Boolean(s.colaDoc?.activa));
 
@@ -213,6 +216,25 @@ function Row({ node, depth }: { node: TreeNode; depth: number }) {
               <button className="btn icon sm" disabled={colaActiva} onClick={onDocumentarCarpeta} title="Documentar lo que falta en esta carpeta"><Icon name="docs" size={12} /></button>
             </>
           )}
+          {!isDir && (
+            <button
+              className={`btn icon sm ${compararDesde === node.path ? 'activo' : ''}`}
+              title={compararDesde && compararDesde !== node.path
+                ? `Comparar con ${compararDesde}`
+                : 'Comparar con otro archivo (elige este y luego el otro)'}
+              onClick={(e) => {
+                e.stopPropagation();
+                if (compararDesde && compararDesde !== node.path) {
+                  compararArchivos(compararDesde, node.path);
+                  setCompararDesde(null);
+                } else {
+                  setCompararDesde(compararDesde === node.path ? null : node.path);
+                }
+              }}
+            >
+              <Icon name="diff" size={12} />
+            </button>
+          )}
           <button
             className="btn icon sm"
             title="Copiar (luego, Pegar aquí en la carpeta de destino)"
@@ -241,6 +263,8 @@ export function FileExplorer() {
   const cobertura = useCobertura();
   const portapapeles = useStore((s) => s.portapapeles);
   const setPortapapeles = useStore((s) => s.setPortapapeles);
+  const compararDesde = useStore((s) => s.compararDesde);
+  const setCompararDesde = useStore((s) => s.setCompararDesde);
 
   const add = async (kind: 'file' | 'dir') => {
     const name = await ask({
@@ -288,6 +312,13 @@ export function FileExplorer() {
         onDragOver={(e) => { if (e.dataTransfer.types.includes(TIPO_ARRASTRE)) e.preventDefault(); }}
         onDrop={(e) => { e.preventDefault(); void moverA(e.dataTransfer.getData(TIPO_ARRASTRE), ''); }}
       >
+        {compararDesde && (
+          <div className="portapapeles">
+            <span>Comparar <code>{compararDesde}</code> con… elige otro archivo (botón ⇅).</span>
+            <span style={{ flex: 1 }} />
+            <button className="btn icon sm" title="Cancelar" onClick={() => setCompararDesde(null)}><Icon name="close" size={11} /></button>
+          </div>
+        )}
         {portapapeles && (
           <div className="portapapeles">
             <span>Copiado: <code>{portapapeles}</code></span>
