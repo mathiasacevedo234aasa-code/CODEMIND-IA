@@ -27,6 +27,10 @@ export interface ColaDoc {
   /** Lo que se esta generando ahora mismo. */
   actual: string | null;
   cancelada: boolean;
+  /** En pausa: termina el elemento en curso y espera a que se reanude. */
+  pausada?: boolean;
+  /** true si `ruta` es una carpeta (o '' para el proyecto entero). */
+  carpeta?: boolean;
   /** Si se paro sola por un error que se iba a repetir en todos, cual. */
   motivoParada: string | null;
 }
@@ -149,8 +153,9 @@ export interface Actions {
   generateDoc: (sym: DetectedSymbol, extraInstruction?: string, opciones?: { enCola?: boolean }) => Promise<'ok' | 'invalida' | string>;
   /** La cola de "Documentar archivo", si hay una en marcha. */
   colaDoc: ColaDoc | null;
-  documentarArchivo: (ruta: string) => Promise<void>;
+  documentarArchivo: (ruta: string, opciones?: { carpeta?: boolean }) => Promise<void>;
   cancelarColaDoc: () => void;
+  pausarColaDoc: (pausada: boolean) => void;
   approveProposal: (proposalId: string) => Promise<void>;
   editProposal: (proposalId: string, doc: FunctionDoc) => Promise<void>;
   discardProposal: (proposalId: string) => Promise<void>;

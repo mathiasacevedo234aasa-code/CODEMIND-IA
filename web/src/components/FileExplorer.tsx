@@ -52,6 +52,8 @@ function Row({ node, depth }: { node: TreeNode; depth: number }) {
   const renameEntry = useStore((s) => s.renameEntry);
   const deleteEntry = useStore((s) => s.deleteEntry);
   const createEntry = useStore((s) => s.createEntry);
+  const documentarArchivo = useStore((s) => s.documentarArchivo);
+  const colaActiva = useStore((s) => Boolean(s.colaDoc?.activa));
 
   const ext = extensionOf(node.name);
   const isDir = node.type === 'dir';
@@ -93,6 +95,20 @@ function Row({ node, depth }: { node: TreeNode; depth: number }) {
     }
   };
 
+  const onDocumentarCarpeta = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    const st = useStore.getState();
+    const n = st.symbols().filter((x) => x.filePath.startsWith(`${node.path}/`) && !x.menor
+      && !st.approved[x.id] && !st.proposals.some((p) => p.functionId === x.id)).length;
+    if (!n) {
+      window.alert(`En ${node.path}/ no queda nada sin documentar ni pendiente de revisar.`);
+      return;
+    }
+    if (window.confirm(`Se pedirá a la IA la documentación de ${n} elemento(s) de ${node.path}/, uno detrás de otro. Todo llega a Revisión y nada es oficial hasta que lo apruebes. ¿Empezar?`)) {
+      void documentarArchivo(node.path, { carpeta: true });
+    }
+  };
+
   return (
     <>
       <div
@@ -115,6 +131,7 @@ function Row({ node, depth }: { node: TreeNode; depth: number }) {
             <>
               <button className="btn icon sm" onClick={(e) => void onAdd('file')(e)} title="Nuevo archivo aquí"><Icon name="file" size={12} /></button>
               <button className="btn icon sm" onClick={(e) => void onAdd('dir')(e)} title="Nueva carpeta aquí"><Icon name="folder" size={12} /></button>
+              <button className="btn icon sm" disabled={colaActiva} onClick={onDocumentarCarpeta} title="Documentar lo que falta en esta carpeta"><Icon name="docs" size={12} /></button>
             </>
           )}
           <button className="btn icon sm" onClick={(e) => void onRename(e)} title="Renombrar"><Icon name="edit" size={12} /></button>

@@ -16,7 +16,6 @@ export function DocArchivoBarra() {
   const activeTabId = useStore((s) => s.activeTabId);
   const cola = useStore((s) => s.colaDoc);
   const documentarArchivo = useStore((s) => s.documentarArchivo);
-  const cancelarColaDoc = useStore((s) => s.cancelarColaDoc);
   const apiKeyConfigured = useStore((s) => s.apiKeyConfigured);
   const proveedorNombre = useStore((s) => s.proveedorNombre);
   const symbolsFn = useStore((s) => s.symbols);
@@ -37,25 +36,9 @@ export function DocArchivoBarra() {
     [ruta, symbolsFn, analysis, approved, proposals], // eslint-disable-line react-hooks/exhaustive-deps
   );
 
-  // Mientras hay una cola en marcha, se enseña aunque sea de otro archivo.
-  if (cola?.activa) {
-    const pct = Math.round((cola.hechos / cola.total) * 100);
-    return (
-      <div className="doc-barra">
-        <div className="doc-barra-fila">
-          <span className="spinner" />
-          <strong>Documentando {cola.ruta.split('/').pop()}</strong>
-          <span className="meta">{cola.hechos} de {cola.total}</span>
-          <span style={{ flex: 1 }} />
-          <button className="btn sm outline" disabled={cola.cancelada} onClick={cancelarColaDoc}>
-            {cola.cancelada ? 'Cancelando...' : 'Cancelar'}
-          </button>
-        </div>
-        <div className="barra-cobertura"><span style={{ width: `${pct}%` }} /></div>
-        {cola.actual && <p className="hint">Ahora: <code>{cola.actual}</code></p>}
-      </div>
-    );
-  }
+  // Mientras hay una cola de un archivo en marcha, se enseña aunque sea de
+  // otro. La de una carpeta tiene su propia tarjeta flotante.
+  if (cola?.activa && !cola.carpeta) return <div className="doc-barra"><ProgresoCola /></div>;
 
   if (!ruta || !cob || cob.total === 0) return null;
 
@@ -99,4 +82,45 @@ export function DocArchivoBarra() {
       )}
     </div>
   );
+}
+
+/** Progreso de la cola en marcha, con pausa y cancelar. Sirve para archivo y carpeta. */
+export function ProgresoCola() {
+  const cola = useStore((s) => s.colaDoc);
+  const cancelar = useStore((s) => s.cancelarColaDoc);
+  const pausar = useStore((s) => s.pausarColaDoc);
+  if (!cola?.activa) return null;
+  const pct = Math.round((cola.hechos / Math.max(1, cola.total)) * 100);
+  const nombre = cola.carpeta ? (cola.ruta ? `${cola.ruta}/` : 'el proyecto entero') : cola.ruta.split('/').pop();
+  return (
+    <>
+      <div className="doc-barra-fila">
+        {cola.pausada ? <span className="tag warn">En pausa</span> : <span className="spinner" />}
+        <strong>Documentando {nombre}</strong>
+        <span className="meta">{cola.hechos} de {cola.total}</span>
+        <span style={{ flex: 1 }} />
+        <button
+          className="btn sm outline"
+          disabled={cola.cancelada}
+          title={cola.pausada ? 'Seguir con el siguiente' : 'Termina el que está en curso y espera'}
+          onClick={() => pausar(!cola.pausada)}
+        >
+          {cola.pausada ? 'Reanudar' : 'Pausa'}
+        </button>
+        <button className="btn sm outline" disabled={cola.cancelada} onClick={cancelar}>
+          {cola.cancelada ? 'Cancelando...' : 'Cancelar'}
+        </button>
+      </div>
+      <div className="barra-cobertura"><span style={{ width: `${pct}%` }} /></div>
+      {cola.actual && <p className="hint">{cola.pausada ? 'Termina: ' : 'Ahora: '}<code>{cola.actual}</code></p>}
+      {cola.fallidos.length > 0 && <p className="hint" style={{ color: 'var(--warn)' }}>{cola.fallidos.length} sin generar hasta ahora.</p>}
+    </>
+  );
+}
+
+/** La cola de una carpeta dura mucho: una tarjeta que se ve desde cualquier vista. */
+export function ColaCarpetaFlotante() {
+  const cola = useStore((s) => s.colaDoc);
+  if (!cola?.activa || !cola.carpeta) return null;
+  return <div className="cola-flotante"><ProgresoCola /></div>;
 }

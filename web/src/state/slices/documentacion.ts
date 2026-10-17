@@ -86,10 +86,14 @@ export const crearDocumentacion = (set: PonerTienda, get: ObtenerTienda) => ({
    * medias sin dejar nada a medio guardar. Cada propuesta queda en Revisión
    * como siempre: documentar en lote no aprueba nada.
    */
-  async documentarArchivo(ruta) {
+  async documentarArchivo(ruta, opciones = {}) {
     if (get().colaDoc?.activa) return;
+    const carpeta = Boolean(opciones.carpeta);
+    // Una carpeta incluye todo lo de dentro, subcarpetas incluidas; '' es el
+    // proyecto entero.
+    const dentro = (p: string) => (carpeta ? !ruta || p.startsWith(`${ruta}/`) : p === ruta);
     const pendientes = get().symbols().filter((x) =>
-      x.filePath === ruta
+      dentro(x.filePath)
       && !x.menor
       && !get().approved[x.id]
       && !get().proposals.some((p) => p.functionId === x.id));
@@ -99,10 +103,14 @@ export const crearDocumentacion = (set: PonerTienda, get: ObtenerTienda) => ({
       return;
     }
 
-    set({ colaDoc: { activa: true, ruta, total: pendientes.length, hechos: 0, fallidos: [], actual: null, cancelada: false, motivoParada: null } });
+    set({ colaDoc: { activa: true, ruta, carpeta, total: pendientes.length, hechos: 0, fallidos: [], actual: null, cancelada: false, pausada: false, motivoParada: null } });
     get().log('documentacion', 'info', `Documentando ${pendientes.length} elemento(s) de ${ruta}, uno detrás de otro.`);
 
     for (const sym of pendientes) {
+      // En pausa no se pide nada nuevo; se espera aquí hasta reanudar o cancelar.
+      while (get().colaDoc?.pausada && !get().colaDoc?.cancelada) {
+        await new Promise((r) => setTimeout(r, 300));
+      }
       if (get().colaDoc?.cancelada) break;
       set((s) => ({ colaDoc: s.colaDoc && { ...s.colaDoc, actual: sym.qualifiedName } }));
 
@@ -144,6 +152,7 @@ export const crearDocumentacion = (set: PonerTienda, get: ObtenerTienda) => ({
   },
 
   cancelarColaDoc: () => set((s) => ({ colaDoc: s.colaDoc && { ...s.colaDoc, cancelada: true } })),
+  pausarColaDoc: (pausada: boolean) => set((s) => ({ colaDoc: s.colaDoc && { ...s.colaDoc, pausada } })),
 
   async approveProposal(proposalId) {
     const project = get().project;
