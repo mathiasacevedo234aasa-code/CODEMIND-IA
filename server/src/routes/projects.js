@@ -11,12 +11,14 @@ import {
   writeFileContent,
   createEntry,
   renameEntry,
+  copyEntry,
   deleteEntry,
   readMemory,
   writeMemory,
   readSession,
   writeSession,
   newId,
+  HttpError,
 } from '../services/store.js';
 
 const router = Router();
@@ -97,6 +99,17 @@ router.post('/:id/entry', async (req, res, next) => {
     await getProject(req.params.id);
     const { path: relPath, kind } = req.body ?? {};
     res.status(201).json(await createEntry(req.params.id, relPath, kind === 'dir' ? 'dir' : 'file'));
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.post('/:id/copy', async (req, res, next) => {
+  try {
+    const { from, to } = req.body ?? {};
+    await getProject(req.params.id);
+    if (!from || !to) throw new HttpError(400, 'Faltan el origen y el destino.');
+    res.json(await copyEntry(req.params.id, from, to));
   } catch (err) {
     next(err);
   }

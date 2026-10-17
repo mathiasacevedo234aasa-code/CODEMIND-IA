@@ -150,6 +150,10 @@ export interface Actions {
   saveAll: () => Promise<void>;
   createEntry: (path: string, kind: 'file' | 'dir') => Promise<void>;
   renameEntry: (from: string, to: string) => Promise<void>;
+  copyEntry: (from: string, to: string) => Promise<void>;
+  /** Lo copiado en el explorador, a la espera de pegarse. */
+  portapapeles: string | null;
+  setPortapapeles: (ruta: string | null) => void;
   deleteEntry: (path: string) => Promise<void>;
 
   scanProject: () => Promise<void>;

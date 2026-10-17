@@ -152,6 +152,8 @@ export const api = {
     request<{ path: string }>(`/api/projects/${id}/entry`, { method: 'POST', ...json({ path, kind }) }),
   rename: (id: string, from: string, to: string) =>
     request<{ from: string; to: string }>(`/api/projects/${id}/rename`, { method: 'POST', ...json({ from, to }) }),
+  copyEntry: (id: string, from: string, to: string) =>
+    request<{ from: string; to: string }>(`/api/projects/${id}/copy`, { method: 'POST', ...json({ from, to }) }),
   deleteEntry: (id: string, path: string) =>
     request<{ path: string }>(`/api/projects/${id}/entry?path=${encodeURIComponent(path)}`, { method: 'DELETE' }),
 

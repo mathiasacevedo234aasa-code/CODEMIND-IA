@@ -44,6 +44,56 @@ function InsigniaCobertura({ ruta }: { ruta: string }) {
   );
 }
 
+const TIPO_ARRASTRE = 'application/x-codemind-ruta';
+
+/** Todas las rutas del árbol, para no pisar nada al pegar. */
+function rutasDelArbol(nodos: TreeNode[], salida = new Set<string>()) {
+  for (const n of nodos) {
+    salida.add(n.path);
+    if (n.type === 'dir') rutasDelArbol(n.children, salida);
+  }
+  return salida;
+}
+
+/** "a.js" -> "a (copia).js", "a (copia 2).js"... hasta encontrar un nombre libre. */
+function nombreLibre(carpeta: string, nombre: string, ocupadas: Set<string>) {
+  const unir = (n: string) => (carpeta ? `${carpeta}/${n}` : n);
+  if (!ocupadas.has(unir(nombre))) return unir(nombre);
+  const punto = nombre.lastIndexOf('.');
+  const [base, ext] = punto > 0 ? [nombre.slice(0, punto), nombre.slice(punto)] : [nombre, ''];
+  for (let i = 1; ; i++) {
+    const candidato = unir(`${base} (copia${i > 1 ? ` ${i}` : ''})${ext}`);
+    if (!ocupadas.has(candidato)) return candidato;
+  }
+}
+
+/** Mueve `ruta` dentro de `carpeta` ('' = raíz). Lo de siempre: con el nombre que tenía. */
+async function moverA(ruta: string, carpeta: string) {
+  if (!ruta) return;
+  const nombre = ruta.split('/').pop()!;
+  const destino = carpeta ? `${carpeta}/${nombre}` : nombre;
+  if (destino === ruta) return;
+  const st = useStore.getState();
+  if (carpeta === ruta || carpeta.startsWith(`${ruta}/`)) {
+    st.setError('No se puede mover una carpeta dentro de sí misma.');
+    return;
+  }
+  if (rutasDelArbol(st.tree).has(destino)) {
+    st.setError(`Ya existe "${destino}". Renómbralo antes de moverlo.`);
+    return;
+  }
+  await st.renameEntry(ruta, destino);
+}
+
+async function pegarEn(ruta: string, carpeta: string) {
+  const st = useStore.getState();
+  if (carpeta === ruta || carpeta.startsWith(`${ruta}/`)) {
+    st.setError('No se puede copiar una carpeta dentro de sí misma.');
+    return;
+  }
+  await st.copyEntry(ruta, nombreLibre(carpeta, ruta.split('/').pop()!, rutasDelArbol(st.tree)));
+}
+
 function Row({ node, depth }: { node: TreeNode; depth: number }) {
   const [open, setOpen] = useState(depth < 1);
   const tabs = useStore((s) => s.tabs);
@@ -53,6 +103,9 @@ function Row({ node, depth }: { node: TreeNode; depth: number }) {
   const deleteEntry = useStore((s) => s.deleteEntry);
   const createEntry = useStore((s) => s.createEntry);
   const documentarArchivo = useStore((s) => s.documentarArchivo);
+  const portapapeles = useStore((s) => s.portapapeles);
+  const setPortapapeles = useStore((s) => s.setPortapapeles);
+  const [encima, setEncima] = useState(false);
   const colaActiva = useStore((s) => Boolean(s.colaDoc?.activa));
 
   const ext = extensionOf(node.name);
@@ -112,8 +165,25 @@ function Row({ node, depth }: { node: TreeNode; depth: number }) {
   return (
     <>
       <div
-        className={`tree-row ${active ? 'active' : ''}`}
+        className={`tree-row ${active ? 'active' : ''} ${encima ? 'soltar-aqui' : ''}`}
         style={{ paddingLeft: 8 + depth * 12 }}
+        draggable
+        onDragStart={(e) => { e.dataTransfer.setData(TIPO_ARRASTRE, node.path); e.dataTransfer.effectAllowed = 'move'; }}
+        onDragOver={(e) => {
+          if (!isDir || !e.dataTransfer.types.includes(TIPO_ARRASTRE)) return;
+          e.preventDefault();
+          e.stopPropagation();
+          setEncima(true);
+        }}
+        onDragLeave={() => setEncima(false)}
+        onDrop={(e) => {
+          if (!isDir) return;
+          e.preventDefault();
+          e.stopPropagation();
+          setEncima(false);
+          void moverA(e.dataTransfer.getData(TIPO_ARRASTRE), node.path);
+          setOpen(true);
+        }}
         onClick={() => (isDir ? setOpen((v) => !v) : void openFile(node.path))}
         title={node.path}
       >
@@ -131,9 +201,25 @@ function Row({ node, depth }: { node: TreeNode; depth: number }) {
             <>
               <button className="btn icon sm" onClick={(e) => void onAdd('file')(e)} title="Nuevo archivo aquí"><Icon name="file" size={12} /></button>
               <button className="btn icon sm" onClick={(e) => void onAdd('dir')(e)} title="Nueva carpeta aquí"><Icon name="folder" size={12} /></button>
+              {portapapeles && (
+                <button
+                  className="btn icon sm"
+                  title={`Pegar aquí ${portapapeles.split('/').pop()}`}
+                  onClick={(e) => { e.stopPropagation(); void pegarEn(portapapeles, node.path); setOpen(true); }}
+                >
+                  <Icon name="check" size={12} />
+                </button>
+              )}
               <button className="btn icon sm" disabled={colaActiva} onClick={onDocumentarCarpeta} title="Documentar lo que falta en esta carpeta"><Icon name="docs" size={12} /></button>
             </>
           )}
+          <button
+            className="btn icon sm"
+            title="Copiar (luego, Pegar aquí en la carpeta de destino)"
+            onClick={(e) => { e.stopPropagation(); setPortapapeles(node.path); }}
+          >
+            <Icon name="columns" size={12} />
+          </button>
           <button className="btn icon sm" onClick={(e) => void onRename(e)} title="Renombrar"><Icon name="edit" size={12} /></button>
           <button className="btn icon sm danger" onClick={onDelete} title="Eliminar"><Icon name="trash" size={12} /></button>
         </span>
@@ -153,6 +239,8 @@ export function FileExplorer() {
   const scanning = useStore((s) => s.scanning);
   const setFolderPickerOpen = useStore((s) => s.setFolderPickerOpen);
   const cobertura = useCobertura();
+  const portapapeles = useStore((s) => s.portapapeles);
+  const setPortapapeles = useStore((s) => s.setPortapapeles);
 
   const add = async (kind: 'file' | 'dir') => {
     const name = await ask({
@@ -193,7 +281,21 @@ export function FileExplorer() {
           </button>
         </span>
       </div>
-      <div className="panel-body" style={{ paddingTop: 4 }}>
+      <div
+        className="panel-body"
+        style={{ paddingTop: 4 }}
+        // Soltar en el hueco del explorador = mover a la raíz del proyecto.
+        onDragOver={(e) => { if (e.dataTransfer.types.includes(TIPO_ARRASTRE)) e.preventDefault(); }}
+        onDrop={(e) => { e.preventDefault(); void moverA(e.dataTransfer.getData(TIPO_ARRASTRE), ''); }}
+      >
+        {portapapeles && (
+          <div className="portapapeles">
+            <span>Copiado: <code>{portapapeles}</code></span>
+            <span style={{ flex: 1 }} />
+            <button className="btn sm outline" onClick={() => void pegarEn(portapapeles, '')}>Pegar en la raíz</button>
+            <button className="btn icon sm" title="Olvidar" onClick={() => setPortapapeles(null)}><Icon name="close" size={11} /></button>
+          </div>
+        )}
         {project?.mode === 'carpeta' && (
           <p className="hint" style={{ padding: '4px 10px', wordBreak: 'break-all' }}>{project.root}</p>
         )}

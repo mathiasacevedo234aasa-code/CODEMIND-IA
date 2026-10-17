@@ -285,22 +285,41 @@ export const crearPestanas = (set: PonerTienda, get: ObtenerTienda) => ({
     if (!project) return;
     try {
       await api.rename(project.id, from, to);
+      // Si es una carpeta, todo lo que hay dentro cambia de ruta también.
+      const nueva = (p: string) => (p === from ? to : p.startsWith(`${from}/`) ? `${to}${p.slice(from.length)}` : p);
       forgetFile(from);
       set((s) => {
-        const files = { ...s.files };
-        if (files[from]) {
-          files[to] = files[from];
-          delete files[from];
+        const files: typeof s.files = {};
+        for (const [ruta, f] of Object.entries(s.files)) {
+          if (nueva(ruta) !== ruta) forgetFile(ruta);
+          files[nueva(ruta)] = f;
         }
+        const tabs = s.tabs.map((t) => (t.kind === 'file' && nueva(t.path) !== t.path
+          ? { ...t, path: nueva(t.path), id: fileTabId(nueva(t.path)) }
+          : t));
+        const activa = s.tabs.find((t) => t.id === s.activeTabId);
         return {
           files,
-          tabs: s.tabs.map((t) => (t.kind === 'file' && t.path === from ? { ...t, path: to, id: fileTabId(to) } : t)),
-          activeTabId: s.activeTabId === fileTabId(from) ? fileTabId(to) : s.activeTabId,
+          tabs,
+          activeTabId: activa?.kind === 'file' && nueva(activa.path) !== activa.path ? fileTabId(nueva(activa.path)) : s.activeTabId,
         };
       });
       await get().refreshTree();
       await get().scanProject();
       get().log('sistema', 'info', `Renombrado: ${from} -> ${to}`);
+    } catch (err) {
+      set({ error: (err as Error).message });
+    }
+  },
+
+  async copyEntry(from, to) {
+    const project = get().project;
+    if (!project) return;
+    try {
+      await api.copyEntry(project.id, from, to);
+      await get().refreshTree();
+      await get().scanProject();
+      get().log('sistema', 'info', `Copiado: ${from} -> ${to}`);
     } catch (err) {
       set({ error: (err as Error).message });
     }

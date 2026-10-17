@@ -341,8 +341,24 @@ export async function renameEntry(projectId, from, to) {
   const absTo = resolveWithin(base, to);
   if (!(await exists(absFrom))) throw new HttpError(404, `No se encontro "${from}".`);
   if (await exists(absTo)) throw new HttpError(409, `Ya existe "${to}".`);
+  // Una carpeta no cabe dentro de si misma (arrastrarla sobre una hija).
+  if (absTo.startsWith(absFrom + path.sep)) throw new HttpError(400, 'No se puede mover una carpeta dentro de si misma.');
   await fs.mkdir(path.dirname(absTo), { recursive: true });
   await fs.rename(absFrom, absTo);
+  await touchProject(projectId);
+  return { from, to };
+}
+
+/** Copia un archivo o una carpeta entera. Nunca sobrescribe: si el destino existe, 409. */
+export async function copyEntry(projectId, from, to) {
+  const base = await projectRootDir(projectId);
+  const absFrom = resolveWithin(base, from);
+  const absTo = resolveWithin(base, to);
+  if (!(await exists(absFrom))) throw new HttpError(404, `No se encontro "${from}".`);
+  if (await exists(absTo)) throw new HttpError(409, `Ya existe "${to}".`);
+  if (absTo.startsWith(absFrom + path.sep)) throw new HttpError(400, 'No se puede copiar una carpeta dentro de si misma.');
+  await fs.mkdir(path.dirname(absTo), { recursive: true });
+  await fs.cp(absFrom, absTo, { recursive: true, errorOnExist: true, force: false });
   await touchProject(projectId);
   return { from, to };
 }
