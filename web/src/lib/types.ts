@@ -449,6 +449,10 @@ export interface EditorSettings {
   theme: 'dark' | 'light' | 'sistema';
   /** Tema de VS Code importado para el editor (null = el de siempre). */
   temaVsCode?: TemaVsCode | null;
+  /** Tamaño de toda la interfaz (1 = normal). */
+  zoomInterfaz?: number;
+  /** Alto contraste: negro, blanco y bordes marcados. */
+  altoContraste?: boolean;
   fontSize: number;
   tabSize: number;
   wordWrap: boolean;

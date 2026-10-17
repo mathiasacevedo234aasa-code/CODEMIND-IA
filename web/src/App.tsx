@@ -24,6 +24,7 @@ import { DialogHost } from './components/DialogHost';
 import { Icon } from './components/Icon';
 import { useT } from './lib/i18n';
 import { useTemaOscuro } from './lib/tema';
+import { activarNavegacionTeclado } from './lib/accesibilidad';
 
 /**
  * Lo pesado se carga cuando hace falta, no al arrancar.
@@ -102,6 +103,15 @@ export default function App() {
   useEffect(() => { void boot(); }, [boot]);
   useEffect(() => { document.documentElement.dataset.theme = theme; }, [theme]);
   useEffect(() => { document.documentElement.lang = idioma; }, [idioma]);
+  const zoom = useStore((s) => s.settings.editor.zoomInterfaz ?? 1);
+  const altoContraste = useStore((s) => Boolean(s.settings.editor.altoContraste));
+  // Zoom de TODA la interfaz, no solo del texto del editor.
+  useEffect(() => { document.documentElement.style.setProperty('zoom', String(zoom)); }, [zoom]);
+  useEffect(() => {
+    if (altoContraste) document.documentElement.dataset.contraste = 'alto';
+    else delete document.documentElement.dataset.contraste;
+  }, [altoContraste]);
+  useEffect(() => activarNavegacionTeclado(), []);
 
   // Atajos globales. Se registran una vez y no dependen del foco.
   useEffect(() => {

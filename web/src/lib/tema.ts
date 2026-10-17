@@ -26,6 +26,9 @@ export function useTemaOscuro(): boolean {
 export function useTemaMonaco(): string {
   const oscuro = useTemaOscuro();
   const importado = useStore((s) => s.settings.editor.temaVsCode);
+  const altoContraste = useStore((s) => Boolean(s.settings.editor.altoContraste));
+  // El alto contraste manda: es una necesidad, no una preferencia de estilo.
+  if (altoContraste) return oscuro ? 'hc-black' : 'hc-light';
   if (importado) return NOMBRE_IMPORTADO;
   return oscuro ? 'vs-dark' : 'light';
 }

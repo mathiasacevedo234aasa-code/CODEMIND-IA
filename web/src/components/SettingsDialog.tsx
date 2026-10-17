@@ -104,6 +104,30 @@ export function SettingsDialog() {
           </div>
 
           <div className="field">
+            <label>{t('Tamaño de la interfaz')} ({Math.round((settings.editor.zoomInterfaz ?? 1) * 100)} %)</label>
+            <input
+              type="range" min={0.8} max={1.6} step={0.1}
+              value={settings.editor.zoomInterfaz ?? 1}
+              onChange={(e) => void saveSettings({ editor: { ...settings.editor, zoomInterfaz: Number(e.target.value) } })}
+            />
+          </div>
+
+          <div className="field">
+            <label style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+              <input
+                type="checkbox" style={{ width: 'auto' }}
+                checked={Boolean(settings.editor.altoContraste)}
+                onChange={(e) => void saveSettings({ editor: { ...settings.editor, altoContraste: e.target.checked } })}
+              />
+              {t('Alto contraste')}
+            </label>
+            <p className="hint">
+              Colores de máximo contraste en toda la aplicación y en el editor, y el foco del teclado bien visible. Todas las
+              filas de los paneles se alcanzan con Tab, se abren con Intro y se recorren con las flechas.
+            </p>
+          </div>
+
+          <div className="field">
             <label>{t('Tema del editor de VS Code')}</label>
             {settings.editor.temaVsCode ? (
               <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>

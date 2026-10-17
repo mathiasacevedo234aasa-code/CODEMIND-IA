@@ -427,3 +427,45 @@ kbd {
 .problema.con-ruta { cursor: pointer; }
 .problema.con-ruta:hover { background: var(--hover, rgba(127,127,127,.12)); }
 .problema .msg { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* ---------------------------------------------------- alto contraste */
+:root[data-contraste='alto'] {
+  --bg: #000000;
+  --bg-elev: #000000;
+  --bg-panel: #000000;
+  --bg-hover: #1a1a1a;
+  --bg-active: #262626;
+  --border: #ffffff;
+  --border-strong: #ffffff;
+  --text: #ffffff;
+  --text-dim: #f0f0f0;
+  --text-faint: #d8d8d8;
+  --accent: #ffd400;
+  --accent-soft: rgba(255, 212, 0, 0.22);
+  --ok: #3dff7a;
+  --warn: #ffb000;
+  --danger: #ff5c5c;
+}
+:root[data-contraste='alto'][data-theme='light'] {
+  --bg: #ffffff;
+  --bg-elev: #ffffff;
+  --bg-panel: #ffffff;
+  --bg-hover: #e8e8e8;
+  --bg-active: #d8d8d8;
+  --border: #000000;
+  --border-strong: #000000;
+  --text: #000000;
+  --text-dim: #111111;
+  --text-faint: #222222;
+  --accent: #0000c8;
+  --accent-soft: rgba(0, 0, 200, 0.14);
+  --ok: #006b1f;
+  --warn: #8a4b00;
+  --danger: #b00000;
+}
+/* El foco del teclado, siempre visible y grueso. */
+:root[data-contraste='alto'] :focus-visible { outline: 3px solid var(--accent) !important; outline-offset: 2px; }
+/* Fuera del alto contraste, el foco de las filas de los paneles también se ve. */
+.tree-row:focus-visible, .project-row:focus-visible, .git-row:focus-visible, .mapa-fila:focus-visible,
+.conv-fila:focus-visible, .problema:focus-visible, .bottom-tab:focus-visible, .tab:focus-visible,
+.stash-fila:focus-visible, .commit-row:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
