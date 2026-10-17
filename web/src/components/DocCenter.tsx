@@ -5,6 +5,7 @@ import type { ApprovedDoc, ProjectMemory } from '../lib/types';
 import { DocView } from './DocView';
 import { Icon } from './Icon';
 import { DiagramaArquitectura } from './DiagramaArquitectura';
+import { pedirBorrador, type Borrador } from '../lib/borradorGeneral';
 const ProjectMap = lazy(() => import('./ProjectMap').then((m) => ({ default: m.ProjectMap })));
 import { GlosarioPanel } from './GlosarioPanel';
 
@@ -97,22 +98,33 @@ function GeneralSection() {
   const [draft, setDraft] = useState(memory?.overview);
   const [busy, setBusy] = useState(false);
   const [suggestion, setSuggestion] = useState<string | null>(null);
+  const [propuesta, setPropuesta] = useState<Borrador | null>(null);
+  const pedirBorradorAlAbrir = useStore((s) => s.pedirBorradorAlAbrir);
+  const setPedirBorradorAlAbrir = useStore((s) => s.setPedirBorradorAlAbrir);
 
   useEffect(() => setDraft(memory?.overview), [memory]);
+  // Viene de la oferta al importar una carpeta: se pide el borrador al abrir.
+  useEffect(() => {
+    if (pedirBorradorAlAbrir && draft) {
+      setPedirBorradorAlAbrir(false);
+      void askDraft();
+    }
+  }, [pedirBorradorAlAbrir, draft]); // eslint-disable-line react-hooks/exhaustive-deps
   if (!draft) return null;
 
   const askDraft = async () => {
     if (!project) return;
     setBusy(true);
     try {
-      const res = await api.chat({
-        projectId: project.id,
-        mode: 'context',
-        question:
-          'Redacta un borrador breve de la descripcion general del proyecto a partir de lo que consta en la memoria, ' +
-          'las funciones documentadas y el objetivo declarado. Indica explicitamente que campos no constan en lugar de inventarlos.',
-      });
-      setSuggestion(res.answer);
+      // Con el código delante (archivos, manifiestos, inventario), no solo
+      // con la memoria: en un proyecto recién importado la memoria está vacía.
+      const { campos, texto } = await pedirBorrador();
+      if (campos) {
+        setPropuesta(campos);
+        setSuggestion(null);
+      } else {
+        setSuggestion(texto);
+      }
     } catch (err) {
       setError((err as Error).message);
     } finally {
@@ -122,6 +134,33 @@ function GeneralSection() {
 
   return (
     <>
+      {propuesta && (
+        <div className="card" style={{ marginBottom: 14, borderColor: 'var(--accent)' }}>
+          <h4>Borrador propuesto por la IA (no guardado)</h4>
+          {OVERVIEW_FIELDS.map((f) => (
+            <p key={f.key} style={{ margin: '4px 0' }}><strong>{f.label}:</strong> {propuesta[f.key as keyof Borrador]}</p>
+          ))}
+          <p className="hint">Revísalo: sale del código y de los archivos del proyecto, y puede equivocarse.</p>
+          <div style={{ display: 'flex', gap: 6 }}>
+            <button
+              className="btn sm primary"
+              onClick={() => {
+                // Solo lo que consta: un "No consta" no pisa lo que ya hubieras escrito.
+                const nuevo = { ...draft };
+                for (const f of OVERVIEW_FIELDS) {
+                  const v = propuesta[f.key as keyof Borrador];
+                  if (v && v !== 'No consta') (nuevo as Record<string, string>)[f.key] = v;
+                }
+                setDraft(nuevo);
+                setPropuesta(null);
+              }}
+            >
+              Pasar a los campos
+            </button>
+            <button className="btn sm outline" onClick={() => setPropuesta(null)}>Descartar</button>
+          </div>
+        </div>
+      )}
       <p className="hint" style={{ marginBottom: 14 }}>
         Esta informacion alimenta la memoria del proyecto y el modo "Contexto" del asistente. Solo se guarda lo que tu apruebes.
       </p>

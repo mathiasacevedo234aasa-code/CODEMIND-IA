@@ -124,3 +124,27 @@ export function ColaCarpetaFlotante() {
   if (!cola?.activa || !cola.carpeta) return null;
   return <div className="cola-flotante"><ProgresoCola /></div>;
 }
+
+/** Tras importar una carpeta: ofrecer un borrador de la descripción general. */
+export function OfertaBorrador() {
+  const id = useStore((s) => s.ofrecerBorrador);
+  const project = useStore((s) => s.project);
+  const setOfrecer = useStore((s) => s.setOfrecerBorrador);
+  const setPedir = useStore((s) => s.setPedirBorradorAlAbrir);
+  const setDocCenterOpen = useStore((s) => s.setDocCenterOpen);
+  if (!id || project?.id !== id) return null;
+  return (
+    <div className="cola-flotante">
+      <strong>Proyecto importado</strong>
+      <p className="hint" style={{ margin: '4px 0 8px' }}>
+        ¿Quieres que la IA proponga un borrador de la descripción general a partir del código? Lo revisas y decides qué guardar.
+      </p>
+      <div style={{ display: 'flex', gap: 6 }}>
+        <button className="btn sm primary" onClick={() => { setOfrecer(null); setPedir(true); setDocCenterOpen(true); }}>
+          Proponer borrador
+        </button>
+        <button className="btn sm outline" onClick={() => setOfrecer(null)}>Ahora no</button>
+      </div>
+    </div>
+  );
+}

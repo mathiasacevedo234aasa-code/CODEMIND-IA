@@ -68,6 +68,9 @@ export const crearProyecto = (set: PonerTienda, get: ObtenerTienda) => ({
     const { project, plantilla: res } = await api.createProject(name, objective, root, plantilla);
     set((s) => ({ projects: [project, ...s.projects] }));
     await get().openProject(project.id);
+    // Una carpeta que ya tenía código: se ofrece (no se hace) un borrador de
+    // la descripción general, para no empezar con la documentación vacía.
+    if (root && !plantilla) set({ ofrecerBorrador: project.id });
     if (res) {
       get().log('sistema', 'info', `Plantilla: ${res.escritos.length} archivo(s) creados${res.respetados.length ? `; ya existían y no se tocaron: ${res.respetados.join(', ')}` : ''}.`);
     }

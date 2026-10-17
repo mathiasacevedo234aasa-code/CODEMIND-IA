@@ -23,6 +23,8 @@ export const crearUi = (set: PonerTienda, get: ObtenerTienda) => ({
   askAssistant: (question, contextText) =>
     set({ pendingAsk: { question, contextText }, rightTab: 'asistente', rightOpen: true }),
   clearPendingAsk: () => set({ pendingAsk: null }),
+  setOfrecerBorrador: (id: string | null) => set({ ofrecerBorrador: id }),
+  setPedirBorradorAlAbrir: (v: boolean) => set({ pedirBorradorAlAbrir: v }),
   setCompararDesde: (ruta: string | null) => set({ compararDesde: ruta }),
   setComparacion: (c: Tienda['comparacion']) => set({ comparacion: c }),
   setPortapapeles: (ruta: string | null) => set({ portapapeles: ruta }),

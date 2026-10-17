@@ -98,6 +98,8 @@ export const useStore = create<Tienda>((set, get) => ({
   cursor: null,
   portapapeles: null,
   compararDesde: null,
+  ofrecerBorrador: null,
+  pedirBorradorAlAbrir: false,
   comparacion: null,
   jumpTo: null,
   pendingAsk: null,

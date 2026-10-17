@@ -156,6 +156,12 @@ export interface Actions {
   portapapeles: string | null;
   /** Primer archivo elegido para comparar, a la espera del segundo. */
   compararDesde: string | null;
+  /** Proyecto recién importado al que se ofrece un borrador de la descripción general. */
+  ofrecerBorrador: string | null;
+  setOfrecerBorrador: (id: string | null) => void;
+  /** Al abrir el centro de documentación, pedir ya el borrador. */
+  pedirBorradorAlAbrir: boolean;
+  setPedirBorradorAlAbrir: (v: boolean) => void;
   setCompararDesde: (ruta: string | null) => void;
   /** Comparación lado a lado abierta (dos archivos, o una versión del historial local). */
   comparacion: {
