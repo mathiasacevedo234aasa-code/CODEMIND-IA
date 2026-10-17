@@ -8,6 +8,7 @@ import { registrarProveedores } from '../lib/proveedoresMonaco';
 import { panelDe, type PanelEditor as Mitad } from '../lib/types';
 import { WebView } from './WebView';
 import { Icon } from './Icon';
+import { VistaMarkdown } from './VistaMarkdown';
 import { BotonEjecutarArchivo } from './EjecutarArchivo';
 
 /**
@@ -65,6 +66,7 @@ function MitadEditor({ mitad, dividido }: { mitad: Mitad; dividido: boolean }) {
   const askAssistant = useStore((s) => s.askAssistant);
   const emmetActivo = useStore((s) => s.settings.editor.emmet);
   const setCursor = useStore((s) => s.setCursor);
+  const [vistaMd, setVistaMd] = useState(true);
   const fijarTab = useStore((s) => s.fijarTab);
 
   // El editor vivo, junto al archivo para el que se creó. Guardar también la
@@ -85,6 +87,7 @@ function MitadEditor({ mitad, dividido }: { mitad: Mitad; dividido: boolean }) {
   const active = propia ?? mias.find((t) => t.id === ultimoPorPanel[mitad]) ?? mias[mias.length - 1] ?? null;
   const activeFile = active?.kind === 'file' ? files[active.path] : undefined;
   const enfocada = panelActivo === mitad;
+  const esMdConVista = vistaMd && active?.kind === 'file' && /\.(md|mdx|markdown)$/i.test(active.path);
 
   const onMount: OnMount = (editor, monaco) => {
     editorRef.current = active?.kind === 'file' ? { editor, path: active.path } : null;
@@ -207,6 +210,15 @@ ${texto.slice(0, 8000)}
         })}
 
         <span style={{ flex: 1 }} />
+        {active?.kind === 'file' && /\.(md|mdx|markdown)$/i.test(active.path) && (
+          <button
+            className={`btn sm ${vistaMd ? '' : 'outline'}`}
+            title="Ver el Markdown formateado al lado, mientras escribes"
+            onClick={() => setVistaMd((v) => !v)}
+          >
+            Vista previa
+          </button>
+        )}
         {enfocada && <BotonEjecutarArchivo />}
         {active && (
           <button
@@ -225,7 +237,7 @@ ${texto.slice(0, 8000)}
       </div>
 
       {active?.kind === 'file' && <Migas ruta={active.path} />}
-      <div className="editor-host">
+      <div className={`editor-host ${esMdConVista ? 'con-vista-md' : ''}`}>
         {!active ? (
           <div className="empty">
             <Icon name="file" size={26} />
@@ -276,6 +288,7 @@ ${texto.slice(0, 8000)}
             }}
           />
         ) : null}
+        {esMdConVista && activeFile && <VistaMarkdown texto={activeFile.content} />}
       </div>
     </div>
   );
