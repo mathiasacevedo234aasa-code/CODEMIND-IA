@@ -163,3 +163,21 @@ Además comprueba que cada tipo de archivo se sirve con su `Content-Type` —un 
 texto plano no lo ejecuta el navegador—, que el script de recarga se inyecta en el HTML **y no
 dentro de un `.js`**, que guardar un archivo avisa a la página, y que al detener el servidor el
 puerto queda libre de verdad.
+
+## `git-avanzado.mjs`
+
+Prueba lo que puede romper el trabajo de alguien si sale mal: traer cambios con el historial
+divergido, deshacer commits y el stash. No necesita GitHub ni el servidor: el "origin" es un
+repositorio desnudo en una carpeta temporal y se clona dos veces, como si fueran dos personas.
+
+Comprueba que la vista previa detecta la divergencia y enseña los commits que llegan, que solo
+avanzar se niega si hay divergencia, que **no fusiona con cambios sin confirmar**, que merge crea el
+commit de fusión y rebase deja tus commits encima, y que ante un conflicto se para, nombra el archivo
+y **deshacer lo deja todo exactamente como estaba** (mismo commit, árbol limpio).
+
+También que deshacer el último commit se niega si ese commit ya está en el remoto, y que si no,
+conserva sus cambios preparados; que el stash aparta también los archivos nuevos y se recupera; y
+que una referencia de stash rara (`--all`) se rechaza en vez de pasársela a git.
+
+Usa su propia carpeta de datos temporal (`CODEMIND_DATA_DIR`), así que no toca tu configuración.
+

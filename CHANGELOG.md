@@ -4,6 +4,107 @@ Todo lo que aparece aquí está comprobado ejecutándolo, no solo escrito.
 
 ---
 
+## 1.3.0
+
+### Documentar un archivo entero, y verlo escribirse
+
+- **Documentar los N que faltan** de un archivo de una vez, desde la pestaña
+  Documentación. Van de uno en uno a Revisión, con su barra de progreso, y se
+  pueden cancelar. Si la IA dice que se ha pasado del límite de uso, espera y
+  reintenta una vez; si el error se repite (clave mal puesta, modelo que no
+  existe), se para y lo dice en vez de fallar cuatro veces seguidas.
+- El **asistente escribe mientras piensa**: la respuesta aparece a trozos en
+  vez de tras un silencio. **Detener** corta y se queda con lo que ya llegó.
+- **Cobertura**: cada archivo del explorador lleva el porcentaje documentado,
+  y arriba sale el del proyecto entero.
+- **Estilo de la documentación** en Configuración: normal, breve, didáctico o
+  formal (JSDoc / docstring). Se combina con el nivel de las explicaciones.
+
+### Buscar y exportar la documentación
+
+- Buscador de texto en el centro de documentación, con filtros por estado
+  (al día, por revisar, huérfana) y por término del glosario.
+- Exportar a **PDF** y a **Word**, además de Markdown y HTML.
+
+### Moverse por el código
+
+- **Ctrl+T**: ir a cualquier símbolo del proyecto escribiendo parte del nombre.
+- **F12 / Ctrl+clic** lleva a la definición aunque esté en otro archivo, en
+  los veintidós lenguajes que entiende el analizador.
+
+### Para quien llega por primera vez
+
+- Un **tour** de cuatro pasos la primera vez que se abre un proyecto.
+- **Ctrl+/** enseña los atajos de teclado.
+- **Qué hay de nuevo** al actualizar: esta misma lista.
+
+### Git
+
+- **Traer cambios** enseña antes qué llega: los commits nuevos y los archivos
+  cambiados en los dos lados, que es donde puede haber conflictos. Si el
+  historial ha divergido, eliges tú: **fusionar** (merge) o **reorganizar**
+  (rebase). Con cambios sin confirmar no deja hacerlo. Si aparecen conflictos
+  se para, dice en qué archivos, y **Deshacer fusión a medias** lo deja todo
+  como estaba.
+- **Comparación lado a lado**: las dos versiones enteras del archivo, una
+  junto a otra, con Anterior / Siguiente para saltar entre los cambios.
+- **Deshacer el último commit** sin perder nada: sus cambios vuelven a
+  "preparados". No lo hace si ese commit ya se subió.
+- **Guardar cambios aparte** (stash), incluidos los archivos nuevos, y
+  recuperarlos o descartarlos después.
+
+### Varias consolas
+
+El terminal tiene pestañas: hasta ocho consolas por proyecto, cada una con su
+historial. Ejecutar un archivo (F5) va a la pestaña que tienes delante.
+
+### Más rápido con proyectos grandes
+
+- El análisis del proyecto va en **segundo plano**: la ventana ya no se
+  congela al abrir un proyecto grande.
+- Es **incremental**: al volver a analizar solo se leen los archivos que han
+  cambiado en el disco.
+- El tope sube de **250 a 2000** archivos.
+- La aplicación se carga **por partes**: el editor, el terminal, el centro de
+  documentación y el mapa llegan cuando hacen falta. La pantalla de inicio
+  pasa de descargar 4,4 MB de JavaScript a menos de 1 MB.
+
+### English
+
+Configuración → Idioma / Language. La interfaz principal (barras, paneles,
+configuración, tour y atajos) está traducida, y **la IA escribe en el idioma
+elegido**: explicaciones, documentación y respuestas del asistente. Los
+paneles interiores (Git, GitHub, Revisión, centro de documentación) y los
+mensajes del backend siguen en español; lo que falta de traducir sale en
+español, nunca como una clave rara.
+
+### Actualizaciones
+
+En la aplicación instalada, **Ayuda → Buscar actualizaciones** consulta las
+Releases de GitHub del proyecto (y lo hace también, sin molestar, al
+arrancar). Nunca descarga ni instala por su cuenta: pregunta antes de
+descargar y otra vez antes de reiniciar. Hace falta publicar las versiones
+con `npm run desktop:publicar`; mientras no haya ninguna, lo dice.
+
+### Para el código fuente
+
+- `npm run fuente` crea un .zip con el código del último commit (unos
+  0,4 MB). Sin release/, node_modules ni datos: el .rar de la carpeta entera
+  pesaba 500 MB casi todo por los instaladores de release/.
+- El estado de la aplicación (`useStore.ts`, más de 1100 líneas) está
+  partido en trozos por tema en `web/src/state/slices`.
+
+### Lo que no se ha podido comprobar
+
+- **Ollama de verdad**: en el equipo de pruebas no está instalado. El
+  protocolo está probado contra un servidor que se comporta como Ollama
+  (`tests/proveedores.mjs`), no contra Ollama real.
+- **Actualizaciones de punta a punta**: el repositorio aún no tiene Releases
+  publicadas, así que el ciclo completo (encontrar, descargar, instalar) no se
+  ha podido ejecutar.
+
+---
+
 ## 1.2.0
 
 ### La documentacion, por fin, se lee

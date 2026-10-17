@@ -1,4 +1,4 @@
-# CodeMind AI 1.2.0
+# CodeMind AI 1.3.0
 
 Entorno de desarrollo con documentación asistida por IA.
 
@@ -46,6 +46,7 @@ forma de distribución natural es una aplicación instalable, no un sitio web.
 ```bash
 npm run desktop         # compila el frontend y abre la ventana
 npm run desktop:build   # genera el instalador y el ejecutable portable en release/
+npm run fuente          # .zip del codigo del ultimo commit (sin release/ ni node_modules)
 ```
 
 El resultado son dos archivos en `release/`:
@@ -103,6 +104,21 @@ Por eso hay dos guardas automáticas en el proceso de empaquetado, y ambas **abo
 
 - `pack-runtime.mjs` calcula cuánto ocuparía la ruta más larga instalada en `Program Files`.
 - `verify-package.mjs` cuenta los archivos del paquete y los compara con el origen.
+
+### Actualizaciones
+
+La aplicación instalada consulta las Releases de GitHub del repositorio que indica `publish` en
+`electron-builder.yml` (Ayuda → Buscar actualizaciones, y una vez al arrancar sin molestar). Nunca
+descarga ni instala sola: pregunta antes de descargar y otra vez antes de reiniciar.
+
+Para publicar una versión hace falta un token de GitHub con permiso sobre ese repositorio:
+
+```bash
+set GH_TOKEN=<token>
+npm run desktop:publicar
+```
+
+`npm run desktop:build` no publica nunca (`--publish never`).
 
 ### Lo que el instalador no hace
 
@@ -380,7 +396,7 @@ Lo que esta versión **no** hace, dicho sin adornos.
 
 ## Pruebas
 
-Nueve pruebas, todas ejecutables y todas contra cosas reales. Están documentadas una por una en
+Diez pruebas, todas ejecutables y todas contra cosas reales. Están documentadas una por una en
 [`tests/README.md`](tests/README.md).
 
 ```bash
@@ -393,6 +409,7 @@ node tests/proveedores.mjs     # los dos protocolos, Ollama y que ninguna clave 
 node tests/ejecutar.mjs        # ejecutar un archivo: detección, comandos y límites
 node tests/vistaprevia.mjs     # el servidor: tipos, recarga y que no sirva nada de fuera
 node tests/busqueda.mjs        # que la vista previa del reemplazo no escriba nada
+node tests/git-avanzado.mjs    # traer con merge/rebase, conflictos, deshacer commit y stash
 ```
 
 Y la que hay que ejecutar **antes de publicar**, porque comprueba el programa que va a recibir el
