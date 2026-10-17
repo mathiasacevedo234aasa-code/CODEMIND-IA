@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useStore } from '../state/useStore';
 import { api, type Conversacion } from '../lib/api';
+import { esFalloDelServicio, siguienteProveedor } from '../lib/respaldo';
 import { Icon } from './Icon';
 
 type Mode = 'comprehension' | 'context' | 'technical' | 'documentation';
@@ -37,6 +38,8 @@ export function AssistantPanel() {
   const [question, setQuestion] = useState('');
   const [busy, setBusy] = useState(false);
   const [messages, setMessages] = useState<Message[]>([]);
+  /** La última pregunta falló por el servicio y hay otro proveedor configurado. */
+  const [reintento, setReintento] = useState<{ texto: string; contextoDirecto?: string; proveedor: string; nombre: string } | null>(null);
 
   // ------------------------------------------------- conversaciones guardadas
   //
@@ -178,8 +181,9 @@ export function AssistantPanel() {
    * Envia una consulta. `contextoDirecto` permite lanzarla desde fuera (por
    * ejemplo "explicar esta seleccion") sin depender del archivo abierto.
    */
-  const enviar = async (texto: string, contextoDirecto?: string) => {
+  const enviar = async (texto: string, contextoDirecto?: string, proveedor?: string) => {
     if (!texto.trim() || busy) return;
+    setReintento(null);
     // Lo anterior de esta conversación, para que las preguntas de seguimiento
     // tengan sentido. Se toma antes de añadir la pregunta nueva.
     const historial = mensajesRef.current.filter((m) => !m.escribiendo).map(({ who, text }) => ({ who, text }));
@@ -210,6 +214,7 @@ export function AssistantPanel() {
         question: texto,
         contextText,
         historial,
+        proveedor,
       }, anadir, corte.signal);
 
       setMessages((m) => {
@@ -219,7 +224,9 @@ export function AssistantPanel() {
       });
     } catch (err) {
       const cancelado = (err as Error).name === 'AbortError';
-      if (!cancelado) setError((err as Error).message);
+      const otro = !cancelado && esFalloDelServicio((err as Error).message) ? siguienteProveedor(proveedor) : null;
+      if (otro) setReintento({ texto, contextoDirecto, proveedor: otro.id, nombre: otro.nombre });
+      else if (!cancelado) setError((err as Error).message);
       setMessages((m) => {
         const copia = m.slice();
         const ultimo = copia[copia.length - 1];
@@ -329,6 +336,27 @@ export function AssistantPanel() {
             {m.escribiendo && m.text && <span className="cursor-escribiendo" />}
           </div>
         ))}
+        {reintento && !busy && (
+          <div className="review-banner" style={{ margin: '0 0 8px' }}>
+            Ese proveedor no respondió. Tienes {reintento.nombre} configurado: si quieres, la misma pregunta va allí
+            (tu código se enviará a ese servicio).
+            <div style={{ marginTop: 6, display: 'flex', gap: 6 }}>
+              <button
+                className="btn sm primary"
+                onClick={() => {
+                  const r = reintento;
+                  // Fuera la pregunta y el fallo: enviar() las vuelve a poner.
+                  setMessages((m) => m.slice(0, -2));
+                  setReintento(null);
+                  setTimeout(() => void enviar(r.texto, r.contextoDirecto, r.proveedor), 0);
+                }}
+              >
+                Reintentar con {reintento.nombre}
+              </button>
+              <button className="btn sm outline" onClick={() => setReintento(null)}>No</button>
+            </div>
+          </div>
+        )}
       </div>
 
       <div className="chat-input">

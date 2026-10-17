@@ -180,7 +180,7 @@ function buildContextBlock(context = {}) {
   return lines.join('\n');
 }
 
-export async function generateFunctionDoc({ code, context, model, temperature, maxTokens, extraInstruction }) {
+export async function generateFunctionDoc({ code, context, model, proveedor, temperature, maxTokens, extraInstruction }) {
   if (!code || !code.trim()) throw new HttpError(400, 'No se recibio el codigo que hay que explicar.');
 
   // Lo que se documenta ya no es siempre una funcion: puede ser una regla CSS,
@@ -221,7 +221,7 @@ export async function generateFunctionDoc({ code, context, model, temperature, m
     },
   ];
 
-  const result = await completar({ messages, modelo: model, temperature, maxTokens, jsonMode: true });
+  const result = await completar({ messages, proveedor, modelo: model, temperature, maxTokens, jsonMode: true });
   const parsed = extractJson(result.content);
   const validation = validateDoc(parsed, kind);
 
@@ -260,16 +260,16 @@ function mensajesDeChat({ mode = 'comprehension', question, contextText, idioma,
   ];
 }
 
-export async function chat({ mode, question, contextText, idioma, historial, model, temperature, maxTokens }) {
+export async function chat({ mode, question, contextText, idioma, historial, model, proveedor, temperature, maxTokens }) {
   const messages = mensajesDeChat({ mode, question, contextText, idioma, historial });
-  const result = await completar({ messages, modelo: model, temperature, maxTokens, jsonMode: false });
+  const result = await completar({ messages, proveedor, modelo: model, temperature, maxTokens, jsonMode: false });
   return { answer: result.content, model: result.model, proveedor: result.proveedor, usage: result.usage };
 }
 
 /** Lo mismo, pero entregando el texto a trozos segun llega. */
-export async function chatStream({ mode, question, contextText, idioma, historial, model, temperature, maxTokens }, alTrozo, opciones) {
+export async function chatStream({ mode, question, contextText, idioma, historial, model, proveedor, temperature, maxTokens }, alTrozo, opciones) {
   const messages = mensajesDeChat({ mode, question, contextText, idioma, historial });
-  const result = await completarStream({ messages, modelo: model, temperature, maxTokens }, alTrozo, opciones);
+  const result = await completarStream({ messages, proveedor, modelo: model, temperature, maxTokens }, alTrozo, opciones);
   return { answer: result.content, model: result.model, proveedor: result.proveedor };
 }
 

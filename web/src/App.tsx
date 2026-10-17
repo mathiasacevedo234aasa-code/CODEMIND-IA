@@ -73,6 +73,9 @@ export default function App() {
   const theme = useStore((s) => s.settings.editor.theme);
   const error = useStore((s) => s.error);
   const setError = useStore((s) => s.setError);
+  const respaldoDoc = useStore((s) => s.respaldoDoc);
+  const setRespaldoDoc = useStore((s) => s.setRespaldoDoc);
+  const generateDoc = useStore((s) => s.generateDoc);
   const files = useStore((s) => s.files);
 
   const leftView = useStore((s) => s.leftView);
@@ -236,7 +239,22 @@ export default function App() {
         <div className="toast" role="alert">
           <Icon name="warn" />
           <span style={{ flex: 1 }}>{error}</span>
-          <button className="btn sm" style={{ color: '#fff' }} onClick={() => setError(null)}>Cerrar</button>
+          {respaldoDoc && (
+            <button
+              className="btn sm"
+              style={{ color: '#fff', borderColor: 'rgba(255,255,255,.6)' }}
+              title={`Manda este elemento a ${respaldoDoc.nombre}, que también tienes configurado`}
+              onClick={() => {
+                const r = respaldoDoc;
+                setError(null);
+                setRespaldoDoc(null);
+                void generateDoc(r.sym, r.extra, { proveedor: r.proveedor, forzar: true });
+              }}
+            >
+              Reintentar con {respaldoDoc.nombre}
+            </button>
+          )}
+          <button className="btn sm" style={{ color: '#fff' }} onClick={() => { setError(null); setRespaldoDoc(null); }}>Cerrar</button>
         </div>
       )}
     </div>

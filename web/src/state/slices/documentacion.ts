@@ -1,3 +1,4 @@
+import { esFalloDelServicio, siguienteProveedor } from '../../lib/respaldo';
 import { api } from '../../lib/api';
 import type { ObtenerTienda, PonerTienda, Tienda } from '../tipos';
 
@@ -22,6 +23,7 @@ export const crearDocumentacion = (set: PonerTienda, get: ObtenerTienda) => ({
         extraInstruction,
         // "Regenerar" pide otra respuesta aunque el código no haya cambiado.
         forzar: Boolean(opciones.forzar),
+        proveedor: opciones.proveedor,
         context: {
           functionId: sym.id,
           filePath: sym.filePath,
@@ -74,7 +76,14 @@ export const crearDocumentacion = (set: PonerTienda, get: ObtenerTienda) => ({
       return 'ok';
     } catch (err) {
       const mensaje = (err as Error).message;
-      if (!opciones.enCola) set({ error: mensaje });
+      if (!opciones.enCola) {
+        // Si el fallo es del servicio, se ofrece otro proveedor configurado.
+        const otro = esFalloDelServicio(mensaje) ? siguienteProveedor(opciones.proveedor) : null;
+        set({
+          error: mensaje,
+          respaldoDoc: otro ? { sym, extra: extraInstruction, proveedor: otro.id, nombre: otro.nombre } : null,
+        });
+      }
       get().log('documentacion', 'error', mensaje);
       return mensaje;
     } finally {

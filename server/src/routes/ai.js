@@ -11,6 +11,8 @@ const router = Router();
 router.post('/document', async (req, res, next) => {
   try {
     const { projectId, code, context = {}, model, extraInstruction, forzar } = req.body ?? {};
+    // Respaldo: el usuario eligio reintentar con otro proveedor configurado.
+    const proveedor = typeof req.body?.proveedor === 'string' && req.body.proveedor ? req.body.proveedor : null;
     const settings = await readSettings();
 
     if (projectId) {
@@ -41,8 +43,8 @@ router.post('/document', async (req, res, next) => {
       code,
       context,
       extraInstruction: extraInstruction ?? null,
-      proveedor: settings.proveedor,
-      model: model ?? settings.modelos?.[settings.proveedor] ?? null,
+      proveedor: proveedor ?? settings.proveedor,
+      model: model ?? settings.modelos?.[proveedor ?? settings.proveedor] ?? null,
       temperature: settings.temperature,
     });
     if (!forzar) {
@@ -53,6 +55,7 @@ router.post('/document', async (req, res, next) => {
       code,
       context,
       model: model ?? null,
+      proveedor,
       temperature: settings.temperature,
       maxTokens: settings.maxTokens,
       extraInstruction,
@@ -69,7 +72,7 @@ router.post('/document', async (req, res, next) => {
  * asi que vive aparte para que las dos rutas no se desincronicen.
  */
 async function prepararChat(body) {
-  const { projectId, mode = 'comprehension', question, contextText = '', model, historial } = body ?? {};
+  const { projectId, mode = 'comprehension', question, contextText = '', model, historial, proveedor } = body ?? {};
   const settings = await readSettings();
   let material = contextText;
 
@@ -105,6 +108,7 @@ async function prepararChat(body) {
     contextText: material,
     idioma: settings.idioma ?? 'es',
     historial,
+    proveedor: typeof proveedor === 'string' && proveedor ? proveedor : null,
     model: model ?? null,
     temperature: settings.temperature,
     maxTokens: settings.maxTokens,

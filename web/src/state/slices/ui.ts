@@ -23,4 +23,5 @@ export const crearUi = (set: PonerTienda, get: ObtenerTienda) => ({
   askAssistant: (question, contextText) =>
     set({ pendingAsk: { question, contextText }, rightTab: 'asistente', rightOpen: true }),
   clearPendingAsk: () => set({ pendingAsk: null }),
+  setRespaldoDoc: (r: Tienda['respaldoDoc']) => set({ respaldoDoc: r }),
 }) satisfies Partial<Tienda>;

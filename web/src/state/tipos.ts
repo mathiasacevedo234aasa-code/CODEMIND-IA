@@ -103,6 +103,9 @@ export interface State {
   previewKey: number;
   logs: LogEntry[];
   error: string | null;
+  /** Si el último fallo de documentar se puede reintentar con otro proveedor. */
+  respaldoDoc: { sym: DetectedSymbol; extra?: string; proveedor: string; nombre: string } | null;
+  setRespaldoDoc: (r: State['respaldoDoc']) => void;
   jumpTo: { path: string; line: number } | null;
   /** Pregunta que el asistente debe lanzar en cuanto se monte. */
   pendingAsk: { question: string; contextText: string } | null;
@@ -150,7 +153,7 @@ export interface Actions {
   clearJump: () => void;
 
   /** Devuelve 'ok', 'invalida' (respuesta mal formada) o el mensaje del error. */
-  generateDoc: (sym: DetectedSymbol, extraInstruction?: string, opciones?: { enCola?: boolean; forzar?: boolean }) => Promise<'ok' | 'invalida' | string>;
+  generateDoc: (sym: DetectedSymbol, extraInstruction?: string, opciones?: { enCola?: boolean; forzar?: boolean; proveedor?: string }) => Promise<'ok' | 'invalida' | string>;
   /** La cola de "Documentar archivo", si hay una en marcha. */
   colaDoc: ColaDoc | null;
   documentarArchivo: (ruta: string, opciones?: { carpeta?: boolean }) => Promise<void>;
