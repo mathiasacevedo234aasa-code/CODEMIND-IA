@@ -1,4 +1,4 @@
-# CodeMind AI 1.3.0
+# CodeMind AI 1.4.0
 
 Entorno de desarrollo con documentación asistida por IA.
 
@@ -47,7 +47,15 @@ forma de distribución natural es una aplicación instalable, no un sitio web.
 npm run desktop         # compila el frontend y abre la ventana
 npm run desktop:build   # genera el instalador y el ejecutable portable en release/
 npm run fuente          # .zip del codigo del ultimo commit (sin release/ ni node_modules)
+npm run desktop:build:linux   # AppImage (hay que ejecutarlo en Linux)
+npm run desktop:build:mac     # .dmg (hay que ejecutarlo en macOS)
 ```
+
+AppImage y .dmg solo se pueden generar en su propio sistema. El flujo
+`.github/workflows/compilar.yml` compila los tres en GitHub Actions (a mano o al subir una etiqueta `v*`).
+
+El ejecutable **portable** guarda todos sus datos en la carpeta `CodeMind-datos`, junto al `.exe`: se
+puede llevar en una USB sin dejar nada en el equipo.
 
 El resultado son dos archivos en `release/`:
 

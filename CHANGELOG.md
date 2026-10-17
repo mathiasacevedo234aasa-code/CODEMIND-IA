@@ -4,6 +4,98 @@ Todo lo que aparece aquí está comprobado ejecutándolo, no solo escrito.
 
 ---
 
+## 1.4.0
+
+### El asistente
+
+- **Varias conversaciones por proyecto**, guardadas, con buscador (busca también
+  dentro de los mensajes). Y ahora recuerda lo hablado: "¿y eso por qué?" tiene
+  sentido, porque los últimos turnos van con la pregunta.
+- **Tokens y coste antes de enviar.** El número de tokens es una estimación; el
+  coste solo aparece si pones el precio de tu modelo en Configuración (los
+  precios cambian y no se dan por supuestos). Ollama: gratis, es local.
+- **"Explicar este error"** en la Consola, en Errores y en Comprobaciones: la IA
+  explica la causa probable con el código de alrededor delante. No escribe el
+  arreglo.
+- **Respaldo entre proveedores**: si el que usas falla por límite de peticiones
+  o porque no responde, se ofrece repetir con el siguiente que tengas
+  configurado. Se ofrece; nunca se cambia solo, porque tu código iría a otro
+  servicio.
+
+### Documentación
+
+- **Documentar una carpeta entera** (botón en cada carpeta del explorador), con
+  progreso visible desde cualquier vista, **pausa**, reanudar y cancelar.
+- **Diagrama de la arquitectura** en Mermaid, sacado del mapa de dependencias
+  (sin IA). Se revisa antes de guardarlo y entra en la exportación.
+- **Idioma de la documentación por proyecto**: un proyecto puede documentarse
+  en inglés aunque la aplicación esté en español.
+- **Caché por huella**: el mismo código con las mismas opciones no vuelve a
+  llamar a la IA. "Regenerar" sí pide otra respuesta.
+- Al **importar una carpeta** se ofrece un borrador de la descripción general
+  sacado del código (archivos, README, package.json...). Va a los campos, no se
+  guarda solo.
+
+### Editor
+
+- **Autocompletado** con los símbolos de todo el proyecto, con su archivo y su
+  propósito si está documentado.
+- **Migas** sobre el editor: carpeta › archivo › clase › método.
+- **Pestañas fijadas** (clic derecho) y **Ctrl+Shift+T** para reabrir la última
+  cerrada.
+- **Snippets propios**, por lenguaje, desde Configuración.
+- **Arrastrar y soltar** en el explorador para mover, y **copiar y pegar** entre
+  carpetas (sin sobrescribir nunca: "x (copia).js"). Las pestañas abiertas
+  siguen a una carpeta movida.
+- **Vista previa de Markdown** al lado, en vivo (el HTML de dentro, saneado).
+- **Comparar dos archivos** cualesquiera lado a lado.
+- **Historial local** de cada archivo: al guardar, lo anterior queda guardado
+  (una versión por minuto, las últimas 50). Comparar y restaurar sin Git.
+
+### Proyectos y mapa
+
+- **Plantillas** al crear un proyecto: página HTML, React con Vite, API en Node
+  y script de Python. Todas probadas arrancándolas.
+- **Proyectos fijados** arriba en el inicio; el resto, por uso reciente.
+- El mapa se **filtra** por carpeta y tipo, se **exporta** a SVG o PNG, y al
+  pulsar un archivo enseña el **impacto**: todo lo que depende de él, directa
+  o indirectamente.
+
+### Ejecución
+
+- **Perfiles de terminal**: PowerShell, CMD, Git Bash y WSL; solo los que
+  existen en el equipo.
+- **Historial de ejecuciones** del panel Ejecutar con su salida, duración y
+  código de salida; marcando dos se comparan.
+- **Panel de problemas** unificado (pestaña Errores): editor, analizador,
+  consola y Comprobaciones, con filtros y salto a la línea.
+
+### Plataforma
+
+- **Linux (AppImage) y macOS (dmg)**: `npm run desktop:build:linux` y
+  `desktop:build:mac`, y un flujo de GitHub Actions que compila en los tres
+  sistemas. AppImage solo se puede generar en Linux y el dmg solo en macOS,
+  así que en este equipo (Windows) **no se han podido generar ni probar**.
+- **Portable de verdad**: el .exe portable guarda todo en `CodeMind-datos`,
+  junto al ejecutable. Nada en %APPDATA%.
+- **Temas de VS Code** para el editor (se importa el .json) y tema **"Como el
+  sistema"**, que cambia con el modo claro/oscuro del equipo.
+- **Accesibilidad**: tamaño de toda la interfaz, **alto contraste** y las filas
+  de todos los paneles alcanzables con Tab, Intro y flechas.
+- **Exportar diagnóstico**: un .txt con versión, sistema, ajustes y registros
+  recientes para reportar un fallo. Sin claves.
+- **Barra de estado**: rama, problemas, vista previa, línea y columna,
+  lenguaje y modelo de IA.
+
+### Lo que no se ha podido comprobar
+
+- Los instaladores de **Linux y macOS** (ver arriba).
+- El cambio de tema **en vivo** al cambiar el modo del sistema: el emulador del
+  navegador de pruebas no lanza ese evento. Al abrir la aplicación sí se
+  respeta el modo del sistema.
+
+---
+
 ## 1.3.0
 
 ### Documentar un archivo entero, y verlo escribirse
