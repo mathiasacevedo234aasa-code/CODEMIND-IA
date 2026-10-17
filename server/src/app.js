@@ -10,6 +10,7 @@ import { getToken as getGithubToken } from './services/github.js';
 import { stopAll } from './services/runner.js';
 import { cerrarTodas } from './services/terminal.js';
 import { detenerTodos } from './services/liveserver.js';
+import { diagnostico, limpiarClaves } from './services/diagnostico.js';
 import projectsRouter from './routes/projects.js';
 import docsRouter from './routes/docs.js';
 import aiRouter from './routes/ai.js';
@@ -43,6 +44,19 @@ export function createApp() {
       git,
       github: { configured: Boolean(await getGithubToken()) },
     });
+  });
+
+  /** Diagnóstico para reportar fallos. Pasa por limpiarClaves antes de salir. */
+  app.get('/api/diagnostico', async (_req, res, next) => {
+    try {
+      res.type('application/json').send(limpiarClaves(JSON.stringify(await diagnostico(), null, 2)));
+    } catch (err) {
+      next(err);
+    }
+  });
+  /** Para que la página pueda limpiar SUS registros con las mismas reglas. */
+  app.post('/api/diagnostico/limpiar', (req, res) => {
+    res.json({ texto: limpiarClaves(String(req.body?.texto ?? '')) });
   });
 
   app.use('/api/projects', projectsRouter);

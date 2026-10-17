@@ -6,6 +6,7 @@ import { useT } from '../lib/i18n';
 import { SnippetsPropios } from './SnippetsPropios';
 import { convertirTemaVsCode, registrarTemaImportado } from '../lib/tema';
 import { useState } from 'react';
+import { exportarDiagnostico } from '../lib/diagnostico';
 
 export function SettingsDialog() {
   const t = useT();
@@ -175,6 +176,14 @@ export function SettingsDialog() {
           <SnippetsPropios />
         </div>
         <div className="modal-foot">
+          <button
+            className="btn outline"
+            title="Un .txt con versión, sistema, ajustes (sin claves) y registros recientes, para adjuntar al reportar un fallo"
+            onClick={() => void exportarDiagnostico()}
+          >
+            Exportar diagnóstico
+          </button>
+          <span style={{ flex: 1 }} />
           <button className="btn primary" onClick={() => setOpen(false)}>{t('Cerrar')}</button>
         </div>
       </div>

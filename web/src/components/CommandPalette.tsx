@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { useStore } from '../state/useStore';
 import { useEjecutarArchivo, useplanDelArchivo } from './EjecutarArchivo';
 import { Icon } from './Icon';
+import { exportarDiagnostico } from '../lib/diagnostico';
 
 interface Comando {
   id: string;
@@ -94,6 +95,7 @@ export function CommandPalette() {
           }]
         : []),
 
+      { id: 'diagnostico', titulo: 'Exportar diagnóstico (para reportar un fallo)', grupo: 'Ayuda', icono: 'docs', accion: () => { void exportarDiagnostico(); } },
       { id: 'ver-atajos', titulo: 'Ver los atajos de teclado', grupo: 'Ayuda', atajo: 'Ctrl+/', icono: 'docs', accion: () => { window.dispatchEvent(new Event('codemind:atajos')); } },
       { id: 'ver-tour', titulo: 'Repetir el recorrido de bienvenida', grupo: 'Ayuda', icono: 'play', accion: () => { window.dispatchEvent(new Event('codemind:tour')); } },
       { id: 'ver-novedades', titulo: 'Qué hay de nuevo en esta versión', grupo: 'Ayuda', icono: 'docs', accion: () => { window.dispatchEvent(new Event('codemind:novedades')); } },
