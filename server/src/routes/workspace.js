@@ -269,8 +269,11 @@ router.post('/projects/:id/ejecutar/archivo', wrap(async (req, res) => {
   if (!plan.disponible) throw new HttpError(409, plan.motivo);
 
   // Se reutiliza la consola que ya estuviera abierta: abrir una nueva con
-  // cada ejecucion dejaria el proyecto lleno de consolas sueltas.
+  // cada ejecucion dejaria el proyecto lleno de consolas sueltas. Si hay
+  // varias pestañas, va a la que el usuario tiene delante.
   const vivas = terminal.listar(req.params.id).filter((s) => s.estado === 'viva');
+  const preferida = vivas.findIndex((s) => s.id === req.body?.sesion);
+  if (preferida > 0) vivas.unshift(...vivas.splice(preferida, 1));
   const sesion = vivas[0] ?? (await terminal.abrir(req.params.id, raiz, req.body ?? {}));
 
   // Una consola recien abierta no esta lista de inmediato: escribirle antes

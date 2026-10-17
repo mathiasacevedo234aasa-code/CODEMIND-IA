@@ -347,3 +347,12 @@ kbd {
 .modal.diff-modal .modal-head { gap: 8px; }
 .stash-fila { display: flex; align-items: center; gap: 6px; padding: 3px 0; font-size: 12px; }
 .stash-fila .msg { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* Pestañas de consolas */
+.consola-pestanas { display: flex; align-items: center; gap: 2px; padding: 4px 8px 0; border-bottom: 1px solid var(--border); }
+.consola-pestana {
+  background: transparent; border: 1px solid transparent; border-bottom: none; color: var(--text-dim);
+  padding: 3px 10px; font-size: 12px; border-radius: 6px 6px 0 0; cursor: pointer; font-family: var(--mono);
+}
+.consola-pestana:hover { color: var(--text); }
+.consola-pestana.activa { color: var(--text); background: var(--bg-elev, var(--panel)); border-color: var(--border); }

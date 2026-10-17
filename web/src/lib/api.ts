@@ -362,9 +362,9 @@ export const api = {
     request<{ lenguajes: LenguajeDisponible[] }>(`/api/lenguajes${refrescar ? '?refrescar=1' : ''}`),
   planEjecucion: (id: string, path: string) =>
     request<PlanEjecucion>(`/api/projects/${id}/ejecutar/plan?path=${encodeURIComponent(path)}`),
-  ejecutarArchivo: (id: string, path: string) =>
+  ejecutarArchivo: (id: string, path: string, sesion?: string | null) =>
     request<{ sesion: TerminalSesion; plan: PlanEjecucion; reutilizada: boolean }>(
-      `/api/projects/${id}/ejecutar/archivo`, { method: 'POST', ...json({ path }) }),
+      `/api/projects/${id}/ejecutar/archivo`, { method: 'POST', ...json({ path, sesion }) }),
 
   checks: (id: string) => request<ChecksInfo>(`/api/projects/${id}/checks`),
   runCheck: (id: string, script: string) =>

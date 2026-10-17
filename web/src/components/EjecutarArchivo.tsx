@@ -58,7 +58,7 @@ export function useEjecutarArchivo() {
       // Se guarda antes: ejecutar una versión vieja del archivo que tienes
       // delante sería desconcertante.
       await saveFile(ruta);
-      const res = await api.ejecutarArchivo(project.id, ruta);
+      const res = await api.ejecutarArchivo(project.id, ruta, useStore.getState().terminalSesionId);
       // Se le dice al panel a que consola engancharse: es la que acaba de
       // recibir el comando, y sin esto el usuario veria un terminal vacio.
       setTerminalSesion(res.sesion.id);

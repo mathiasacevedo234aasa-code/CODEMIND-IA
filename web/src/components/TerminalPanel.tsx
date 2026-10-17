@@ -79,12 +79,31 @@ export function TerminalPanel({ visible }: { visible: boolean }) {
   const [sesion, setSesion] = useState<TerminalSesion | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [abriendo, setAbriendo] = useState(false);
+  /** Todas las consolas del proyecto, para las pestañas. */
+  const [sesiones, setSesiones] = useState<TerminalSesion[]>([]);
   /** Sube al volver la ventana a primer plano, para retomar la lectura. */
   const [despertar, setDespertar] = useState(0);
 
   useEffect(() => {
     api.terminalDisponible().then(setDisponible).catch((e: Error) => setError(e.message));
   }, []);
+
+  /**
+   * Pestañas: una por consola viva. Hay un solo terminal visual; cambiar de
+   * pestaña lo limpia y vuelve a pintar la salida guardada de la otra consola
+   * desde el principio, así que cada una conserva lo suyo.
+   */
+  const recargarPestanas = async () => {
+    if (!project) return;
+    const res = await api.terminalListar(project.id).catch(() => null);
+    if (res) setSesiones(res.sesiones.filter((s) => s.estado === 'viva'));
+  };
+  useEffect(() => {
+    if (!project || !visible) return;
+    void recargarPestanas();
+    const t = window.setInterval(() => void recargarPestanas(), 2500);
+    return () => window.clearInterval(t);
+  }, [project, visible, terminalSesionId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   /**
    * A que consola se engancha el panel.
@@ -250,6 +269,7 @@ export function TerminalPanel({ visible }: { visible: boolean }) {
       sesionRef.current = nueva.id;
       setSesion(nueva);
       setTerminalSesion(nueva.id);
+      void recargarPestanas();
       term.current.focus();
     } catch (e) {
       setError((e as Error).message);
@@ -263,8 +283,11 @@ export function TerminalPanel({ visible }: { visible: boolean }) {
     await api.terminalCerrar(project.id, sesion.id).catch(() => {});
     sesionRef.current = null;
     setSesion(null);
-    setTerminalSesion(null);
     term.current?.clear();
+    // Se pasa a otra pestaña que siga abierta, si la hay.
+    const otra = sesiones.find((s) => s.id !== sesion.id);
+    setTerminalSesion(otra?.id ?? null);
+    void recargarPestanas();
   };
 
   const interrumpir = async () => {
@@ -277,6 +300,30 @@ export function TerminalPanel({ visible }: { visible: boolean }) {
 
   return (
     <div className="consola">
+      {sesiones.length > 0 && (
+        <div className="consola-pestanas" role="tablist">
+          {sesiones.map((s, i) => (
+            <button
+              key={s.id}
+              role="tab"
+              aria-selected={s.id === sesion?.id}
+              className={`consola-pestana ${s.id === sesion?.id ? 'activa' : ''}`}
+              onClick={() => { if (s.id !== sesion?.id) setTerminalSesion(s.id); }}
+              title={s.cwd}
+            >
+              {i + 1}: {s.shell}
+            </button>
+          ))}
+          <button
+            className="btn icon sm"
+            title="Abrir otra consola en una pestaña nueva"
+            disabled={abriendo || sesiones.length >= 8}
+            onClick={() => void abrir()}
+          >
+            <Icon name="plus" size={12} />
+          </button>
+        </div>
+      )}
       <div className="consola-barra">
         {sesion ? (
           <>
