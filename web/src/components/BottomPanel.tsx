@@ -6,6 +6,7 @@ import type { BottomTab } from '../state/useStore';
 import type { LogChannel } from '../lib/types';
 import { Icon } from './Icon';
 import { ChecksPanel } from './ChecksPanel';
+import { useT } from '../lib/i18n';
 // xterm solo hace falta cuando hay panel inferior: va en su propio trozo.
 const TerminalPanel = lazy(() => import('./TerminalPanel').then((m) => ({ default: m.TerminalPanel })));
 
@@ -140,6 +141,7 @@ function Preview() {
 }
 
 export function BottomPanel() {
+  const tr = useT();
   const bottomTab = useStore((s) => s.bottomTab);
   const setBottomTab = useStore((s) => s.setBottomTab);
   const bottomOpen = useStore((s) => s.bottomOpen);
@@ -163,7 +165,7 @@ export function BottomPanel() {
       <div className="bottom-tabs">
         {TABS.map((t) => (
           <div key={t.id} className={`bottom-tab ${bottomTab === t.id ? 'active' : ''}`} onClick={() => setBottomTab(t.id)}>
-            {t.label}
+            {tr(t.label)}
             {counts[t.id] ? <span className="tag muted">{counts[t.id]}</span> : null}
           </div>
         ))}

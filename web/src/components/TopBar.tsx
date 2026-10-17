@@ -2,8 +2,10 @@ import { useState } from 'react';
 import { useStore } from '../state/useStore';
 import { api } from '../lib/api';
 import { Icon } from './Icon';
+import { useT } from '../lib/i18n';
 
 export function TopBar() {
+  const t = useT();
   const [abriendoPreview, setAbriendoPreview] = useState(false);
   const project = useStore((s) => s.project);
   const openWebTab = useStore((s) => s.openWebTab);
@@ -77,7 +79,7 @@ export function TopBar() {
 
           <button className="btn outline" onClick={() => void saveAll()} disabled={!dirty.length || saving} title="Ctrl+S">
             <Icon name="save" />
-            Guardar
+            {t('Guardar')}
           </button>
 
           <button
@@ -87,21 +89,21 @@ export function TopBar() {
             title="Levanta un servidor de verdad sobre tu proyecto y lo abre aquí. Se recarga solo al guardar."
           >
             {abriendoPreview ? <span className="spinner" /> : <Icon name="play" />}
-            Vista previa
+            {t('Vista previa')}
           </button>
 
           <button className="btn" onClick={() => setLeftView('ejecutar')} title="Ejecutar el servidor del proyecto">
             <Icon name="terminal" />
-            Ejecutar
+            {t('Ejecutar')}
           </button>
 
           <button
             className={`btn ${rightOpen ? '' : 'outline'}`}
             onClick={() => { if (rightOpen) setRightOpen(false); else setRightTab('asistente'); }}
-            title={rightOpen ? 'Ocultar el panel del asistente' : 'Mostrar el panel del asistente'}
+            title={t(rightOpen ? 'Ocultar el panel del asistente' : 'Mostrar el panel del asistente')}
           >
             <Icon name="brain" />
-            Asistente
+            {t('Asistente')}
             {proposals.length > 0 && <span className="tag info">{proposals.length}</span>}
           </button>
         </>

@@ -373,6 +373,8 @@ export const DEFAULT_SETTINGS = {
   explanationLevel: 'intermedio', // 'principiante' | 'intermedio' | 'avanzado'
   /** Forma de la documentacion: 'normal' | 'breve' | 'didactico' | 'jsdoc'. */
   estiloDoc: 'normal',
+  /** Idioma de la interfaz y de lo que escribe la IA: 'es' | 'en'. */
+  idioma: 'es',
   maxTokens: 4096,
   editor: {
     theme: 'dark',

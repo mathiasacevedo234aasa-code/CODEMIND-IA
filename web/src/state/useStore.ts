@@ -19,6 +19,7 @@ const DEFAULT_SETTINGS: AppSettings = {
   temperature: 0.2,
   explanationLevel: 'intermedio',
   estiloDoc: 'normal',
+  idioma: 'es',
   maxTokens: 4096,
   editor: {
     theme: 'dark',

@@ -25,6 +25,7 @@ router.post('/document', async (req, res, next) => {
 
     context.level ??= settings.explanationLevel;
     context.estilo ??= settings.estiloDoc ?? 'normal';
+    context.idioma ??= settings.idioma ?? 'es';
     // El glosario aprobado tambien vale al documentar: si "pedido en firme"
     // significa algo concreto en este proyecto, la explicacion debe usarlo asi.
     if (projectId && !context.glosario) {
@@ -84,6 +85,7 @@ async function prepararChat(body) {
     mode,
     question,
     contextText: material,
+    idioma: settings.idioma ?? 'es',
     model: model ?? null,
     temperature: settings.temperature,
     maxTokens: settings.maxTokens,

@@ -20,6 +20,7 @@ import { FolderPicker } from './components/FolderPicker';
 import { Welcome } from './components/Welcome';
 import { DialogHost } from './components/DialogHost';
 import { Icon } from './components/Icon';
+import { useT } from './lib/i18n';
 
 /**
  * Lo pesado se carga cuando hace falta, no al arrancar.
@@ -64,6 +65,8 @@ function Resizer({ onDrag }: { onDrag: (dx: number) => void }) {
 }
 
 export default function App() {
+  const t = useT();
+  const idioma = useStore((s) => s.settings.idioma ?? 'es');
   const boot = useStore((s) => s.boot);
   const project = useStore((s) => s.project);
   const theme = useStore((s) => s.settings.editor.theme);
@@ -92,6 +95,7 @@ export default function App() {
 
   useEffect(() => { void boot(); }, [boot]);
   useEffect(() => { document.documentElement.dataset.theme = theme; }, [theme]);
+  useEffect(() => { document.documentElement.lang = idioma; }, [idioma]);
 
   // Atajos globales. Se registran una vez y no dependen del foco.
   useEffect(() => {
@@ -136,8 +140,8 @@ export default function App() {
                 ) : (
                   <>
                     <div className="panel-head">
-                      <span className="panel-title">{LEFT_TITLE[leftView]}</span>
-                      <button className="btn icon sm" onClick={toggleLeft} title="Ocultar el panel">
+                      <span className="panel-title">{t(LEFT_TITLE[leftView])}</span>
+                      <button className="btn icon sm" onClick={toggleLeft} title={t('Ocultar el panel')}>
                         <Icon name="close" size={13} />
                       </button>
                     </div>
@@ -154,7 +158,7 @@ export default function App() {
           )}
 
           <div className="center-column">
-            <Suspense fallback={<div className="editor-cargando hint">Cargando el editor...</div>}>
+            <Suspense fallback={<div className="editor-cargando hint">{t('Cargando el editor...')}</div>}>
               <EditorArea />
             </Suspense>
             <BottomPanel />
@@ -169,25 +173,25 @@ export default function App() {
                     className={`tab-btn ${rightTab === 'revision' ? 'active' : ''}`}
                     onClick={() => setRightTab('revision')}
                   >
-                    Revisión
+                    {t('Revisión')}
                     {proposals.length > 0 && <span className="tag info">{proposals.length}</span>}
                   </button>
                   <button
                     className={`tab-btn ${rightTab === 'documentacion' ? 'active' : ''}`}
                     onClick={() => setRightTab('documentacion')}
-                    title="Lo documentado del archivo que tienes abierto"
+                    title={t('Lo documentado del archivo que tienes abierto')}
                   >
-                    Documentación
+                    {t('Documentación')}
                     {documentadosAqui > 0 && <span className="tag ok">{documentadosAqui}</span>}
                   </button>
                   <button
                     className={`tab-btn ${rightTab === 'asistente' ? 'active' : ''}`}
                     onClick={() => setRightTab('asistente')}
                   >
-                    Asistente
+                    {t('Asistente')}
                   </button>
                   <span style={{ flex: 1 }} />
-                  <button className="btn icon sm" onClick={() => setRightOpen(false)} title="Ocultar el panel del asistente">
+                  <button className="btn icon sm" onClick={() => setRightOpen(false)} title={t('Ocultar el panel del asistente')}>
                     <Icon name="close" size={13} />
                   </button>
                 </div>
@@ -202,8 +206,8 @@ export default function App() {
             <button
               className="right-handle"
               onClick={() => setRightOpen(true)}
-              title="Mostrar el panel del asistente"
-              aria-label="Mostrar el panel del asistente"
+              title={t('Mostrar el panel del asistente')}
+              aria-label={t('Mostrar el panel del asistente')}
             >
               <Icon name="brain" size={16} />
               {proposals.length > 0 && <span className="rail-badge">{proposals.length}</span>}

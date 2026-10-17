@@ -1,5 +1,6 @@
 import { useStore, type LeftView } from '../state/useStore';
 import { Icon } from './Icon';
+import { useT } from '../lib/i18n';
 
 interface RailItem {
   id: LeftView;
@@ -18,6 +19,7 @@ const ITEMS: RailItem[] = [
 
 /** Barra de actividad: una sola vista lateral activa, como en un editor real. */
 export function ActivityRail() {
+  const t = useT();
   const leftView = useStore((s) => s.leftView);
   const leftOpen = useStore((s) => s.leftOpen);
   const setLeftView = useStore((s) => s.setLeftView);
@@ -41,8 +43,8 @@ export function ActivityRail() {
           <button
             key={item.id}
             className={`rail-btn ${active ? 'active' : ''}`}
-            title={disabled ? 'Git no está disponible en este equipo' : item.label}
-            aria-label={item.label}
+            title={disabled ? t('Git no está disponible en este equipo') : t(item.label)}
+            aria-label={t(item.label)}
             aria-pressed={active}
             disabled={disabled}
             onClick={() => setLeftView(item.id)}
@@ -55,10 +57,10 @@ export function ActivityRail() {
 
       <span style={{ flex: 1 }} />
 
-      <button className="rail-btn" title="Centro de documentación" onClick={() => setDocCenterOpen(true)}>
+      <button className="rail-btn" title={t('Centro de documentación')} onClick={() => setDocCenterOpen(true)}>
         <Icon name="docs" size={18} />
       </button>
-      <button className="rail-btn" title="Configuración" onClick={() => setSettingsOpen(true)}>
+      <button className="rail-btn" title={t('Configuración')} onClick={() => setSettingsOpen(true)}>
         <Icon name="gear" size={18} />
       </button>
     </nav>

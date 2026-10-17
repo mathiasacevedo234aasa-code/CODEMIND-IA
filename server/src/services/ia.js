@@ -13,8 +13,17 @@ const BASE_RULES = [
   'Distingue siempre entre lo que el codigo demuestra y lo que solo es una inferencia probable.',
   'Si te falta informacion para afirmar algo, dilo de forma explicita en lugar de inventarlo.',
   'No inventes servicios, parametros, decisiones de diseno ni dependencias que no aparezcan en el material recibido.',
-  'Responde en espanol.',
 ].join('\n');
+
+/**
+ * El idioma de la respuesta. Las instrucciones siguen en espanol (el modelo
+ * las entiende igual), pero lo que lee el usuario sale en el idioma que
+ * eligio. Los NOMBRES de los campos del JSON no cambian: los lee la
+ * aplicacion, no la persona.
+ */
+const reglasBase = (idioma) => `${BASE_RULES}\n${idioma === 'en'
+  ? 'Answer in English. When a JSON format is required, keep its field names exactly as specified but write every value in English.'
+  : 'Responde en espanol.'}`;
 
 const MODE_RULES = {
   documentation:
@@ -193,7 +202,7 @@ export async function generateFunctionDoc({ code, context, model, temperature, m
   ].join(' ');
 
   const messages = [
-    { role: 'system', content: `${BASE_RULES}\n\n${MODE_RULES.documentation}\n\n${guia}\n\n${DOC_SCHEMA_HINT}` },
+    { role: 'system', content: `${reglasBase(context?.idioma)}\n\n${MODE_RULES.documentation}\n\n${guia}\n\n${DOC_SCHEMA_HINT}` },
     {
       role: 'user',
       content: [
@@ -228,11 +237,11 @@ export async function generateFunctionDoc({ code, context, model, temperature, m
 }
 
 /** Los mensajes de una consulta al asistente, iguales con o sin streaming. */
-function mensajesDeChat({ mode = 'comprehension', question, contextText }) {
+function mensajesDeChat({ mode = 'comprehension', question, contextText, idioma }) {
   if (!question || !question.trim()) throw new HttpError(400, 'La pregunta esta vacia.');
   const modeRule = MODE_RULES[mode] || MODE_RULES.comprehension;
   return [
-    { role: 'system', content: `${BASE_RULES}\n\n${modeRule}` },
+    { role: 'system', content: `${reglasBase(idioma)}\n\n${modeRule}` },
     {
       role: 'user',
       content: [
@@ -244,15 +253,15 @@ function mensajesDeChat({ mode = 'comprehension', question, contextText }) {
   ];
 }
 
-export async function chat({ mode, question, contextText, model, temperature, maxTokens }) {
-  const messages = mensajesDeChat({ mode, question, contextText });
+export async function chat({ mode, question, contextText, idioma, model, temperature, maxTokens }) {
+  const messages = mensajesDeChat({ mode, question, contextText, idioma });
   const result = await completar({ messages, modelo: model, temperature, maxTokens, jsonMode: false });
   return { answer: result.content, model: result.model, proveedor: result.proveedor, usage: result.usage };
 }
 
 /** Lo mismo, pero entregando el texto a trozos segun llega. */
-export async function chatStream({ mode, question, contextText, model, temperature, maxTokens }, alTrozo, opciones) {
-  const messages = mensajesDeChat({ mode, question, contextText });
+export async function chatStream({ mode, question, contextText, idioma, model, temperature, maxTokens }, alTrozo, opciones) {
+  const messages = mensajesDeChat({ mode, question, contextText, idioma });
   const result = await completarStream({ messages, modelo: model, temperature, maxTokens }, alTrozo, opciones);
   return { answer: result.content, model: result.model, proveedor: result.proveedor };
 }

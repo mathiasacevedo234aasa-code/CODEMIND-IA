@@ -475,6 +475,8 @@ export interface AppSettings {
   explanationLevel: 'principiante' | 'intermedio' | 'avanzado';
   /** Forma de la documentacion que genera la IA. */
   estiloDoc: 'normal' | 'breve' | 'didactico' | 'jsdoc';
+  /** Idioma de la interfaz y de lo que escribe la IA. */
+  idioma?: 'es' | 'en';
   maxTokens: number;
   editor: EditorSettings;
 }

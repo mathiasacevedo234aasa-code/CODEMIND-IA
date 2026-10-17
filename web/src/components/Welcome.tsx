@@ -2,8 +2,10 @@ import { useState } from 'react';
 import { useStore } from '../state/useStore';
 import { FolderPicker } from './FolderPicker';
 import { Icon } from './Icon';
+import { useT } from '../lib/i18n';
 
 export function Welcome() {
+  const t = useT();
   const projects = useStore((s) => s.projects);
   const openProject = useStore((s) => s.openProject);
   const createProject = useStore((s) => s.createProject);
@@ -29,18 +31,17 @@ export function Welcome() {
       <div className="welcome-inner">
         <h1>CodeMind AI</h1>
         <p className="lead">
-          Escribe código, entiende lo que construyes y documenta tus funciones cuando tú lo decidas.
-          La IA explica; tú apruebas. Nada se escribe en tus archivos sin tu confirmación.
+          {t('Escribe código, entiende lo que construyes y documenta tus funciones cuando tú lo decidas. La IA explica; tú apruebas. Nada se escribe en tus archivos sin tu confirmación.')}
         </p>
 
         {!creating ? (
           <>
             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
               <button className="btn primary" onClick={() => setCreating(true)}>
-                <Icon name="plus" size={14} /> Nuevo proyecto
+                <Icon name="plus" size={14} /> {t('Nuevo proyecto')}
               </button>
               <button className="btn outline" onClick={() => setPicker('abrir')}>
-                <Icon name="folderOpen" size={14} /> Abrir una carpeta del equipo
+                <Icon name="folderOpen" size={14} /> {t('Abrir una carpeta del equipo')}
               </button>
             </div>
             <p className="hint" style={{ marginTop: 8 }}>
@@ -48,7 +49,7 @@ export function Welcome() {
               directamente en ella, y su documentación se guarda aparte, sin ensuciar tu proyecto.
             </p>
 
-            <h3 style={{ fontSize: 13, margin: '24px 0 10px', color: 'var(--text-dim)' }}>Proyectos guardados</h3>
+            <h3 style={{ fontSize: 13, margin: '24px 0 10px', color: 'var(--text-dim)' }}>{t('Proyectos guardados')}</h3>
             {projects.length === 0 && <p className="hint">Todavía no hay proyectos. Crea el primero o abre una carpeta.</p>}
             {projects.map((p) => (
               <div className="project-row" key={p.id} onClick={() => void openProject(p.id)}>

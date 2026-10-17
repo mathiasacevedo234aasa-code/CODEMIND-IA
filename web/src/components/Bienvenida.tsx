@@ -3,6 +3,7 @@ import { marked } from './miniMarkdown';
 import changelog from '../../../CHANGELOG.md?raw';
 import paquete from '../../package.json';
 import { Icon } from './Icon';
+import { useT } from '../lib/i18n';
 
 /**
  * Tres cosas para que la aplicación se deje descubrir:
@@ -50,6 +51,7 @@ const PASOS = [
 ];
 
 function Tour({ alTerminar }: { alTerminar: () => void }) {
+  const t = useT();
   const [paso, setPaso] = useState(0);
   const [caja, setCaja] = useState<DOMRect | null>(null);
   const actual = PASOS[paso];
@@ -79,18 +81,18 @@ function Tour({ alTerminar }: { alTerminar: () => void }) {
         />
       )}
       <div className="tour-tarjeta" style={{ left: izquierda, top: arriba, width: ancho }}>
-        <div className="meta">{paso + 1} de {PASOS.length}</div>
-        <h3>{actual.titulo}</h3>
-        <p>{actual.texto}</p>
+        <div className="meta">{t('{n} de {total}', { n: paso + 1, total: PASOS.length })}</div>
+        <h3>{t(actual.titulo)}</h3>
+        <p>{t(actual.texto)}</p>
         <div style={{ display: 'flex', gap: 6, marginTop: 10 }}>
-          <button className="btn sm outline" onClick={alTerminar}>Saltar</button>
+          <button className="btn sm outline" onClick={alTerminar}>{t('Saltar')}</button>
           <span style={{ flex: 1 }} />
-          {paso > 0 && <button className="btn sm outline" onClick={() => setPaso(paso - 1)}>Atrás</button>}
+          {paso > 0 && <button className="btn sm outline" onClick={() => setPaso(paso - 1)}>{t('Atrás')}</button>}
           <button
             className="btn sm primary"
             onClick={() => (paso === PASOS.length - 1 ? alTerminar() : setPaso(paso + 1))}
           >
-            {paso === PASOS.length - 1 ? 'Empezar' : 'Siguiente'}
+            {t(paso === PASOS.length - 1 ? 'Empezar' : 'Siguiente')}
           </button>
         </div>
       </div>
@@ -113,21 +115,22 @@ const ATAJOS: [string, string][] = [
 ];
 
 function Atajos({ alCerrar }: { alCerrar: () => void }) {
+  const t = useT();
   return (
     <div className="overlay" onClick={alCerrar}>
       <div className="modal narrow" onClick={(e) => e.stopPropagation()}>
         <div className="modal-head">
-          <h2>Atajos de teclado</h2>
+          <h2>{t('Atajos de teclado')}</h2>
           <button className="btn icon" onClick={alCerrar}><Icon name="close" /></button>
         </div>
         <div className="modal-body">
           {ATAJOS.map(([tecla, que]) => (
             <div key={tecla} className="atajo-fila">
               <kbd>{tecla}</kbd>
-              <span>{que}</span>
+              <span>{t(que)}</span>
             </div>
           ))}
-          <p className="hint" style={{ marginTop: 10 }}>En Mac, Ctrl es ⌘.</p>
+          <p className="hint" style={{ marginTop: 10 }}>{t('En Mac, Ctrl es ⌘.')}</p>
         </div>
       </div>
     </div>
@@ -149,17 +152,18 @@ export function novedadesDesde(texto: string, vista: string | null): string {
 }
 
 function Novedades({ desde, alCerrar }: { desde: string | null; alCerrar: () => void }) {
+  const t = useT();
   const texto = novedadesDesde(changelog, desde);
   return (
     <div className="overlay" onClick={alCerrar}>
       <div className="modal" onClick={(e) => e.stopPropagation()}>
         <div className="modal-head">
-          <h2>Qué hay de nuevo en la {VERSION}</h2>
+          <h2>{t('Qué hay de nuevo en la {v}', { v: VERSION })}</h2>
           <button className="btn icon" onClick={alCerrar}><Icon name="close" /></button>
         </div>
         <div className="modal-body novedades" dangerouslySetInnerHTML={{ __html: marked(texto) }} />
         <div className="modal-foot">
-          <button className="btn primary" onClick={alCerrar}>Entendido</button>
+          <button className="btn primary" onClick={alCerrar}>{t('Entendido')}</button>
         </div>
       </div>
     </div>

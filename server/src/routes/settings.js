@@ -54,6 +54,7 @@ router.put('/', async (req, res, next) => {
     if (typeof next_.maxTokens === 'number') next_.maxTokens = Math.min(8192, Math.max(256, Math.round(next_.maxTokens)));
     // Un proveedor desconocido dejaria la aplicacion sin poder llamar a nadie.
     descriptor(next_.proveedor);
+    if (!['es', 'en'].includes(next_.idioma)) next_.idioma = 'es';
     next_.modelos = { ...(current.modelos ?? {}), ...(incoming.modelos ?? {}) };
     await writeSettings(next_);
     res.json({ settings: next_ });
