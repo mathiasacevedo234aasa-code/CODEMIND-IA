@@ -12,7 +12,7 @@ const MODES: { id: Mode; label: string; hint: string }[] = [
   { id: 'documentation', label: 'Documentacion', hint: 'Para documentar una funcion usa el boton del panel de funciones.' },
 ];
 
-interface Message { who: 'user' | 'ai'; text: string; model?: string }
+interface Message { who: 'user' | 'ai'; text: string; model?: string; escribiendo?: boolean }
 
 export function AssistantPanel() {
   const project = useStore((s) => s.project);
@@ -75,20 +75,61 @@ export function AssistantPanel() {
         }
       }
       const contextText = parts.join('\n\n');
-      const res = await api.chat({
+
+      // La respuesta se va escribiendo según llega: el mensaje de la IA se
+      // crea vacío y se le van añadiendo trozos. Esperar el texto entero hace
+      // que veinte segundos se sientan como un minuto.
+      const corte = new AbortController();
+      cortarRef.current = corte;
+      setMessages((m) => [...m, { who: 'ai', text: '', escribiendo: true }]);
+      const anadir = (trozo: string) =>
+        setMessages((m) => {
+          const copia = m.slice();
+          const ultimo = copia[copia.length - 1];
+          copia[copia.length - 1] = { ...ultimo, text: ultimo.text + trozo };
+          return copia;
+        });
+
+      const fin = await api.chatStream({
         projectId: project?.id,
         mode: contextoDirecto ? 'comprehension' : mode,
         question: texto,
         contextText,
+      }, anadir, corte.signal);
+
+      setMessages((m) => {
+        const copia = m.slice();
+        copia[copia.length - 1] = { ...copia[copia.length - 1], model: fin.model, escribiendo: false };
+        return copia;
       });
-      setMessages((m) => [...m, { who: 'ai', text: res.answer, model: res.model }]);
     } catch (err) {
-      setError((err as Error).message);
-      setMessages((m) => [...m, { who: 'ai', text: `No se pudo obtener respuesta: ${(err as Error).message}` }]);
+      const cancelado = (err as Error).name === 'AbortError';
+      if (!cancelado) setError((err as Error).message);
+      setMessages((m) => {
+        const copia = m.slice();
+        const ultimo = copia[copia.length - 1];
+        // Si ya había llegado parte del texto, se conserva: tirarlo sería peor.
+        if (ultimo?.who === 'ai' && ultimo.escribiendo) {
+          copia[copia.length - 1] = {
+            ...ultimo,
+            escribiendo: false,
+            text: ultimo.text
+              ? `${ultimo.text}${cancelado ? '\n\n[detenido]' : `\n\n[se cortó: ${(err as Error).message}]`}`
+              : cancelado ? '[detenido antes de empezar]' : `No se pudo obtener respuesta: ${(err as Error).message}`,
+          };
+          return copia;
+        }
+        return [...copia, { who: 'ai', text: `No se pudo obtener respuesta: ${(err as Error).message}` }];
+      });
     } finally {
+      cortarRef.current = null;
       setBusy(false);
     }
   };
+
+  /** Detiene la respuesta en curso; lo que ya había llegado se queda. */
+  const cortarRef = useRef<AbortController | null>(null);
+  const detener = () => cortarRef.current?.abort();
 
   const send = () => {
     const texto = question.trim();
@@ -133,11 +174,11 @@ export function AssistantPanel() {
         )}
         {messages.map((m, i) => (
           <div key={i} className={`msg ${m.who}`}>
-            <div className="who">{m.who === 'user' ? 'Tu' : `Asistente${m.model ? ` · ${m.model}` : ''}`}</div>
-            {m.text}
+            <div className="who">{m.who === 'user' ? 'Tú' : `Asistente${m.model ? ` · ${m.model}` : ''}`}</div>
+            {m.text || (m.escribiendo ? <span className="hint"><span className="spinner" /> Pensando...</span> : '')}
+            {m.escribiendo && m.text && <span className="cursor-escribiendo" />}
           </div>
         ))}
-        {busy && <div className="msg ai"><span className="spinner" /> Consultando a la IA...</div>}
       </div>
 
       <div className="chat-input">
@@ -205,9 +246,15 @@ export function AssistantPanel() {
           }}
           style={{ minHeight: 60 }}
         />
-        <button className="btn primary" onClick={send} disabled={busy || !question.trim() || !apiKeyConfigured}>
-          {busy ? <span className="spinner" /> : <Icon name="brain" size={13} />} Preguntar (Ctrl+Enter)
+        {busy ? (
+          <button className="btn outline" onClick={detener} title="La parte que ya llegó se conserva">
+            <span className="spinner" /> Detener
+          </button>
+        ) : (
+        <button className="btn primary" onClick={send} disabled={!question.trim() || !apiKeyConfigured}>
+          <Icon name="brain" size={13} /> Preguntar (Ctrl+Enter)
         </button>
+        )}
       </div>
     </div>
   );

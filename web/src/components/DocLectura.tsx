@@ -3,6 +3,7 @@ import { useStore } from '../state/useStore';
 import { panelDe } from '../lib/types';
 import { DocView } from './DocView';
 import { Icon } from './Icon';
+import { DocArchivoBarra } from './DocArchivoBarra';
 
 /**
  * Leer la documentación sin buscarla.
@@ -52,6 +53,7 @@ export function DocLectura() {
   if (!doc) {
     return (
       <div className="doc-lectura">
+        <DocArchivoBarra />
         <div className="empty" style={{ height: 'auto', paddingTop: 30 }}>
           <Icon name="docs" size={22} />
           <h3>Nada documentado que leer aquí</h3>
@@ -78,6 +80,7 @@ export function DocLectura() {
 
   return (
     <div className="doc-lectura">
+      <DocArchivoBarra />
       {delArchivo.length > 1 && (
         <div className="doc-lectura-lista">
           {delArchivo.map((s) => (

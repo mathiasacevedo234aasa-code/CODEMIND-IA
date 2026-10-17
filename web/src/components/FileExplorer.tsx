@@ -1,15 +1,48 @@
-import { useState } from 'react';
+import { createContext, useContext, useState } from 'react';
 import { useStore } from '../state/useStore';
 import type { TreeNode } from '../lib/types';
 import { extensionOf } from '../lib/analyzer';
 import { Icon } from './Icon';
 import { ask, validarRutaRelativa } from '../lib/dialogs';
+import { useCobertura } from '../lib/useCobertura';
 
 const EXT_COLOR: Record<string, string> = {
   html: '#e2724a', css: '#4a8fe2', scss: '#cf649a', js: '#e0b341', mjs: '#e0b341',
   jsx: '#61d0e8', ts: '#3d7fd6', tsx: '#3d7fd6', json: '#9aa3b2', md: '#8b95a6',
   vue: '#41b883', svelte: '#ff3e00', py: '#4b8bbe',
 };
+
+/** La cobertura de todo el proyecto, calculada una vez y no en cada fila. */
+const CoberturaCtx = createContext<ReturnType<typeof useCobertura> | null>(null);
+
+/**
+ * Insignia de documentación en el explorador.
+ *
+ * Avisa de lo que importa sin abrir nada: un aviso naranja si algo
+ * documentado se ha quedado desfasado, y el porcentaje si hay algo
+ * documentado. Un archivo sin nada documentado no lleva insignia: llenar el
+ * árbol de "0 %" sería ruido.
+ */
+function InsigniaCobertura({ ruta }: { ruta: string }) {
+  const cob = useContext(CoberturaCtx)?.porArchivo[ruta];
+  if (!cob || cob.total === 0) return null;
+  if (cob.revisar > 0) {
+    return (
+      <span className="insignia-doc revisar" title={`${cob.revisar} explicación(es) desactualizada(s): el código cambió después de aprobarlas`}>
+        !
+      </span>
+    );
+  }
+  if (cob.alDia === 0) return null;
+  return (
+    <span
+      className={`insignia-doc ${cob.porcentaje === 100 ? 'completa' : ''}`}
+      title={`${cob.alDia} de ${cob.total} elementos documentados`}
+    >
+      {cob.porcentaje}%
+    </span>
+  );
+}
 
 function Row({ node, depth }: { node: TreeNode; depth: number }) {
   const [open, setOpen] = useState(depth < 1);
@@ -76,6 +109,7 @@ function Row({ node, depth }: { node: TreeNode; depth: number }) {
           </span>
         )}
         <span className="name">{node.name}</span>
+        {!isDir && <InsigniaCobertura ruta={node.path} />}
         <span className="row-actions">
           {isDir && (
             <>
@@ -101,6 +135,7 @@ export function FileExplorer() {
   const scanProject = useStore((s) => s.scanProject);
   const scanning = useStore((s) => s.scanning);
   const setFolderPickerOpen = useStore((s) => s.setFolderPickerOpen);
+  const cobertura = useCobertura();
 
   const add = async (kind: 'file' | 'dir') => {
     const name = await ask({
@@ -118,6 +153,14 @@ export function FileExplorer() {
     <>
       <div className="panel-head">
         <span className="panel-title">Explorador</span>
+        {cobertura.proyecto.total > 0 && (
+          <span
+            className={`tag ${cobertura.proyecto.revisar ? 'warn' : cobertura.proyecto.porcentaje ? 'ok' : 'muted'}`}
+            title={`${cobertura.proyecto.alDia + cobertura.proyecto.revisar} de ${cobertura.proyecto.total} elementos documentados${cobertura.proyecto.revisar ? `, ${cobertura.proyecto.revisar} por revisar` : ''}`}
+          >
+            {cobertura.proyecto.porcentaje}% documentado
+          </span>
+        )}
         <span style={{ display: 'flex', gap: 2 }}>
           <button className="btn icon sm" onClick={() => void add('file')} title="Nuevo archivo"><Icon name="file" size={13} /></button>
           <button className="btn icon sm" onClick={() => void add('dir')} title="Nueva carpeta"><Icon name="folder" size={13} /></button>
@@ -147,7 +190,9 @@ export function FileExplorer() {
             El proyecto está vacío. Crea tu primer archivo, por ejemplo <code>index.html</code> o <code>js/app.js</code>.
           </p>
         ) : (
-          tree.map((node) => <Row key={node.path} node={node} depth={0} />)
+          <CoberturaCtx.Provider value={cobertura}>
+            {tree.map((node) => <Row key={node.path} node={node} depth={0} />)}
+          </CoberturaCtx.Provider>
         )}
       </div>
     </>

@@ -35,6 +35,20 @@ interface RelinkSuggestion {
 
 /** Vistas del panel lateral izquierdo, seleccionadas desde la barra de actividad. */
 export type LeftView = 'explorador' | 'buscar' | 'funciones' | 'git' | 'github' | 'ejecutar';
+/** El progreso de "Documentar archivo". */
+export interface ColaDoc {
+  activa: boolean;
+  ruta: string;
+  total: number;
+  hechos: number;
+  fallidos: { nombre: string; motivo: string }[];
+  /** Lo que se esta generando ahora mismo. */
+  actual: string | null;
+  cancelada: boolean;
+  /** Si se paro sola por un error que se iba a repetir en todos, cual. */
+  motivoParada: string | null;
+}
+
 export type RightTab = 'revision' | 'documentacion' | 'asistente';
 export type BottomTab = 'consola' | 'errores' | 'comprobaciones' | 'terminal' | 'preview' | 'documentacion' | 'git' | 'procesos';
 
@@ -149,7 +163,12 @@ interface Actions {
   goToSymbol: (sym: DetectedSymbol) => Promise<void>;
   clearJump: () => void;
 
-  generateDoc: (sym: DetectedSymbol, extraInstruction?: string) => Promise<void>;
+  /** Devuelve 'ok', 'invalida' (respuesta mal formada) o el mensaje del error. */
+  generateDoc: (sym: DetectedSymbol, extraInstruction?: string, opciones?: { enCola?: boolean }) => Promise<'ok' | 'invalida' | string>;
+  /** La cola de "Documentar archivo", si hay una en marcha. */
+  colaDoc: ColaDoc | null;
+  documentarArchivo: (ruta: string) => Promise<void>;
+  cancelarColaDoc: () => void;
   approveProposal: (proposalId: string) => Promise<void>;
   editProposal: (proposalId: string, doc: FunctionDoc) => Promise<void>;
   discardProposal: (proposalId: string) => Promise<void>;
@@ -193,6 +212,7 @@ const DEFAULT_SETTINGS: AppSettings = {
   model: null,
   temperature: 0.2,
   explanationLevel: 'intermedio',
+  estiloDoc: 'normal',
   maxTokens: 4096,
   editor: {
     theme: 'dark',
@@ -830,9 +850,9 @@ export const useStore = create<State & Actions>((set, get) => ({
 
   // ---------------------------------------------------------- documentación
 
-  async generateDoc(sym, extraInstruction) {
+  async generateDoc(sym, extraInstruction, opciones = {}) {
     const project = get().project;
-    if (!project) return;
+    if (!project) return 'sin proyecto';
     set({ generating: true, error: null });
     get().log('documentacion', 'info', `Solicitando explicación de ${sym.name} (${sym.filePath})...`);
     try {
@@ -864,8 +884,10 @@ export const useStore = create<State & Actions>((set, get) => ({
       if (!result.ok || !result.doc) {
         const detail = result.problems?.join(' ') || 'La respuesta no tiene el formato esperado.';
         get().log('documentacion', 'error', `Respuesta inválida para ${sym.name}: ${detail}`);
-        set({ error: `La IA devolvió una respuesta incompleta y no se guardó. ${detail} Puedes volver a solicitarla.` });
-        return;
+        if (!opciones.enCola) {
+          set({ error: `La IA devolvió una respuesta incompleta y no se guardó. ${detail} Puedes volver a solicitarla.` });
+        }
+        return 'invalida';
       }
 
       const { proposals } = await api.saveProposal(project.id, {
@@ -878,20 +900,96 @@ export const useStore = create<State & Actions>((set, get) => ({
         doc: result.doc,
         model: result.model,
       });
-      set({
-        proposals,
-        activeProposalId: proposals.find((p) => p.functionId === sym.id)?.id ?? null,
-        rightTab: 'revision',
-        rightOpen: true,
-      });
+      // En cola no se salta a Revisión con cada propuesta: se haría
+      // imposible mirar nada mientras se generan las demás.
+      set(opciones.enCola
+        ? { proposals }
+        : {
+            proposals,
+            activeProposalId: proposals.find((p) => p.functionId === sym.id)?.id ?? null,
+            rightTab: 'revision',
+            rightOpen: true,
+          });
       get().log('documentacion', 'info', `Propuesta generada para ${sym.name}. Pendiente de tu aprobación.`);
+      return 'ok';
     } catch (err) {
-      set({ error: (err as Error).message });
-      get().log('documentacion', 'error', (err as Error).message);
+      const mensaje = (err as Error).message;
+      if (!opciones.enCola) set({ error: mensaje });
+      get().log('documentacion', 'error', mensaje);
+      return mensaje;
     } finally {
       set({ generating: false });
     }
   },
+
+  colaDoc: null,
+
+  /**
+   * Documenta todo lo pendiente de un archivo, de uno en uno.
+   *
+   * De uno en uno a propósito: en paralelo se tropieza enseguida con el
+   * límite de peticiones del proveedor, y además así se puede cancelar a
+   * medias sin dejar nada a medio guardar. Cada propuesta queda en Revisión
+   * como siempre: documentar en lote no aprueba nada.
+   */
+  async documentarArchivo(ruta) {
+    if (get().colaDoc?.activa) return;
+    const pendientes = get().symbols().filter((x) =>
+      x.filePath === ruta
+      && !x.menor
+      && !get().approved[x.id]
+      && !get().proposals.some((p) => p.functionId === x.id));
+
+    if (!pendientes.length) {
+      get().log('documentacion', 'info', `En ${ruta} no queda nada sin documentar ni pendiente de revisar.`);
+      return;
+    }
+
+    set({ colaDoc: { activa: true, ruta, total: pendientes.length, hechos: 0, fallidos: [], actual: null, cancelada: false, motivoParada: null } });
+    get().log('documentacion', 'info', `Documentando ${pendientes.length} elemento(s) de ${ruta}, uno detrás de otro.`);
+
+    for (const sym of pendientes) {
+      if (get().colaDoc?.cancelada) break;
+      set((s) => ({ colaDoc: s.colaDoc && { ...s.colaDoc, actual: sym.qualifiedName } }));
+
+      let resultado = await get().generateDoc(sym, undefined, { enCola: true });
+      // Un límite de uso se resuelve esperando; cualquier otro fallo no.
+      if (resultado !== 'ok' && /\(429\)|limite de uso/i.test(resultado)) {
+        await new Promise((r) => setTimeout(r, 8000));
+        if (!get().colaDoc?.cancelada) resultado = await get().generateDoc(sym, undefined, { enCola: true });
+      }
+
+      set((s) => ({
+        colaDoc: s.colaDoc && {
+          ...s.colaDoc,
+          hechos: s.colaDoc.hechos + 1,
+          fallidos: resultado === 'ok' ? s.colaDoc.fallidos : [...s.colaDoc.fallidos, { nombre: sym.qualifiedName, motivo: resultado }],
+        },
+      }));
+
+      // Hay errores que no dependen del elemento: una clave rechazada, un
+      // modelo que no existe, ninguna clave configurada. Seguir con el resto
+      // es fallar igual N veces y hacer esperar para nada. Se para y se dice.
+      if (resultado !== 'ok' && /API key|rechazo la|no reconoce el modelo|no tiene el modelo|No hay una API key|No se pudo contactar/i.test(resultado)) {
+        set((s) => ({ colaDoc: s.colaDoc && { ...s.colaDoc, motivoParada: resultado } }));
+        break;
+      }
+    }
+
+    const cola = get().colaDoc;
+    const bien = cola ? cola.hechos - cola.fallidos.length : 0;
+    get().log('documentacion', cola?.fallidos.length ? 'warn' : 'info',
+      `${cola?.cancelada ? 'Cola cancelada' : 'Cola terminada'}: ${bien} propuesta(s) en Revisión` +
+      (cola?.fallidos.length ? `, ${cola.fallidos.length} sin generar.` : '.'));
+    set((s) => ({
+      colaDoc: s.colaDoc && { ...s.colaDoc, activa: false, actual: null },
+      rightTab: bien > 0 ? 'revision' : s.rightTab,
+      rightOpen: true,
+      activeProposalId: s.proposals[0]?.id ?? s.activeProposalId,
+    }));
+  },
+
+  cancelarColaDoc: () => set((s) => ({ colaDoc: s.colaDoc && { ...s.colaDoc, cancelada: true } })),
 
   async approveProposal(proposalId) {
     const project = get().project;

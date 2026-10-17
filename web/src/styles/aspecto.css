@@ -260,3 +260,44 @@ select:focus, textarea:focus {
 /* Lo que aparece, aparece con intención y una sola vez. */
 .panel.right, .panel.left { animation: entrar-lateral 0.2s var(--curva); }
 @keyframes entrar-lateral { from { opacity: 0; } to { opacity: 1; } }
+
+/* ------------------------------------------------- cobertura */
+
+.insignia-doc {
+  margin-left: auto;
+  font-size: 9.5px; font-weight: 650;
+  padding: 0 5px; border-radius: 999px;
+  color: var(--text-faint);
+  background: var(--bg-hover);
+  flex-shrink: 0;
+}
+.insignia-doc.completa { color: var(--ok); background: color-mix(in srgb, var(--ok) 15%, transparent); }
+.insignia-doc.revisar {
+  color: #fff; background: var(--warn);
+  width: 15px; height: 15px; padding: 0;
+  display: grid; place-items: center;
+}
+/* Si la fila tiene acciones, la insignia les deja sitio al pasar por encima. */
+.tree-row:hover .insignia-doc { display: none; }
+
+.barra-cobertura { height: 6px; border-radius: 999px; background: var(--bg-hover); overflow: hidden; }
+.barra-cobertura > span { display: block; height: 100%; background: var(--ok); border-radius: 999px; transition: width var(--medio); }
+.barra-cobertura.warn > span { background: var(--warn); }
+
+.doc-barra {
+  padding: 8px 10px; margin-bottom: 10px;
+  border: 1px solid var(--border); border-radius: var(--radius);
+  background: var(--superficie);
+  display: flex; flex-direction: column; gap: 6px;
+}
+.doc-barra-fila { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; font-size: 12.5px; }
+.doc-barra-fila .meta { font-size: 11.5px; }
+
+/* El cursor que parpadea al final del texto mientras la IA escribe. */
+.cursor-escribiendo {
+  display: inline-block; width: 7px; height: 1em; margin-left: 2px;
+  vertical-align: text-bottom; background: var(--accent); border-radius: 1px;
+  animation: parpadeo 1s steps(2, start) infinite;
+}
+@keyframes parpadeo { to { visibility: hidden; } }
+.msg.ai { white-space: pre-wrap; }

@@ -37,6 +37,22 @@ export function SettingsDialog() {
             </p>
           </div>
 
+          <div className="field">
+            <label>Estilo de la documentación</label>
+            <select
+              value={settings.estiloDoc ?? 'normal'}
+              onChange={(e) => void saveSettings({ estiloDoc: e.target.value as 'normal' | 'breve' | 'didactico' | 'jsdoc' })}
+            >
+              <option value="normal">Normal — completa y equilibrada</option>
+              <option value="breve">Breve — lo justo, en una o dos frases por campo</option>
+              <option value="didactico">Didáctico — para estudiantes, con ejemplos comentados</option>
+              <option value="jsdoc">Formal — tono de referencia, ejemplo en formato JSDoc o docstring</option>
+            </select>
+            <p className="hint">
+              Se combina con el nivel de arriba: el nivel decide a quién se explica y el estilo, cómo se escribe.
+            </p>
+          </div>
+
           <div className="grid2">
             <div className="field">
               <label>Temperatura ({settings.temperature})</label>

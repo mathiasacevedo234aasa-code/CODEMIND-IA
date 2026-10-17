@@ -473,6 +473,8 @@ export interface AppSettings {
   temperature: number;
   /** A quién van dirigidas las explicaciones de la IA. */
   explanationLevel: 'principiante' | 'intermedio' | 'avanzado';
+  /** Forma de la documentacion que genera la IA. */
+  estiloDoc: 'normal' | 'breve' | 'didactico' | 'jsdoc';
   maxTokens: number;
   editor: EditorSettings;
 }

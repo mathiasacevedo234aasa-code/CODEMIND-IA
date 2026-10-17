@@ -371,6 +371,8 @@ export const DEFAULT_SETTINGS = {
   // A quien va dirigida la explicacion. Cambia el tono y la profundidad, no
   // los hechos: la IA sigue sin poder inventarse nada.
   explanationLevel: 'intermedio', // 'principiante' | 'intermedio' | 'avanzado'
+  /** Forma de la documentacion: 'normal' | 'breve' | 'didactico' | 'jsdoc'. */
+  estiloDoc: 'normal',
   maxTokens: 4096,
   editor: {
     theme: 'dark',

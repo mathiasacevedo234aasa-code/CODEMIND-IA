@@ -58,6 +58,58 @@ async function request<T>(url: string, init?: RequestInit): Promise<T> {
 
 const json = (body: unknown) => ({ body: JSON.stringify(body) });
 
+/**
+ * Lee una respuesta que llega a trozos ("server-sent events").
+ *
+ * No se usa EventSource porque solo admite GET, y la pregunta con su contexto
+ * no cabe en una URL. Se lee el cuerpo de un POST a mano: cada evento es una
+ * línea `event:` y otra `data:`, separados por una línea en blanco.
+ */
+async function leerStream(
+  url: string,
+  payload: Record<string, unknown>,
+  alTrozo: (texto: string) => void,
+  senal?: AbortSignal,
+): Promise<{ model: string; proveedor: string }> {
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+    signal: senal,
+  });
+  if (!res.ok || !res.body) throw new Error(`El servidor respondió ${res.status}.`);
+
+  const lector = res.body.getReader();
+  const dec = new TextDecoder();
+  let pendiente = '';
+  let fin: { model: string; proveedor: string } | null = null;
+
+  for (;;) {
+    const { value, done } = await lector.read();
+    if (done) break;
+    pendiente += dec.decode(value, { stream: true });
+
+    let corte = pendiente.indexOf('\n\n');
+    while (corte !== -1) {
+      const bloque = pendiente.slice(0, corte);
+      pendiente = pendiente.slice(corte + 2);
+      corte = pendiente.indexOf('\n\n');
+
+      const evento = /^event: (.+)$/m.exec(bloque)?.[1]?.trim();
+      const datos = /^data: (.*)$/m.exec(bloque)?.[1];
+      if (!evento || datos === undefined) continue;
+      const json = JSON.parse(datos);
+
+      if (evento === 'trozo') alTrozo(json.t);
+      else if (evento === 'fin') fin = json;
+      else if (evento === 'error') throw new Error(json.error);
+    }
+  }
+
+  if (!fin) throw new Error('La respuesta se cortó antes de terminar.');
+  return fin;
+}
+
 export const api = {
   health: () =>
     request<{
@@ -178,6 +230,8 @@ export const api = {
     }),
   chat: (payload: Record<string, unknown>) =>
     request<{ answer: string; model: string }>('/api/ai/chat', { method: 'POST', ...json(payload) }),
+  chatStream: (payload: Record<string, unknown>, alTrozo: (texto: string) => void, senal?: AbortSignal) =>
+    leerStream('/api/ai/chat/stream', payload, alTrozo, senal),
   models: (proveedor?: string) =>
     request<{ models: { id: string }[] }>(`/api/ai/models${proveedor ? `?proveedor=${encodeURIComponent(proveedor)}` : ''}`),
   proveedores: () => request<{ proveedores: ProveedorIA[] }>('/api/ai/proveedores'),

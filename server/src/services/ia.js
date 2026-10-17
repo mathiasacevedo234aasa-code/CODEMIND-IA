@@ -1,5 +1,5 @@
 import { HttpError } from './store.js';
-import { completar, listarModelos, probarConexion, resolverModelo } from './proveedores.js';
+import { completar, completarStream, listarModelos, probarConexion, resolverModelo } from './proveedores.js';
 
 /**
  * Reglas de comportamiento que comparten todos los modos del asistente.
@@ -85,6 +85,21 @@ Sin texto antes ni despues del JSON. Sin bloques de codigo markdown.`;
  * Tono y profundidad segun a quien va dirigida la explicacion. Solo cambia
  * COMO se cuenta: los hechos y las incertidumbres siguen siendo los mismos.
  */
+/**
+ * Estilos de documentacion. Igual que el nivel, cambian la FORMA y no los
+ * hechos: un estilo breve no puede inventarse nada para llenar menos, y uno
+ * formal no puede afirmar lo que el codigo no demuestra.
+ */
+export const ESTILOS = {
+  normal: '',
+  breve:
+    'Estilo BREVE: cada campo en una o dos frases. "explicacion" en un solo parrafo corto. "flujo" con tres pasos como mucho. Sin rodeos ni introducciones.',
+  didactico:
+    'Estilo DIDACTICO, para estudiantes: explica el porque de cada paso, usa una comparacion cotidiana en "explicacion" y un ejemplo comentado linea a linea en "ejemplo". Define cada termino tecnico la primera vez que aparece.',
+  jsdoc:
+    'Estilo FORMAL tipo JSDoc: tono de documentacion de referencia, frases impersonales y precisas. En "ejemplo" usa el formato de un bloque de comentario JSDoc o docstring del lenguaje del codigo, con @param y @returns cuando aplique.',
+};
+
 export const NIVELES = {
   principiante:
     'Escribes para alguien que esta aprendiendo a programar. Evita la jerga; cuando un termino tecnico sea inevitable, explicalo en la misma frase. Usa comparaciones sencillas. Prefiere frases cortas. No des por sabido nada.',
@@ -152,6 +167,7 @@ function buildContextBlock(context = {}) {
   if (context.imports?.length) lines.push(`Importaciones del archivo: ${context.imports.join(', ')}`);
   if (context.classes?.length) lines.push(`Clases del archivo: ${context.classes.join(', ')}`);
   if (context.previousDoc) lines.push(`Documentacion aprobada anterior (referencia, puede estar desactualizada):\n${context.previousDoc}`);
+  if (context.glosario) lines.push(context.glosario);
   return lines.join('\n');
 }
 
@@ -166,8 +182,10 @@ export async function generateFunctionDoc({ code, context, model, temperature, m
   const invocable = INVOCABLES.has(kind);
 
   const nivel = context?.level ?? 'intermedio';
+  const estilo = ESTILOS[context?.estilo] ?? '';
   const guia = [
     NIVELES[nivel] ?? NIVELES.intermedio,
+    estilo,
     `Lo que vas a explicar es de tipo "${kind}". ${GUIA_POR_TIPO[category] ?? GUIA_POR_TIPO.codigo}`,
     invocable
       ? 'Rellena "parametros" y "retorno" con lo que de verdad recibe y devuelve.'
@@ -209,11 +227,11 @@ export async function generateFunctionDoc({ code, context, model, temperature, m
   };
 }
 
-export async function chat({ mode = 'comprehension', question, contextText, model, temperature, maxTokens }) {
+/** Los mensajes de una consulta al asistente, iguales con o sin streaming. */
+function mensajesDeChat({ mode = 'comprehension', question, contextText }) {
   if (!question || !question.trim()) throw new HttpError(400, 'La pregunta esta vacia.');
   const modeRule = MODE_RULES[mode] || MODE_RULES.comprehension;
-
-  const messages = [
+  return [
     { role: 'system', content: `${BASE_RULES}\n\n${modeRule}` },
     {
       role: 'user',
@@ -224,9 +242,19 @@ export async function chat({ mode = 'comprehension', question, contextText, mode
       ].join('\n'),
     },
   ];
+}
 
+export async function chat({ mode, question, contextText, model, temperature, maxTokens }) {
+  const messages = mensajesDeChat({ mode, question, contextText });
   const result = await completar({ messages, modelo: model, temperature, maxTokens, jsonMode: false });
   return { answer: result.content, model: result.model, proveedor: result.proveedor, usage: result.usage };
+}
+
+/** Lo mismo, pero entregando el texto a trozos segun llega. */
+export async function chatStream({ mode, question, contextText, model, temperature, maxTokens }, alTrozo, opciones) {
+  const messages = mensajesDeChat({ mode, question, contextText });
+  const result = await completarStream({ messages, modelo: model, temperature, maxTokens }, alTrozo, opciones);
+  return { answer: result.content, model: result.model, proveedor: result.proveedor };
 }
 
 /**

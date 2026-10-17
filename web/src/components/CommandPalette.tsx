@@ -38,6 +38,7 @@ export function CommandPalette() {
   const dividirEditor = useStore((s) => s.dividirEditor);
   const { plan, ruta } = useplanDelArchivo();
   const { ejecutar: ejecutarArchivo } = useEjecutarArchivo();
+  const documentarArchivo = useStore((s) => s.documentarArchivo);
   const unirEditor = useStore((s) => s.unirEditor);
   const refreshPreview = useStore((s) => s.refreshPreview);
   const scanProject = useStore((s) => s.scanProject);
@@ -79,6 +80,17 @@ export function CommandPalette() {
             icono: 'play',
             detalle: `${plan.lenguaje}: ${plan.comando}`,
             accion: () => void ejecutarArchivo(ruta),
+          }]
+        : []),
+
+      ...(ruta
+        ? [{
+            id: 'documentar-archivo',
+            titulo: `Documentar todo ${ruta.split('/').pop()}`,
+            grupo: 'Documentación',
+            icono: 'brain',
+            detalle: 'Una propuesta por cada elemento sin documentar; todas quedan en Revisión',
+            accion: () => void documentarArchivo(ruta),
           }]
         : []),
 

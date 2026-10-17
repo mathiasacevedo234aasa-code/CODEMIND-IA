@@ -407,3 +407,105 @@ export async function probarConexion(idProveedor) {
           : `La clave funciona, pero tu cuenta no tiene acceso al modelo "${modelo}". Elige otro de la lista.`,
   };
 }
+
+// ------------------------------------------------------------ streaming
+
+/**
+ * Una respuesta que llega a trozos.
+ *
+ * Esperar la respuesta completa hace que la aplicacion parezca lenta aunque
+ * el modelo sea rapido: veinte segundos mirando un "pensando..." se sienten
+ * mucho peor que veinte segundos viendo el texto aparecer. Aqui cada trozo se
+ * entrega en cuanto llega, y al final se devuelve el texto entero igual que
+ * `completar`, para quien necesite validarlo.
+ *
+ * Los dos protocolos mandan los trozos como "server-sent events", pero con
+ * forma distinta: OpenAI en `choices[0].delta.content` y Anthropic en
+ * eventos `content_block_delta` con `delta.text`.
+ */
+export async function completarStream(
+  { messages, proveedor: idProveedor, modelo, temperature, maxTokens },
+  alTrozo,
+  { senal } = {},
+) {
+  const { proveedor, baseUrl, key, source } = await activo(idProveedor);
+  if (proveedor.necesitaClave && !key) {
+    throw new HttpError(400, `No hay una API key de ${proveedor.nombre} configurada. Guardala desde Configuracion o anade ${proveedor.variableEntorno} al archivo .env.`);
+  }
+  const model = await resolverModelo(proveedor.id, modelo);
+  if (!model) throw new HttpError(400, `No hay ningun modelo elegido para ${proveedor.nombre}.`);
+
+  const anthropic = proveedor.protocolo === 'anthropic';
+  const headers = { 'Content-Type': 'application/json' };
+  if (key) {
+    if (anthropic) {
+      headers['x-api-key'] = key;
+      headers['anthropic-version'] = '2023-06-01';
+    } else {
+      headers.Authorization = `Bearer ${key}`;
+    }
+  }
+  const cuerpo = anthropic
+    ? { ...cuerpoAnthropic({ modelo: model, messages, temperature, maxTokens }), stream: true }
+    : { ...cuerpoOpenai({ modelo: model, messages, temperature, maxTokens, jsonMode: false }), stream: true };
+
+  let res;
+  try {
+    res = await fetch(`${baseUrl}${anthropic ? '/messages' : '/chat/completions'}`, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify(cuerpo),
+      signal: senal ?? AbortSignal.timeout(proveedor.local ? 300000 : 120000),
+    });
+  } catch (err) {
+    if (err.name === 'AbortError') throw new HttpError(499, 'Cancelado.');
+    throw new HttpError(502, `No se pudo contactar con ${proveedor.nombre}: ${sinClave(err.message, key)}.`);
+  }
+
+  if (!res.ok) {
+    throw describirError(res.status, await res.text(), { proveedor, modelo: model, source, clave: key }).error;
+  }
+
+  const lector = res.body.getReader();
+  const dec = new TextDecoder();
+  let pendiente = '';
+  let texto = '';
+  let modeloDevuelto = model;
+
+  const procesarEvento = (linea) => {
+    if (!linea.startsWith('data:')) return;
+    const datos = linea.slice(5).trim();
+    if (!datos || datos === '[DONE]') return;
+    let json;
+    try {
+      json = JSON.parse(datos);
+    } catch {
+      return; // un trozo partido o un comentario: se ignora
+    }
+    const trozo = anthropic
+      ? (json.type === 'content_block_delta' ? json.delta?.text : null)
+      : json.choices?.[0]?.delta?.content;
+    if (json.model) modeloDevuelto = json.model;
+    if (json.type === 'message_start' && json.message?.model) modeloDevuelto = json.message.model;
+    if (trozo) {
+      texto += trozo;
+      alTrozo(trozo);
+    }
+  };
+
+  for (;;) {
+    const { value, done } = await lector.read();
+    if (done) break;
+    pendiente += dec.decode(value, { stream: true });
+    // Los eventos se separan por saltos de linea; el ultimo puede venir a medias.
+    const lineas = pendiente.split(/\r?\n/);
+    pendiente = lineas.pop() ?? '';
+    for (const linea of lineas) procesarEvento(linea);
+  }
+  if (pendiente) procesarEvento(pendiente);
+
+  if (!texto.trim()) {
+    throw new HttpError(502, `${proveedor.nombre} termino sin enviar ningun texto.`);
+  }
+  return { content: texto, model: modeloDevuelto, proveedor: proveedor.id };
+}
