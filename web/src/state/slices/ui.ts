@@ -27,6 +27,12 @@ export const crearUi = (set: PonerTienda, get: ObtenerTienda) => ({
   setPedirBorradorAlAbrir: (v: boolean) => set({ pedirBorradorAlAbrir: v }),
   setCompararDesde: (ruta: string | null) => set({ compararDesde: ruta }),
   setComparacion: (c: Tienda['comparacion']) => set({ comparacion: c }),
+  setMarcadores: (ruta: string, lista: Tienda['marcadores'][string]) => set((s) => {
+    const marcadores = { ...s.marcadores };
+    if (lista.length) marcadores[ruta] = lista;
+    else delete marcadores[ruta];
+    return { marcadores };
+  }),
   setPortapapeles: (ruta: string | null) => set({ portapapeles: ruta }),
   setCursor: (c: Tienda['cursor']) => set({ cursor: c }),
   setRespaldoDoc: (r: Tienda['respaldoDoc']) => set({ respaldoDoc: r }),

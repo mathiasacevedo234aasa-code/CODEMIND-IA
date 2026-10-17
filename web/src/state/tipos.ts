@@ -154,6 +154,9 @@ export interface Actions {
   copyEntry: (from: string, to: string) => Promise<void>;
   /** Lo copiado en el explorador, a la espera de pegarse. */
   portapapeles: string | null;
+  /** Lo que marca el editor (Monaco) en cada archivo abierto. */
+  marcadores: Record<string, { nivel: 'error' | 'aviso'; linea: number; mensaje: string }[]>;
+  setMarcadores: (ruta: string, lista: Actions['marcadores'][string]) => void;
   /** Primer archivo elegido para comparar, a la espera del segundo. */
   compararDesde: string | null;
   /** Proyecto recién importado al que se ofrece un borrador de la descripción general. */

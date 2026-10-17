@@ -142,9 +142,16 @@ ${texto.slice(0, 8000)}
     monaco.editor.onDidChangeMarkers(() => {
       const model = editor.getModel();
       if (!model) return;
-      const errors = monaco.editor
-        .getModelMarkers({ resource: model.uri })
-        .filter((m) => m.severity === monaco.MarkerSeverity.Error);
+      const todos = monaco.editor.getModelMarkers({ resource: model.uri });
+      // Al panel de problemas van errores y avisos; las pistas, no.
+      useStore.getState().setMarcadores(model.uri.path.slice(1), todos
+        .filter((m) => m.severity >= monaco.MarkerSeverity.Warning)
+        .map((m) => ({
+          nivel: m.severity === monaco.MarkerSeverity.Error ? 'error' as const : 'aviso' as const,
+          linea: m.startLineNumber,
+          mensaje: m.message,
+        })));
+      const errors = todos.filter((m) => m.severity === monaco.MarkerSeverity.Error);
       if (errors.length) {
         // Con ruta, línea y el mensaje del primero: así se puede ir a él o
         // pedir que se explique, en vez de un simple recuento.

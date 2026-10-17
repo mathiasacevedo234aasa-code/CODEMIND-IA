@@ -97,6 +97,7 @@ export const useStore = create<Tienda>((set, get) => ({
   respaldoDoc: null,
   cursor: null,
   portapapeles: null,
+  marcadores: {},
   compararDesde: null,
   ofrecerBorrador: null,
   pedirBorradorAlAbrir: false,

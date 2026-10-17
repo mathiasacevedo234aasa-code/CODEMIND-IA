@@ -417,3 +417,13 @@ kbd {
 .mapa-filtros select { width: auto; }
 .mapa-impacto { margin-bottom: 10px; display: block; }
 .perfil-terminal { width: auto; padding: 1px 6px; font-size: 12px; height: 24px; }
+
+/* Panel de problemas unificado */
+.problemas { font-family: var(--sans); font-size: 12.5px; }
+.problemas-filtros { display: flex; gap: 8px; align-items: center; padding: 4px 4px 8px; flex-wrap: wrap; }
+.problemas-filtros select { width: auto; }
+.problemas-filtros input[placeholder] { flex: 1; min-width: 160px; }
+.problema { display: flex; gap: 6px; align-items: center; padding: 3px 4px; border-radius: 4px; }
+.problema.con-ruta { cursor: pointer; }
+.problema.con-ruta:hover { background: var(--hover, rgba(127,127,127,.12)); }
+.problema .msg { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

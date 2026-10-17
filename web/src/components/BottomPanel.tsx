@@ -6,6 +6,7 @@ import type { BottomTab } from '../state/useStore';
 import type { LogChannel } from '../lib/types';
 import { Icon } from './Icon';
 import { ChecksPanel } from './ChecksPanel';
+import { PanelProblemas } from './PanelProblemas';
 import { useT } from '../lib/i18n';
 import { explicarError } from '../lib/explicarError';
 // xterm solo hace falta cuando hay panel inferior: va en su propio trozo.
@@ -191,6 +192,8 @@ export function BottomPanel() {
 
           {bottomTab === 'terminal' ? null : bottomTab === 'preview' ? (
             <Preview />
+          ) : bottomTab === 'errores' ? (
+            <PanelProblemas />
           ) : bottomTab === 'comprobaciones' ? (
             <ChecksPanel />
           ) : filtered.length === 0 ? (
