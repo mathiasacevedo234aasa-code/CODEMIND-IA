@@ -64,6 +64,8 @@ function MitadEditor({ mitad, dividido }: { mitad: Mitad; dividido: boolean }) {
   const setFolderPickerOpen = useStore((s) => s.setFolderPickerOpen);
   const askAssistant = useStore((s) => s.askAssistant);
   const emmetActivo = useStore((s) => s.settings.editor.emmet);
+  const setCursor = useStore((s) => s.setCursor);
+  const fijarTab = useStore((s) => s.fijarTab);
 
   // El editor vivo, junto al archivo para el que se creó. Guardar también la
   // ruta importa: Monaco se destruye y se vuelve a crear al cambiar de archivo
@@ -89,6 +91,14 @@ function MitadEditor({ mitad, dividido }: { mitad: Mitad; dividido: boolean }) {
     setMontajes((n) => n + 1);
     editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyS, () => void saveFile());
     editor.onDidFocusEditorText(() => setPanelActivo(mitad));
+    // La posición del cursor la usan las migas y la barra de estado.
+    const rutaMontada = active?.kind === 'file' ? active.path : null;
+    const avisarCursor = () => {
+      const p = editor.getPosition();
+      if (rutaMontada && p && editor.hasTextFocus()) setCursor({ path: rutaMontada, line: p.lineNumber, column: p.column });
+    };
+    editor.onDidChangeCursorPosition(avisarCursor);
+    editor.onDidFocusEditorText(avisarCursor);
 
     // Emmet: html:5, ul>li*3, div.clase... Se activa una sola vez por sesión.
     if (emmetActivo) activarEmmet(monaco);
@@ -175,12 +185,14 @@ ${texto.slice(0, 8000)}
               key={tab.id}
               className={`tab ${tab.id === active?.id ? 'active' : ''} ${tab.id === activeTabId ? 'enfocada' : ''}`}
               onClick={() => setActiveTab(tab.id)}
-              title={tab.kind === 'file' ? tab.path : tab.url}
+              onContextMenu={(e) => { if (tab.kind === 'file') { e.preventDefault(); fijarTab(tab.id); } }}
+              title={tab.kind === 'file' ? `${tab.path}\nClic derecho: ${tab.fijada ? 'soltar' : 'fijar'} la pestaña` : tab.url}
             >
+              {tab.kind === 'file' && tab.fijada && <span className="tab-fijada" title="Fijada">📌</span>}
               {tab.kind === 'web' && <Icon name="play" size={11} />}
               {dirty && <span className="dirty" title="Cambios sin guardar" />}
               <span>{label}</span>
-              <span
+              {!(tab.kind === 'file' && tab.fijada) && <span
                 className="close"
                 onClick={(e) => {
                   e.stopPropagation();
@@ -189,7 +201,7 @@ ${texto.slice(0, 8000)}
                 }}
               >
                 <Icon name="close" size={11} />
-              </span>
+              </span>}
             </div>
           );
         })}
@@ -212,6 +224,7 @@ ${texto.slice(0, 8000)}
         )}
       </div>
 
+      {active?.kind === 'file' && <Migas ruta={active.path} />}
       <div className="editor-host">
         {!active ? (
           <div className="empty">
@@ -264,6 +277,37 @@ ${texto.slice(0, 8000)}
           />
         ) : null}
       </div>
+    </div>
+  );
+}
+
+/**
+ * Migas sobre el editor: carpeta › archivo › clase › método.
+ *
+ * Los niveles salen del analizador: los elementos cuyo rango contiene la
+ * línea del cursor, del más grande al más pequeño. Pulsar uno lleva a él.
+ */
+function Migas({ ruta }: { ruta: string }) {
+  const cursor = useStore((s) => s.cursor);
+  const analysis = useStore((s) => s.analysis);
+  const jumpToLine = useStore((s) => s.jumpToLine);
+  const linea = cursor?.path === ruta ? cursor.line : null;
+  const contenedores = linea === null ? [] : (analysis[ruta]?.symbols ?? [])
+    .filter((x) => !x.menor && x.category === 'codigo' && x.line <= linea && x.endLine >= linea)
+    .sort((a, b) => (b.endLine - b.line) - (a.endLine - a.line));
+  const partes = ruta.split('/');
+  return (
+    <div className="migas" aria-label="Ubicación">
+      {partes.map((p, i) => (
+        <span key={`r${i}`} className={i === partes.length - 1 ? 'archivo' : 'carpeta'}>
+          {p}{i < partes.length - 1 || contenedores.length ? <span className="sep">›</span> : null}
+        </span>
+      ))}
+      {contenedores.map((x, i) => (
+        <button key={x.id} className="miga" title={`${x.kind}, línea ${x.line}`} onClick={() => jumpToLine(ruta, x.line)}>
+          {x.name}{i < contenedores.length - 1 && <span className="sep">›</span>}
+        </button>
+      ))}
     </div>
   );
 }

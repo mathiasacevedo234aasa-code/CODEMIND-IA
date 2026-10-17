@@ -13,6 +13,9 @@ import type { ObtenerTienda, PonerTienda, Tienda } from '../tipos';
 const autoSaveTimers = new Map<string, number>();
 const fileTabId = (path: string) => `file:${path}`;
 
+/** Rutas de las pestañas cerradas, la última al final, para Ctrl+Shift+T. */
+const cerradas: string[] = [];
+
 export const crearPestanas = (set: PonerTienda, get: ObtenerTienda) => ({
   async openFile(path) {
     const project = get().project;
@@ -71,6 +74,11 @@ export const crearPestanas = (set: PonerTienda, get: ObtenerTienda) => ({
   },
 
   closeTab(id) {
+    const cerrada = get().tabs.find((t) => t.id === id);
+    if (cerrada?.kind === 'file') {
+      cerradas.push(cerrada.path);
+      if (cerradas.length > 20) cerradas.shift();
+    }
     set((s) => {
       const tabs = s.tabs.filter((t) => t.id !== id);
       const closed = s.tabs.find((t) => t.id === id);
@@ -119,6 +127,26 @@ export const crearPestanas = (set: PonerTienda, get: ObtenerTienda) => ({
    * dos archivos a la vez": la plantilla y su hoja de estilos, el codigo y su
    * prueba, el archivo y su documentacion.
    */
+  fijarTab(id: string) {
+    set((s) => {
+      const tabs = s.tabs.map((t) => (t.id === id && t.kind === 'file' ? { ...t, fijada: !t.fijada } : t));
+      // Las fijadas primero, conservando el orden relativo de cada grupo.
+      const fijo = (t: (typeof tabs)[number]) => (t.kind === 'file' && t.fijada ? 0 : 1);
+      return { tabs: [...tabs].sort((a, b) => fijo(a) - fijo(b)) };
+    });
+    get().persistSession();
+  },
+
+  async reabrirCerrada() {
+    // La más reciente que no esté ya abierta.
+    while (cerradas.length) {
+      const ruta = cerradas.pop()!;
+      if (get().tabs.some((t) => t.kind === 'file' && t.path === ruta)) continue;
+      await get().openFile(ruta);
+      return;
+    }
+  },
+
   dividirEditor() {
     const { activeTabId, tabs } = get();
     const actual = tabs.find((t) => t.id === activeTabId);

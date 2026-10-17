@@ -103,6 +103,13 @@ export interface State {
   previewKey: number;
   logs: LogEntry[];
   error: string | null;
+  /** Dónde está el cursor del editor con el foco (para las migas y la barra de estado). */
+  cursor: { path: string; line: number; column: number } | null;
+  setCursor: (c: State['cursor']) => void;
+  /** Fija o suelta una pestaña: las fijadas van primero y no se cierran sin querer. */
+  fijarTab: (id: string) => void;
+  /** Vuelve a abrir la última pestaña cerrada (Ctrl+Shift+T). */
+  reabrirCerrada: () => Promise<void>;
   /** Si el último fallo de documentar se puede reintentar con otro proveedor. */
   respaldoDoc: { sym: DetectedSymbol; extra?: string; proveedor: string; nombre: string } | null;
   setRespaldoDoc: (r: State['respaldoDoc']) => void;

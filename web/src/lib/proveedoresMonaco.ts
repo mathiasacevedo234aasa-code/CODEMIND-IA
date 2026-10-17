@@ -108,6 +108,54 @@ export function registrarProveedores(monaco: typeof Monaco) {
     },
   });
 
+  // ------------------------------------------------------ autocompletado
+  //
+  // Los símbolos de TODO el proyecto, en cualquier lenguaje que entienda el
+  // analizador. Monaco ya completa JavaScript y TypeScript, pero solo con lo
+  // que ve en el archivo abierto; esto añade lo que está en los demás, con
+  // su archivo y, si está documentado, su propósito.
+  const K = monaco.languages.CompletionItemKind;
+  const tipoCompletado = (kind: string) =>
+    /metodo|constructor/.test(kind) ? K.Method
+      : /clase|componente/.test(kind) ? K.Class
+        : /interfaz/.test(kind) ? K.Interface
+          : /tipo|enumeracion/.test(kind) ? K.Enum
+            : /constante/.test(kind) ? K.Constant
+              : /propiedad/.test(kind) ? K.Property
+                : /modulo/.test(kind) ? K.Module
+                  : K.Function;
+  monaco.languages.registerCompletionItemProvider({ scheme: 'file' }, {
+    provideCompletionItems(modelo, posicion) {
+      const palabra = modelo.getWordUntilPosition(posicion);
+      if (!palabra.word) return { suggestions: [] };
+      const ruta = rutaDe(modelo);
+      const estado = useStore.getState();
+      const rango = new monaco.Range(posicion.lineNumber, palabra.startColumn, posicion.lineNumber, palabra.endColumn);
+      const prefijo = palabra.word.toLowerCase();
+      const vistos = new Set<string>();
+      const suggestions: Monaco.languages.CompletionItem[] = [];
+      for (const s of estado.symbols()) {
+        // Lo del propio archivo ya lo propone el lenguaje; aquí, lo de fuera.
+        // Solo código: una sección de HTML o una regla CSS no se escriben como nombres.
+        if (s.menor || s.category !== 'codigo' || s.filePath === ruta || vistos.has(s.name)) continue;
+        if (!s.name.toLowerCase().startsWith(prefijo)) continue;
+        vistos.add(s.name);
+        const doc = estado.approved[s.id]?.doc;
+        suggestions.push({
+          label: { label: s.name, description: s.filePath },
+          kind: tipoCompletado(s.kind),
+          insertText: s.name,
+          detail: `${s.kind}${s.params?.length ? `(${s.params.join(', ')})` : ''} — ${s.filePath}:${s.line}`,
+          documentation: doc?.proposito ? { value: `${doc.proposito}\n\n_Documentación aprobada._` } : undefined,
+          range: rango,
+          sortText: `z${s.name}`,
+        });
+        if (suggestions.length >= 50) break;
+      }
+      return { suggestions };
+    },
+  });
+
   // Saltar a OTRO archivo lo tiene que hacer la aplicación: Monaco por sí solo
   // no sabe abrir pestañas. Se abre el archivo y se lleva el cursor a la línea.
   monaco.editor.registerEditorOpener({

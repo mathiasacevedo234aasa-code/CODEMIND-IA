@@ -109,6 +109,10 @@ export default function App() {
         e.preventDefault();
         setPaletteOpen(true);
       }
+      if (ctrl && e.shiftKey && e.key.toLowerCase() === 't') {
+        e.preventDefault();
+        void useStore.getState().reabrirCerrada();
+      }
       if (ctrl && e.shiftKey && e.key.toLowerCase() === 'f') {
         e.preventDefault();
         setLeftView('buscar');

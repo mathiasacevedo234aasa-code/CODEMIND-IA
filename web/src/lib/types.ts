@@ -504,7 +504,7 @@ export interface LogEntry {
 export type PanelEditor = 'a' | 'b';
 
 export type CenterTab =
-  | { kind: 'file'; id: string; path: string; panel?: PanelEditor }
+  | { kind: 'file'; id: string; path: string; panel?: PanelEditor; fijada?: boolean }
   | { kind: 'web'; id: string; url: string; title: string; panel?: PanelEditor };
 
 /**

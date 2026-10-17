@@ -118,8 +118,13 @@ export const crearProyecto = (set: PonerTienda, get: ObtenerTienda) => ({
     for (const tab of guardadas) {
       // Cada pestana vuelve a la mitad en la que estaba.
       set({ panelActivo: panelDe(tab) });
-      if (tab.kind === 'file') await get().openFile(tab.path);
-      else if (tab.kind === 'web') get().openWebTab(tab.url, tab.title);
+      if (tab.kind === 'file') {
+        await get().openFile(tab.path);
+        // Y si estaba fijada, sigue fijada.
+        if (tab.fijada) {
+          set((st) => ({ tabs: st.tabs.map((t) => (t.kind === 'file' && t.path === tab.path ? { ...t, fijada: true } : t)) }));
+        }
+      } else if (tab.kind === 'web') get().openWebTab(tab.url, tab.title);
     }
     set({ panelActivo: 'a' });
     // El id guardado puede ya no existir si ese archivo se borro fuera.

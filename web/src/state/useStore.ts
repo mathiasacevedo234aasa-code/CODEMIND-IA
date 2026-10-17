@@ -95,6 +95,7 @@ export const useStore = create<Tienda>((set, get) => ({
   logs: [],
   error: null,
   respaldoDoc: null,
+  cursor: null,
   jumpTo: null,
   pendingAsk: null,
 
