@@ -93,6 +93,7 @@ function GeneralSection() {
   const saveMemory = useStore((s) => s.saveMemory);
   const project = useStore((s) => s.project);
   const setError = useStore((s) => s.setError);
+  const saveProjectMeta = useStore((s) => s.saveProjectMeta);
   const [draft, setDraft] = useState(memory?.overview);
   const [busy, setBusy] = useState(false);
   const [suggestion, setSuggestion] = useState<string | null>(null);
@@ -124,6 +125,21 @@ function GeneralSection() {
       <p className="hint" style={{ marginBottom: 14 }}>
         Esta informacion alimenta la memoria del proyecto y el modo "Contexto" del asistente. Solo se guarda lo que tu apruebes.
       </p>
+
+      <div className="field">
+        <label>Idioma de la documentación de este proyecto</label>
+        <select
+          value={project?.idiomaDoc ?? ''}
+          onChange={(e) => void saveProjectMeta({ idiomaDoc: (e.target.value || null) as 'es' | 'en' | null })}
+        >
+          <option value="">El de la aplicación</option>
+          <option value="es">Español</option>
+          <option value="en">English</option>
+        </select>
+        <p className="hint">
+          Para lo que genere la IA a partir de ahora. Lo ya aprobado no se traduce solo: regenéralo si lo quieres en el otro idioma.
+        </p>
+      </div>
       <div className="grid2">
         {OVERVIEW_FIELDS.map((f) => (
           <div className="field" key={f.key}>

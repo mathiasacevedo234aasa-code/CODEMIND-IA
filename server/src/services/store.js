@@ -155,6 +155,8 @@ export async function updateProject(id, patch) {
   const next = { ...meta };
   if (typeof patch.name === 'string' && patch.name.trim()) next.name = patch.name.trim();
   if (typeof patch.objective === 'string') next.objective = patch.objective;
+  // Idioma de la documentacion de ESTE proyecto; null = el de la aplicacion.
+  if ('idiomaDoc' in patch) next.idiomaDoc = ['es', 'en'].includes(patch.idiomaDoc) ? patch.idiomaDoc : null;
   next.updatedAt = new Date().toISOString();
   await writeJson(metaFile(id), next);
   return next;

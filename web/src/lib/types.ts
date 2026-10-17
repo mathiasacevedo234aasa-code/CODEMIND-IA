@@ -7,6 +7,8 @@ export interface Project {
   /** Carpeta real del disco cuando el proyecto vive fuera del espacio gestionado. */
   root: string | null;
   mode: 'interno' | 'carpeta';
+  /** Idioma de la documentación de este proyecto; null o ausente = el de la aplicación. */
+  idiomaDoc?: 'es' | 'en' | null;
 }
 
 export type TreeNode =

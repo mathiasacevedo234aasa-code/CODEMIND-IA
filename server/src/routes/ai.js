@@ -16,6 +16,9 @@ router.post('/document', async (req, res, next) => {
       const project = await getProject(projectId);
       context.projectName ??= project.name;
       context.projectObjective ??= project.objective;
+      // Un proyecto puede documentarse en otro idioma que el de la interfaz:
+      // una libreria publica en ingles, por ejemplo, con la app en espanol.
+      if (project.idiomaDoc) context.idioma ??= project.idiomaDoc;
       if (context.functionId) {
         const store = await readDocs(projectId);
         const approved = store.approved[context.functionId];
