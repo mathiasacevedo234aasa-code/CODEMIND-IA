@@ -27,7 +27,13 @@ const runtime = path.join(root, 'desktop', 'runtime');
 const staging = path.join(os.tmpdir(), 'codemind-runtime-build');
 
 const serverPkg = JSON.parse(await fs.readFile(path.join(root, 'server', 'package.json'), 'utf8'));
-const deps = serverPkg.dependencies ?? {};
+// electron-updater lo usa el proceso principal, que vive dentro del asar sin
+// node_modules: viaja aqui, junto a las dependencias del backend.
+const desktopPkg = JSON.parse(await fs.readFile(path.join(root, 'desktop', 'package.json'), 'utf8'));
+const deps = {
+  ...(serverPkg.dependencies ?? {}),
+  'electron-updater': desktopPkg.dependencies['electron-updater'],
+};
 
 console.log(`Instalando ${Object.keys(deps).length} dependencia(s) de ejecucion del backend:`);
 for (const [name, range] of Object.entries(deps)) console.log(`  ${name} ${range}`);

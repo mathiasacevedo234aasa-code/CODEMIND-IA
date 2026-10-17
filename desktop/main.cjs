@@ -2,6 +2,7 @@ const { app, BrowserWindow, shell, dialog, Menu } = require('electron');
 const path = require('node:path');
 const fs = require('node:fs');
 const { pathToFileURL } = require('node:url');
+const { buscarActualizaciones } = require('./actualizaciones.cjs');
 
 /**
  * Proceso principal de la aplicacion de escritorio.
@@ -152,6 +153,11 @@ function buildMenu(url) {
           label: 'Abrir en el navegador',
           click: () => void shell.openExternal(url),
         },
+        { type: 'separator' },
+        {
+          label: 'Buscar actualizaciones...',
+          click: () => void buscarActualizaciones(mainWindow),
+        },
       ],
     },
   ];
@@ -171,6 +177,9 @@ app.whenReady().then(async () => {
     console.log(`[codemind] backend en ${backend.url}`);
     buildMenu(backend.url);
     createWindow(backend.url);
+    // Una comprobacion discreta al arrancar: solo dice algo si hay version
+    // nueva, y aun entonces pregunta antes de descargar nada.
+    setTimeout(() => void buscarActualizaciones(mainWindow, { silencioso: true }), 15000);
   } catch (err) {
     dialog.showErrorBox(
       'CodeMind AI no pudo arrancar',
