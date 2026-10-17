@@ -1,7 +1,9 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { lazy, Suspense, useCallback, useEffect, useRef, useState } from 'react';
 import { useStore } from '../state/useStore';
 import { api, type StashEntrada } from '../lib/api';
-import { DiffLadoALado } from './DiffLadoALado';
+// Usa Monaco: se carga junto con él, solo si se pide la comparación.
+const DiffLadoALado = lazy(() =>
+  import('../lib/monaco').then(() => import('./DiffLadoALado')).then((m) => ({ default: m.DiffLadoALado })));
 import type { ChangeKind, GitBranches, GitChange, GitCommit, GitStatus } from '../lib/types';
 import { Icon } from './Icon';
 import { ask, validarNombreRama } from '../lib/dialogs';
@@ -229,7 +231,11 @@ export function GitPanel() {
 
   return (
     <div className="git-panel">
-      {ladoALado && <DiffLadoALado ruta={ladoALado.ruta} staged={ladoALado.staged} alCerrar={() => setLadoALado(null)} />}
+      {ladoALado && (
+        <Suspense fallback={null}>
+          <DiffLadoALado ruta={ladoALado.ruta} staged={ladoALado.staged} alCerrar={() => setLadoALado(null)} />
+        </Suspense>
+      )}
       <div className="git-head">
         <Icon name="git" size={14} />
         <select

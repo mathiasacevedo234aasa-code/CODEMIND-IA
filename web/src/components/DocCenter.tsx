@@ -1,10 +1,10 @@
-import { useEffect, useMemo, useState } from 'react';
+import { lazy, Suspense, useEffect, useMemo, useState } from 'react';
 import { useStore } from '../state/useStore';
 import { api } from '../lib/api';
 import type { ApprovedDoc, ProjectMemory } from '../lib/types';
 import { DocView } from './DocView';
 import { Icon } from './Icon';
-import { ProjectMap } from './ProjectMap';
+const ProjectMap = lazy(() => import('./ProjectMap').then((m) => ({ default: m.ProjectMap })));
 import { GlosarioPanel } from './GlosarioPanel';
 
 type Section = 'general' | 'arquitectura' | 'glosario' | 'funciones' | 'decisiones' | 'progreso' | 'historial';
@@ -172,7 +172,7 @@ function ArchitectureSection() {
 
   return (
     <>
-      <ProjectMap />
+      <Suspense fallback={<p className="hint">Dibujando el mapa...</p>}><ProjectMap /></Suspense>
 
       <h4 style={{ margin: '20px 0 8px' }}>Archivos analizados</h4>
       <div className="card">

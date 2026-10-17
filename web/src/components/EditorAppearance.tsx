@@ -1,7 +1,7 @@
 import { useMemo } from 'react';
 import { useStore } from '../state/useStore';
 import { FONT_STACKS, fontStackOf, isFontAvailable } from '../lib/editorFonts';
-import { EJEMPLOS_EMMET } from '../lib/emmet';
+import { EJEMPLOS_EMMET } from '../lib/emmetEjemplos';
 import type { EditorSettings } from '../lib/types';
 
 const MUESTRA = `function calcularTotal(items) {

@@ -1,6 +1,5 @@
 import React from 'react';
 import { createRoot } from 'react-dom/client';
-import './lib/monaco';
 import App from './App';
 import './styles/app.css';
 import './styles/aspecto.css';

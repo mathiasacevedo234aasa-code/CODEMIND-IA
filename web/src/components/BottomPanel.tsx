@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { lazy, Suspense, useEffect, useMemo, useState } from 'react';
 import { useStore } from '../state/useStore';
 import { buildPreview, findHtmlEntries } from '../lib/preview';
 import { api } from '../lib/api';
@@ -6,7 +6,8 @@ import type { BottomTab } from '../state/useStore';
 import type { LogChannel } from '../lib/types';
 import { Icon } from './Icon';
 import { ChecksPanel } from './ChecksPanel';
-import { TerminalPanel } from './TerminalPanel';
+// xterm solo hace falta cuando hay panel inferior: va en su propio trozo.
+const TerminalPanel = lazy(() => import('./TerminalPanel').then((m) => ({ default: m.TerminalPanel })));
 
 const TABS: { id: BottomTab; label: string }[] = [
   { id: 'consola', label: 'Consola' },
@@ -180,7 +181,9 @@ export function BottomPanel() {
               porque xterm mide su contenedor todo el rato y con tamaño cero
               se rompe por dentro. */}
           <div className={`consola-envoltura ${bottomTab === 'terminal' ? '' : 'apartada'}`}>
-            <TerminalPanel visible={bottomOpen && bottomTab === 'terminal'} />
+            <Suspense fallback={null}>
+              <TerminalPanel visible={bottomOpen && bottomTab === 'terminal'} />
+            </Suspense>
           </div>
 
           {bottomTab === 'terminal' ? null : bottomTab === 'preview' ? (

@@ -1,9 +1,8 @@
-import { useEffect, useRef, useState } from 'react';
+import { lazy, Suspense, useEffect, useRef, useState } from 'react';
 import { useStore } from './state/useStore';
 import { TopBar } from './components/TopBar';
 import { ActivityRail } from './components/ActivityRail';
 import { FileExplorer } from './components/FileExplorer';
-import { EditorArea } from './components/EditorArea';
 import { SymbolsPanel } from './components/SymbolsPanel';
 import { SearchPanel } from './components/SearchPanel';
 import { CommandPalette } from './components/CommandPalette';
@@ -16,12 +15,22 @@ import { Bienvenida } from './components/Bienvenida';
 import { DocLectura, useDocumentadosDelArchivo } from './components/DocLectura';
 import { AssistantPanel } from './components/AssistantPanel';
 import { BottomPanel } from './components/BottomPanel';
-import { DocCenter } from './components/DocCenter';
 import { SettingsDialog } from './components/SettingsDialog';
 import { FolderPicker } from './components/FolderPicker';
 import { Welcome } from './components/Welcome';
 import { DialogHost } from './components/DialogHost';
 import { Icon } from './components/Icon';
+
+/**
+ * Lo pesado se carga cuando hace falta, no al arrancar.
+ *
+ * Monaco por sí solo son varios megabytes: la pantalla de bienvenida no lo
+ * necesita, así que llega al abrir un proyecto. El centro de documentación
+ * (con su mapa) llega la primera vez que se abre.
+ */
+const EditorArea = lazy(() =>
+  import('./lib/monaco').then(() => import('./components/EditorArea')).then((m) => ({ default: m.EditorArea })));
+const DocCenter = lazy(() => import('./components/DocCenter').then((m) => ({ default: m.DocCenter })));
 
 const LEFT_TITLE: Record<string, string> = {
   explorador: 'Explorador',
@@ -76,6 +85,7 @@ export default function App() {
   const createProject = useStore((s) => s.createProject);
   const setPaletteOpen = useStore((s) => s.setPaletteOpen);
   const setLeftView = useStore((s) => s.setLeftView);
+  const docCenterOpen = useStore((s) => s.docCenterOpen);
 
   const [left, setLeft] = useState(260);
   const [right, setRight] = useState(380);
@@ -144,7 +154,9 @@ export default function App() {
           )}
 
           <div className="center-column">
-            <EditorArea />
+            <Suspense fallback={<div className="editor-cargando hint">Cargando el editor...</div>}>
+              <EditorArea />
+            </Suspense>
             <BottomPanel />
           </div>
 
@@ -200,7 +212,7 @@ export default function App() {
         </div>
       )}
 
-      <DocCenter />
+      {docCenterOpen && <Suspense fallback={null}><DocCenter /></Suspense>}
       <SettingsDialog />
       <DialogHost />
       <CommandPalette />
