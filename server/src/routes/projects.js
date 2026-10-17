@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import * as conversaciones from '../services/conversaciones.js';
 import * as historialLocal from '../services/historialLocal.js';
+import * as plantillas from '../services/plantillas.js';
 import {
   listProjects,
   getProject,
@@ -20,6 +21,7 @@ import {
   writeSession,
   newId,
   HttpError,
+  workspaceDir,
 } from '../services/store.js';
 
 const router = Router();
@@ -32,9 +34,23 @@ router.get('/', async (_req, res, next) => {
   }
 });
 
+router.get('/plantillas', (_req, res) => {
+  res.json({ plantillas: plantillas.listaPlantillas() });
+});
+
 router.post('/', async (req, res, next) => {
   try {
-    res.status(201).json({ project: await createProject(req.body ?? {}) });
+    const { plantilla } = req.body ?? {};
+    // Se valida antes de crear nada: una plantilla mal escrita no deja un
+    // proyecto a medias.
+    if (plantilla && !plantillas.PLANTILLAS[plantilla]) throw new HttpError(400, 'Esa plantilla no existe.');
+    const project = await createProject(req.body ?? {});
+    if (plantilla) {
+      const base = project.root ?? workspaceDir(project.id);
+      const resultado = await plantillas.aplicar(base, plantilla);
+      return res.status(201).json({ project, plantilla: resultado });
+    }
+    res.status(201).json({ project });
   } catch (err) {
     next(err);
   }

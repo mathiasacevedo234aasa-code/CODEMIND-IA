@@ -123,7 +123,7 @@ export interface Actions {
   log: (channel: LogEntry['channel'], level: LogEntry['level'], message: string) => void;
   setError: (message: string | null) => void;
 
-  createProject: (name: string, objective: string, root?: string | null) => Promise<void>;
+  createProject: (name: string, objective: string, root?: string | null, plantilla?: string | null) => Promise<void>;
   openProject: (id: string) => Promise<void>;
   closeProject: () => void;
   deleteProject: (id: string) => Promise<void>;

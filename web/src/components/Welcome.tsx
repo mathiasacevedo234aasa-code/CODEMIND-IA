@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { api } from '../lib/api';
 import { useStore } from '../state/useStore';
 import { FolderPicker } from './FolderPicker';
 import { Icon } from './Icon';
@@ -16,6 +17,9 @@ export function Welcome() {
   const [objective, setObjective] = useState('');
   const [root, setRoot] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);
+  const [plantilla, setPlantilla] = useState<string>('');
+  const [plantillas, setPlantillas] = useState<{ id: string; nombre: string; descripcion: string }[]>([]);
+  useEffect(() => { api.plantillas().then((r) => setPlantillas(r.plantillas)).catch(() => {}); }, []);
   /** null = cerrado. "abrir" abre la carpeta ya; "elegir" solo rellena el formulario. */
   const [picker, setPicker] = useState<'abrir' | 'elegir' | null>(null);
 
@@ -24,6 +28,7 @@ export function Welcome() {
     setName('');
     setObjective('');
     setRoot(null);
+    setPlantilla('');
   };
 
   return (
@@ -102,6 +107,25 @@ export function Welcome() {
               )}
             </div>
             <div className="field">
+              <label>Empezar con</label>
+              <div className="plantillas">
+                {[{ id: '', nombre: 'Vacío', descripcion: 'Sin archivos: empiezas tú.' }, ...plantillas].map((p) => (
+                  <button
+                    key={p.id || 'vacio'}
+                    type="button"
+                    className={`plantilla ${plantilla === p.id ? 'elegida' : ''}`}
+                    onClick={() => setPlantilla(p.id)}
+                  >
+                    <strong>{p.nombre}</strong>
+                    <span>{p.descripcion}</span>
+                  </button>
+                ))}
+              </div>
+              {plantilla && root && (
+                <p className="hint">En una carpeta que ya tenga archivos, los que coincidan de nombre no se tocan.</p>
+              )}
+            </div>
+            <div className="field">
               <label>Objetivo del proyecto</label>
               <textarea
                 value={objective}
@@ -113,7 +137,7 @@ export function Welcome() {
               <button
                 className="btn primary"
                 disabled={!name.trim() || loading}
-                onClick={() => void createProject(name, objective, root)}
+                onClick={() => void createProject(name, objective, root, plantilla || null)}
               >
                 {loading ? <span className="spinner" /> : <Icon name="check" size={13} />} Crear proyecto
               </button>

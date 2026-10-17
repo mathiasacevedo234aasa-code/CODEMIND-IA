@@ -64,10 +64,13 @@ export const crearProyecto = (set: PonerTienda, get: ObtenerTienda) => ({
     }
   },
 
-  async createProject(name, objective, root = null) {
-    const { project } = await api.createProject(name, objective, root);
+  async createProject(name, objective, root = null, plantilla = null) {
+    const { project, plantilla: res } = await api.createProject(name, objective, root, plantilla);
     set((s) => ({ projects: [project, ...s.projects] }));
     await get().openProject(project.id);
+    if (res) {
+      get().log('sistema', 'info', `Plantilla: ${res.escritos.length} archivo(s) creados${res.respetados.length ? `; ya existían y no se tocaron: ${res.respetados.join(', ')}` : ''}.`);
+    }
   },
 
   async openProject(id) {

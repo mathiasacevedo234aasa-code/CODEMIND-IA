@@ -133,8 +133,11 @@ export const api = {
 
   // proyectos
   listProjects: () => request<{ projects: Project[] }>('/api/projects'),
-  createProject: (name: string, objective: string, root?: string | null) =>
-    request<{ project: Project }>('/api/projects', { method: 'POST', ...json({ name, objective, root }) }),
+  createProject: (name: string, objective: string, root?: string | null, plantilla?: string | null) =>
+    request<{ project: Project; plantilla?: { escritos: string[]; respetados: string[] } }>(
+      '/api/projects', { method: 'POST', ...json({ name, objective, root, plantilla: plantilla || undefined }) }),
+  plantillas: () =>
+    request<{ plantillas: { id: string; nombre: string; descripcion: string; archivos: string[] }[] }>('/api/projects/plantillas'),
   updateProject: (id: string, patch: Partial<Project>) =>
     request<{ project: Project }>(`/api/projects/${id}`, { method: 'PATCH', ...json(patch) }),
   deleteProject: (id: string) => request<{ ok: true }>(`/api/projects/${id}`, { method: 'DELETE' }),
