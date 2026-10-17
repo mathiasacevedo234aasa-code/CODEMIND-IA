@@ -313,11 +313,24 @@ export const api = {
       method: 'POST',
       ...json({ branch, setUpstream }),
     }),
-  githubPull: (id: string, branch: string) =>
+  githubPull: (id: string, branch: string, modo: 'ff' | 'merge' | 'rebase' = 'ff') =>
     request<{ output: string; preview: SyncPreview }>(`/api/projects/${id}/github/pull`, {
       method: 'POST',
-      ...json({ branch }),
+      ...json({ branch, modo }),
     }),
+  githubPullPrevia: (id: string, branch: string) =>
+    request<PreviaPull>(`/api/projects/${id}/github/pull/previa?branch=${encodeURIComponent(branch)}`),
+  githubPullAbortar: (id: string) =>
+    request<{ deshecho: string }>(`/api/projects/${id}/github/pull/abortar`, { method: 'POST' }),
+  gitVersiones: (id: string, path: string, staged: boolean) =>
+    request<{ binary: boolean; antes: string; despues: string }>(
+      `/api/projects/${id}/git/versiones?path=${encodeURIComponent(path)}&staged=${staged ? '1' : '0'}`,
+    ),
+  gitDeshacerCommit: (id: string) =>
+    request<{ deshecho: string; status: GitStatus }>(`/api/projects/${id}/git/deshacer-commit`, { method: 'POST' }),
+  gitStashListar: (id: string) => request<{ lista: StashEntrada[] }>(`/api/projects/${id}/git/stash`),
+  gitStash: (id: string, cuerpo: { accion?: 'guardar' | 'recuperar' | 'descartar'; ref?: string; mensaje?: string }) =>
+    request<{ lista: StashEntrada[]; status: GitStatus }>(`/api/projects/${id}/git/stash`, { method: 'POST', ...json(cuerpo) }),
 
   // ------------------------------------------------------------ ejecución
   runScripts: (id: string) => request<RunScriptsInfo>(`/api/projects/${id}/run/scripts`),
@@ -382,3 +395,15 @@ export const api = {
   hostPreview: (html: string) =>
     request<{ id: string; url: string }>('/api/preview', { method: 'POST', ...json({ html }) }),
 };
+
+export interface PreviaPull {
+  rama: string;
+  tuyos: number;
+  suyos: number;
+  divergido: boolean;
+  commits: { hash: string; autor: string; asunto: string }[];
+  enAmbos: string[];
+  cambiosSinConfirmar: number;
+}
+
+export interface StashEntrada { ref: string; cuando: string; mensaje: string }

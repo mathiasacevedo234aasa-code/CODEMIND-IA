@@ -97,6 +97,30 @@ router.post('/projects/:id/git/checkout', wrap(async (req, res) => {
   res.json({ status: await git.status(cwd) });
 }));
 
+router.get('/projects/:id/git/versiones', wrap(async (req, res) => {
+  res.json(await git.versiones(await rootOf(req), req.query.path, req.query.staged === '1'));
+}));
+
+router.post('/projects/:id/git/deshacer-commit', wrap(async (req, res) => {
+  const cwd = await rootOf(req);
+  const r = await git.deshacerUltimoCommit(cwd);
+  res.json({ ...r, status: await git.status(cwd) });
+}));
+
+router.get('/projects/:id/git/stash', wrap(async (req, res) => {
+  res.json({ lista: await git.stashListar(await rootOf(req)) });
+}));
+
+router.post('/projects/:id/git/stash', wrap(async (req, res) => {
+  const cwd = await rootOf(req);
+  const b = req.body ?? {};
+  let r;
+  if (b.accion === 'recuperar') r = await git.stashRecuperar(cwd, b.ref);
+  else if (b.accion === 'descartar') r = await git.stashDescartar(cwd, b.ref);
+  else r = await git.stashGuardar(cwd, b.mensaje);
+  res.json({ ...r, status: await git.status(cwd) });
+}));
+
 // --------------------------------------------------------------- github
 
 router.get('/github/status', wrap(async (_req, res) => {
@@ -135,7 +159,15 @@ router.post('/projects/:id/github/push', wrap(async (req, res) => {
 }));
 
 router.post('/projects/:id/github/pull', wrap(async (req, res) => {
-  res.json(await github.pull(await rootOf(req), req.body?.branch));
+  res.json(await github.pullCon(await rootOf(req), req.body?.branch, req.body?.modo ?? 'ff'));
+}));
+
+router.get('/projects/:id/github/pull/previa', wrap(async (req, res) => {
+  res.json(await github.previaPull(await rootOf(req), req.query.branch));
+}));
+
+router.post('/projects/:id/github/pull/abortar', wrap(async (req, res) => {
+  res.json(await github.abortarPull(await rootOf(req)));
 }));
 
 // --------------------------------------------------------------- busqueda

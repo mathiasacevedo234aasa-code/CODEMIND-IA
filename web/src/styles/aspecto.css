@@ -335,3 +335,15 @@ kbd {
 .novedades h3 { margin: 18px 0 6px; font-size: 13.5px; }
 .novedades h2 { margin: 4px 0 10px; }
 .novedades code { font-family: var(--mono); background: var(--bg-hover); padding: 0 4px; border-radius: 4px; }
+
+/* Comparación lado a lado: casi toda la ventana, el código necesita ancho. */
+.modal.diff-modal {
+  width: min(1400px, 94vw);
+  max-width: none;
+  height: 86vh;
+  display: flex;
+  flex-direction: column;
+}
+.modal.diff-modal .modal-head { gap: 8px; }
+.stash-fila { display: flex; align-items: center; gap: 6px; padding: 3px 0; font-size: 12px; }
+.stash-fila .msg { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useStore } from '../state/useStore';
-import { api } from '../lib/api';
+import { api, type StashEntrada } from '../lib/api';
+import { DiffLadoALado } from './DiffLadoALado';
 import type { ChangeKind, GitBranches, GitChange, GitCommit, GitStatus } from '../lib/types';
 import { Icon } from './Icon';
 import { ask, validarNombreRama } from '../lib/dialogs';
@@ -126,6 +127,9 @@ export function GitPanel() {
   const [message, setMessage] = useState('');
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
+  const [ladoALado, setLadoALado] = useState<{ ruta: string; staged: boolean } | null>(null);
+  const [stashes, setStashes] = useState<StashEntrada[]>([]);
+  const [diffStaged, setDiffStaged] = useState(false);
 
   const alive = useRef(true);
   useEffect(() => {
@@ -147,6 +151,8 @@ export function GitPanel() {
         if (!alive.current) return;
         if (br) setBranches(br);
         setCommits(lg.commits);
+        const guardados = await api.gitStashListar(project.id).catch(() => ({ lista: [] }));
+        if (alive.current) setStashes(guardados.lista);
       }
     } catch (err) {
       if (alive.current) setError((err as Error).message);
@@ -162,6 +168,7 @@ export function GitPanel() {
   const selectChange = async (change: GitChange, staged: boolean) => {
     if (!project) return;
     setSelected(change);
+    setDiffStaged(staged);
     setDiff(null);
     try {
       setDiff(await api.gitDiff(project.id, change.path, staged));
@@ -222,6 +229,7 @@ export function GitPanel() {
 
   return (
     <div className="git-panel">
+      {ladoALado && <DiffLadoALado ruta={ladoALado.ruta} staged={ladoALado.staged} alCerrar={() => setLadoALado(null)} />}
       <div className="git-head">
         <Icon name="git" size={14} />
         <select
@@ -304,6 +312,14 @@ export function GitPanel() {
               <span className="panel-title">Comparación</span>
               <span className="tag muted">{selected.path}</span>
               <span style={{ flex: 1 }} />
+              <button
+                className="btn sm outline"
+                disabled={diff.binary}
+                title="Ver las dos versiones enteras, una junto a otra"
+                onClick={() => setLadoALado({ ruta: selected.path, staged: diffStaged })}
+              >
+                Lado a lado
+              </button>
               <button className="btn icon sm" onClick={() => { setSelected(null); setDiff(null); }}>
                 <Icon name="close" size={12} />
               </button>
@@ -342,6 +358,74 @@ export function GitPanel() {
           >
             <Icon name="check" size={13} /> Crear commit
           </button>
+          {commits.length > 1 && (
+            <button
+              className="btn outline"
+              style={{ marginTop: 6, marginLeft: 6 }}
+              disabled={busy}
+              title="Quita el último commit pero conserva todos sus cambios, preparados"
+              onClick={() => {
+                const ultimo = commits[0];
+                if (!window.confirm(`¿Deshacer el commit "${ultimo.subject}"?\n\nSus cambios NO se pierden: vuelven a "Cambios preparados" para que corrijas el mensaje o añadas algo. Si ya se subió a GitHub, no se hará.`)) return;
+                void guard(async () => {
+                  const r = await api.gitDeshacerCommit(project.id);
+                  setMessage(r.deshecho);
+                  log('git', 'info', `Commit deshecho (cambios conservados): ${r.deshecho}`);
+                });
+              }}
+            >
+              Deshacer último commit
+            </button>
+          )}
+        </div>
+
+        <div style={{ padding: 10, borderTop: '1px solid var(--border)' }}>
+          <span className="panel-title">Guardado aparte (stash)</span>
+          <p className="hint" style={{ margin: '6px 0' }}>
+            Aparta tus cambios sin confirmar (incluidos los archivos nuevos) para dejar el árbol limpio, y recupéralos después.
+          </p>
+          <button
+            className="btn sm outline"
+            disabled={busy || status.clean}
+            onClick={() => void (async () => {
+              const mensaje = await ask({
+                title: 'Guardar cambios aparte',
+                label: 'Una nota para reconocerlo luego (opcional)',
+                placeholder: 'a medias con el carrito',
+                confirmText: 'Guardar aparte',
+                allowEmpty: true,
+              });
+              if (mensaje === null) return;
+              void guard(() => api.gitStash(project.id, { accion: 'guardar', mensaje }));
+            })()}
+          >
+            Guardar cambios aparte
+          </button>
+          {stashes.map((st) => (
+            <div key={st.ref} className="stash-fila">
+              <code>{st.ref}</code>
+              <span className="msg" title={st.mensaje}>{st.mensaje}</span>
+              <span className="hint">{st.cuando}</span>
+              <button
+                className="btn sm outline"
+                disabled={busy}
+                onClick={() => void guard(() => api.gitStash(project.id, { accion: 'recuperar', ref: st.ref }))}
+              >
+                Recuperar
+              </button>
+              <button
+                className="btn icon sm"
+                disabled={busy}
+                title="Descartar este guardado"
+                onClick={() => {
+                  if (!window.confirm(`¿Descartar "${st.mensaje}"? Esos cambios se perderán.`)) return;
+                  void guard(() => api.gitStash(project.id, { accion: 'descartar', ref: st.ref }));
+                }}
+              >
+                <Icon name="close" size={12} />
+              </button>
+            </div>
+          ))}
         </div>
 
         {commits.length > 0 && (

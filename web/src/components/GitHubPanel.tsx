@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useStore } from '../state/useStore';
-import { api } from '../lib/api';
+import { api, type PreviaPull } from '../lib/api';
 import type { ChangeKind, GitHubRepo, GitHubStatus, SyncPreview } from '../lib/types';
 import { Icon } from './Icon';
 
@@ -25,6 +25,7 @@ export function GitHubPanel() {
   const [setUpstream, setSetUpstream] = useState(true);
   const [busy, setBusy] = useState(false);
   const [showRepos, setShowRepos] = useState(false);
+  const [previa, setPrevia] = useState<PreviaPull | null>(null);
 
   const loadStatus = useCallback(async () => {
     try {
@@ -277,19 +278,108 @@ export function GitHubPanel() {
             <button
               className="btn outline"
               disabled={busy || !preview.linked}
+              title="Primero se enseña qué llega; nada cambia hasta que eliges"
               onClick={() =>
                 void guard(async () => {
-                  const res = await api.githubPull(project.id, preview.branch ?? '');
-                  log('git', 'info', `Cambios traídos: ${res.output.split('\n').slice(-1)[0]}`);
+                  setPrevia(await api.githubPullPrevia(project.id, preview.branch ?? ''));
                 })
               }
             >
-              <Icon name="refresh" size={13} /> Traer cambios
+              <Icon name="refresh" size={13} /> Traer cambios...
             </button>
+            {preview.conflicts.length > 0 && (
+              <button
+                className="btn outline"
+                disabled={busy}
+                title="Vuelve a como estaba todo antes de la fusión o el rebase"
+                onClick={() =>
+                  void guard(async () => {
+                    const r = await api.githubPullAbortar(project.id);
+                    log('git', 'info', `Se deshizo el ${r.deshecho} a medias.`);
+                  })
+                }
+              >
+                Deshacer fusión a medias
+              </button>
+            )}
           </div>
+
+          {previa && (
+            <div className="review-banner" style={{ marginTop: 10, display: 'block' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                <strong>Antes de traer "{previa.rama}"</strong>
+                <span style={{ flex: 1 }} />
+                <button className="btn icon sm" onClick={() => setPrevia(null)}><Icon name="close" size={12} /></button>
+              </div>
+              {previa.suyos === 0 ? (
+                <p className="hint">No hay nada nuevo en GitHub. Ya estás al día.</p>
+              ) : (
+                <>
+                  <p className="hint">
+                    Llegan {previa.suyos} commit(s).
+                    {previa.divergido
+                      ? ` Tú tienes ${previa.tuyos} que GitHub no tiene: el historial ha divergido y hay que elegir cómo juntarlos.`
+                      : ' Tu rama solo tiene que avanzar: no se mezcla nada.'}
+                  </p>
+                  {previa.commits.map((c) => (
+                    <div key={c.hash} className="commit-row">
+                      <code>{c.hash}</code>
+                      <span className="commit-subject">{c.asunto}</span>
+                      <span className="commit-meta">{c.autor}</span>
+                    </div>
+                  ))}
+                  {previa.enAmbos.length > 0 && (
+                    <p className="hint" style={{ color: 'var(--warn)' }}>
+                      Cambiados en los dos lados (pueden dar conflicto): {previa.enAmbos.join(', ')}
+                    </p>
+                  )}
+                  {previa.divergido && previa.cambiosSinConfirmar > 0 && (
+                    <p className="hint" style={{ color: 'var(--danger)' }}>
+                      Tienes {previa.cambiosSinConfirmar} cambio(s) sin confirmar. Confírmalos o guárdalos aparte (stash, en la vista Git) antes de fusionar.
+                    </p>
+                  )}
+                  <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 8 }}>
+                    {!previa.divergido && (
+                      <button
+                        className="btn primary sm"
+                        disabled={busy}
+                        onClick={() => void guard(async () => {
+                          const res = await api.githubPull(project.id, previa.rama, 'ff');
+                          log('git', 'info', `Cambios traídos: ${res.output.split('\n').slice(-1)[0]}`);
+                          setPrevia(null);
+                        })}
+                      >
+                        Traer (avanzar)
+                      </button>
+                    )}
+                    {previa.divergido && (['merge', 'rebase'] as const).map((modo) => (
+                      <button
+                        key={modo}
+                        className={`btn sm ${modo === 'merge' ? 'primary' : 'outline'}`}
+                        disabled={busy || previa.cambiosSinConfirmar > 0}
+                        title={modo === 'merge'
+                          ? 'Crea un commit que junta las dos historias. No reescribe nada.'
+                          : 'Reaplica tus commits encima de los de GitHub. Historia lineal, pero tus commits cambian de identificador.'}
+                        onClick={() => void guard(async () => {
+                          try {
+                            const res = await api.githubPull(project.id, previa.rama, modo);
+                            log('git', 'info', `${modo === 'merge' ? 'Fusión' : 'Rebase'} completado: ${res.output.split('\n').slice(-1)[0]}`);
+                          } finally {
+                            setPrevia(null);
+                          }
+                        })}
+                      >
+                        {modo === 'merge' ? 'Fusionar (merge)' : 'Reorganizar (rebase)'}
+                      </button>
+                    ))}
+                  </div>
+                </>
+              )}
+            </div>
+          )}
           <p className="hint" style={{ marginTop: 8 }}>
-            Traer cambios solo avanza la rama si no hay divergencia. Si el historial ha divergido, CodeMind AI se detiene
-            y te lo dice: no fusiona por su cuenta.
+            Antes de traer nada se enseña qué llega. Si el historial ha divergido, eliges tú cómo juntarlo; si hay
+            conflictos, CodeMind AI se detiene y puedes deshacerlo todo con un botón.
           </p>
         </div>
       )}

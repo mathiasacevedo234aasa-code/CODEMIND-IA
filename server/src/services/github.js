@@ -372,3 +372,118 @@ export async function pull(cwd, branch) {
 }
 
 
+
+/**
+ * Que pasaria al traer los cambios, sin traerlos todavia.
+ *
+ * Igual que antes de subir se enseña que viaja, antes de fusionar o
+ * reorganizar se enseña que llega y que archivos han cambiado en los dos
+ * lados, que es donde puede haber conflictos. `git fetch` no toca tu rama ni
+ * tus archivos: solo actualiza lo que se sabe del remoto.
+ */
+export async function previaPull(cwd, branch) {
+  const token = await getToken();
+  if (!token) throw new HttpError(400, 'Conecta tu cuenta de GitHub antes de traer cambios.');
+  await requireRepo(cwd);
+  const name = String(branch ?? '').trim();
+  if (!name || name.startsWith('-')) throw new HttpError(400, 'Falta la rama de origen.');
+
+  const fetch = await run(cwd, ['fetch', 'origin', name], { allowFailure: true, env: await authEnv(token), timeout: 120000 });
+  if (fetch.code !== 0) {
+    throw new HttpError(502, `No se pudo consultar el remoto: ${redact(fetch.stderr, token).split('\n').filter(Boolean).slice(-1)[0] ?? ''}`);
+  }
+
+  const remota = `origin/${name}`;
+  const cuenta = await run(cwd, ['rev-list', '--left-right', '--count', `HEAD...${remota}`], { allowFailure: true });
+  const [tuyos, suyos] = cuenta.stdout.trim().split(/\s+/).map(Number);
+
+  const entrantes = await run(cwd, ['log', '--format=%h%x1f%an%x1f%s', `HEAD..${remota}`, '-n', '30'], { allowFailure: true });
+  const commits = entrantes.stdout.split('\n').filter(Boolean).map((l) => {
+    const [hash, autor, asunto] = l.split('\x1f');
+    return { hash, autor, asunto };
+  });
+
+  // Archivos tocados en los dos lados desde que divergieron: los candidatos
+  // a conflicto. No es una prediccion exacta, pero es justo donde mirar.
+  const base = (await run(cwd, ['merge-base', 'HEAD', remota], { allowFailure: true })).stdout.trim();
+  let enAmbos = [];
+  if (base) {
+    const nuestros = (await run(cwd, ['diff', '--name-only', base, 'HEAD'], { allowFailure: true })).stdout.split('\n').filter(Boolean);
+    const suyosArch = new Set((await run(cwd, ['diff', '--name-only', base, remota], { allowFailure: true })).stdout.split('\n').filter(Boolean));
+    enAmbos = nuestros.filter((f) => suyosArch.has(f));
+  }
+
+  const estado = await run(cwd, ['status', '--porcelain'], { allowFailure: true });
+  const sucio = estado.stdout.split('\n').filter(Boolean).length;
+
+  return {
+    rama: name,
+    tuyos: tuyos || 0,
+    suyos: suyos || 0,
+    divergido: (tuyos || 0) > 0 && (suyos || 0) > 0,
+    commits,
+    enAmbos,
+    cambiosSinConfirmar: sucio,
+  };
+}
+
+/**
+ * Traer cambios eligiendo como juntarlos.
+ *
+ * - 'ff': solo avanzar. Si han divergido, se para (lo de siempre).
+ * - 'merge': un commit de fusion que junta las dos historias.
+ * - 'rebase': tus commits se reaplican encima de los del remoto.
+ *
+ * Nunca con cambios sin confirmar: mezclar una fusion con trabajo a medias es
+ * la forma mas facil de perder algo. Y si aparecen conflictos, se para y se
+ * dice cuales; deshacer la operacion queda a un boton (abortarPull).
+ */
+export async function pullCon(cwd, branch, modo = 'ff') {
+  if (!['ff', 'merge', 'rebase'].includes(modo)) throw new HttpError(400, 'Modo de traer cambios no valido.');
+  if (modo === 'ff') return pull(cwd, branch);
+
+  const token = await getToken();
+  if (!token) throw new HttpError(400, 'Conecta tu cuenta de GitHub antes de traer cambios.');
+  await requireRepo(cwd);
+  const name = String(branch ?? '').trim();
+  if (!name || name.startsWith('-')) throw new HttpError(400, 'Falta la rama de origen.');
+
+  const estado = await run(cwd, ['status', '--porcelain'], { allowFailure: true });
+  if (estado.stdout.trim()) {
+    throw new HttpError(409, 'Tienes cambios sin confirmar. Confirmalos o guardalos en un stash antes de fusionar: asi nada de tu trabajo a medias se mezcla con lo que llega.');
+  }
+
+  const args = modo === 'rebase'
+    ? ['pull', '--rebase', 'origin', name]
+    : ['pull', '--no-rebase', '--no-edit', 'origin', name];
+  const res = await run(cwd, args, { allowFailure: true, env: await authEnv(token), timeout: 180000 });
+  const output = redact(`${res.stdout}\n${res.stderr}`.trim(), token);
+
+  if (res.code !== 0) {
+    const conflictos = (await run(cwd, ['diff', '--name-only', '--diff-filter=U'], { allowFailure: true }))
+      .stdout.split('\n').filter(Boolean);
+    if (conflictos.length) {
+      throw new HttpError(409, `Hay conflictos en ${conflictos.length} archivo(s): ${conflictos.join(', ')}. Resuelvelos y confirma, o pulsa "Deshacer" para volver a como estabas.`);
+    }
+    throw new HttpError(502, `No se pudieron traer los cambios: ${output.split('\n').filter(Boolean).slice(-2).join(' ')}`);
+  }
+  return { output, preview: await preview(cwd) };
+}
+
+/** Vuelve a como estaba todo antes de una fusion o rebase con conflictos. */
+export async function abortarPull(cwd) {
+  await requireRepo(cwd);
+  const gitDir = (await run(cwd, ['rev-parse', '--git-dir'])).stdout.trim();
+  const abs = path.isAbsolute(gitDir) ? gitDir : path.join(cwd, gitDir);
+  const existe = async (p) => fs.access(path.join(abs, p)).then(() => true).catch(() => false);
+
+  if (await existe('rebase-merge') || await existe('rebase-apply')) {
+    await run(cwd, ['rebase', '--abort']);
+    return { deshecho: 'rebase' };
+  }
+  if (await existe('MERGE_HEAD')) {
+    await run(cwd, ['merge', '--abort']);
+    return { deshecho: 'fusion' };
+  }
+  throw new HttpError(409, 'No hay ninguna fusion ni rebase a medias que deshacer.');
+}
