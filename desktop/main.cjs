@@ -16,6 +16,26 @@ const { buscarActualizaciones } = require('./actualizaciones.cjs');
 
 const isDev = !app.isPackaged;
 
+/**
+ * Modo portable de verdad.
+ *
+ * El .exe portable de electron-builder avisa de dónde está con
+ * PORTABLE_EXECUTABLE_DIR. Si existe, TODO se guarda junto a él, en
+ * "CodeMind-datos": proyectos, documentación, ajustes, claves y también lo
+ * que guarda el propio navegador interno. Así se lleva en una USB y en el
+ * equipo de destino no queda nada en %APPDATA%.
+ *
+ * Tiene que hacerse antes de que la aplicación esté lista: después, Chromium
+ * ya habría creado su carpeta en el sitio de siempre.
+ */
+const carpetaPortable = process.env.PORTABLE_EXECUTABLE_DIR
+  ? path.join(process.env.PORTABLE_EXECUTABLE_DIR, 'CodeMind-datos')
+  : null;
+if (carpetaPortable) {
+  fs.mkdirSync(carpetaPortable, { recursive: true });
+  app.setPath('userData', carpetaPortable);
+}
+
 // Sin esto, dos instancias competirian por la misma carpeta de datos.
 if (!app.requestSingleInstanceLock()) {
   app.quit();

@@ -40,6 +40,19 @@ function cargar() {
 async function buscarActualizaciones(ventana, { silencioso = false } = {}) {
   const avisar = (opts) => (ventana ? dialog.showMessageBox(ventana, opts) : dialog.showMessageBox(opts));
 
+  // El .exe portable no se puede sustituir a sí mismo: se dice cómo actualizarlo.
+  if (process.env.PORTABLE_EXECUTABLE_DIR) {
+    if (!silencioso) {
+      await avisar({
+        type: 'info',
+        title: 'Actualizaciones',
+        message: 'La versión portable no se actualiza sola.',
+        detail: `Descarga el nuevo CodeMind-AI-Portable desde las Releases del proyecto y sustituye el .exe. Tus datos están en la carpeta CodeMind-datos, junto al ejecutable, y se conservan.\n\nVersión actual: ${app.getVersion()}`,
+      });
+    }
+    return;
+  }
+
   const au = cargar();
   if (!au) {
     if (!silencioso) {
