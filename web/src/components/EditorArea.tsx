@@ -4,6 +4,7 @@ import { useStore } from '../state/useStore';
 import { languageOf } from '../lib/analyzer';
 import { fontStackOf } from '../lib/editorFonts';
 import { activarEmmet } from '../lib/emmet';
+import { registrarProveedores } from '../lib/proveedoresMonaco';
 import { panelDe, type PanelEditor as Mitad } from '../lib/types';
 import { WebView } from './WebView';
 import { Icon } from './Icon';
@@ -120,50 +121,8 @@ ${texto.slice(0, 8000)}
         );
       },
     });
-    // La documentación, donde se lee el código.
-    //
-    // Pasar el cursor por encima de algo documentado enseña su propósito sin
-    // ir a ningún panel. Es la diferencia entre tener documentación y usarla:
-    // si hay que buscarla, no se lee.
-    monaco.languages.registerHoverProvider({ scheme: 'file' }, {
-      provideHover(modelo, posicion) {
-        const ruta = modelo.uri.path.replace(/^\//, '');
-        const estado = useStore.getState();
-        const palabra = modelo.getWordAtPosition(posicion);
-        if (!palabra) return null;
-
-        // Se busca lo documentado de ESTE archivo que contenga la línea, y de
-        // eso, lo que coincida con la palabra: así un método no se confunde
-        // con otro del mismo nombre en otra clase.
-        const candidatos = Object.values(estado.approved).filter((d) => d.filePath === ruta);
-        if (!candidatos.length) return null;
-
-        const simbolos = estado.symbols().filter((x) => x.filePath === ruta);
-        const aqui = simbolos.find(
-          (x) => x.name === palabra.word && x.line <= posicion.lineNumber && x.endLine >= posicion.lineNumber,
-        ) ?? simbolos.find((x) => x.name === palabra.word);
-        const doc = aqui ? estado.approved[aqui.id] : candidatos.find((d) => d.name === palabra.word);
-        if (!doc) return null;
-
-        const alDia = aqui ? estado.statusOf(aqui) !== 'revisar' : true;
-        const d = doc.doc;
-        const partes = [
-          `**${d.nombre}** — ${doc.kind ?? 'elemento'}`,
-          alDia ? '' : '⚠ _El código cambió desde que se aprobó esta explicación._',
-          d.proposito,
-          d.parametros?.length
-            ? `**Parámetros:** ${d.parametros.map((p) => `\`${p.nombre}\`${p.descripcion ? ` — ${p.descripcion}` : ''}`).join('; ')}`
-            : '',
-          d.retorno?.descripcion ? `**Devuelve:** ${d.retorno.descripcion}` : '',
-          '_Documentación aprobada por ti en CodeMind AI._',
-        ].filter(Boolean);
-
-        return {
-          range: new monaco.Range(posicion.lineNumber, palabra.startColumn, posicion.lineNumber, palabra.endColumn),
-          contents: partes.map((valor) => ({ value: valor, isTrusted: false })),
-        };
-      },
-    });
+    // Documentación al pasar el cursor e ir a la definición: una sola vez.
+    registrarProveedores(monaco);
 
     monaco.editor.onDidChangeMarkers(() => {
       const model = editor.getModel();

@@ -94,6 +94,8 @@ export function CommandPalette() {
           }]
         : []),
 
+      { id: 'buscar-simbolo', titulo: 'Ir a un símbolo del proyecto', grupo: 'Editor', atajo: 'Ctrl+T', icono: 'fn', detalle: 'Funciones, clases, reglas... de cualquier archivo', accion: () => { window.dispatchEvent(new Event('codemind:buscar-simbolo')); } },
+
       { id: 'dividir-editor', titulo: 'Dividir el editor en dos', grupo: 'Editor', icono: 'columns', detalle: 'Manda la pestaña actual a la otra mitad para ver dos archivos a la vez', accion: () => dividirEditor() },
       { id: 'unir-editor', titulo: 'Deshacer la división del editor', grupo: 'Editor', icono: 'close', detalle: 'Junta todas las pestañas en una sola mitad, sin cerrar ninguna', accion: () => unirEditor() },
 
