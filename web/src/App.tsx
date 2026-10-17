@@ -12,6 +12,7 @@ import { GitHubPanel } from './components/GitHubPanel';
 import { RunPanel } from './components/RunPanel';
 import { ReviewPanel } from './components/ReviewPanel';
 import { BuscarSimbolo } from './components/BuscarSimbolo';
+import { Bienvenida } from './components/Bienvenida';
 import { DocLectura, useDocumentadosDelArchivo } from './components/DocLectura';
 import { AssistantPanel } from './components/AssistantPanel';
 import { BottomPanel } from './components/BottomPanel';
@@ -204,6 +205,7 @@ export default function App() {
       <DialogHost />
       <CommandPalette />
       <BuscarSimbolo />
+      <Bienvenida proyectoAbierto={Boolean(project)} />
 
       <FolderPicker
         open={folderPickerOpen}

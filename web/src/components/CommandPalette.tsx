@@ -94,6 +94,9 @@ export function CommandPalette() {
           }]
         : []),
 
+      { id: 'ver-atajos', titulo: 'Ver los atajos de teclado', grupo: 'Ayuda', atajo: 'Ctrl+/', icono: 'docs', accion: () => { window.dispatchEvent(new Event('codemind:atajos')); } },
+      { id: 'ver-tour', titulo: 'Repetir el recorrido de bienvenida', grupo: 'Ayuda', icono: 'play', accion: () => { window.dispatchEvent(new Event('codemind:tour')); } },
+      { id: 'ver-novedades', titulo: 'Qué hay de nuevo en esta versión', grupo: 'Ayuda', icono: 'docs', accion: () => { window.dispatchEvent(new Event('codemind:novedades')); } },
       { id: 'buscar-simbolo', titulo: 'Ir a un símbolo del proyecto', grupo: 'Editor', atajo: 'Ctrl+T', icono: 'fn', detalle: 'Funciones, clases, reglas... de cualquier archivo', accion: () => { window.dispatchEvent(new Event('codemind:buscar-simbolo')); } },
 
       { id: 'dividir-editor', titulo: 'Dividir el editor en dos', grupo: 'Editor', icono: 'columns', detalle: 'Manda la pestaña actual a la otra mitad para ver dos archivos a la vez', accion: () => dividirEditor() },
