@@ -353,8 +353,8 @@ export const api = {
     request<{ process: RunProcess }>(`/api/projects/${id}/run/start`, { method: 'POST', ...json(payload) }),
   terminalDisponible: () => request<TerminalDisponibilidad>('/api/terminal/disponibilidad'),
   terminalListar: (id: string) => request<{ sesiones: TerminalSesion[] }>(`/api/projects/${id}/terminal`),
-  terminalAbrir: (id: string, cols: number, rows: number) =>
-    request<{ sesion: TerminalSesion }>(`/api/projects/${id}/terminal`, { method: 'POST', body: JSON.stringify({ cols, rows }) }),
+  terminalAbrir: (id: string, cols: number, rows: number, perfil?: string) =>
+    request<{ sesion: TerminalSesion }>(`/api/projects/${id}/terminal`, { method: 'POST', body: JSON.stringify({ cols, rows, perfil }) }),
   terminalLeer: (id: string, sid: string, desde: number) =>
     request<TerminalLectura>(`/api/projects/${id}/terminal/${sid}?desde=${desde}`),
   terminalEscribir: (id: string, sid: string, datos: string) =>

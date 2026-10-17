@@ -298,8 +298,8 @@ router.get('/projects/:id/terminal', wrap(async (req, res) => {
 }));
 
 router.post('/projects/:id/terminal', wrap(async (req, res) => {
-  const { cols, rows } = req.body ?? {};
-  res.status(201).json({ sesion: await terminal.abrir(req.params.id, await rootOf(req), { cols, rows }) });
+  const { cols, rows, perfil } = req.body ?? {};
+  res.status(201).json({ sesion: await terminal.abrir(req.params.id, await rootOf(req), { cols, rows, perfil }) });
 }));
 
 router.get('/projects/:id/terminal/:sid', wrap(async (req, res) => {

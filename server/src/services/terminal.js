@@ -1,6 +1,8 @@
 import { spawn, execFile } from 'node:child_process';
 import crypto from 'node:crypto';
 import os from 'node:os';
+import fs from 'node:fs';
+import path from 'node:path';
 import { HttpError } from './store.js';
 
 /**
@@ -59,13 +61,46 @@ async function cargarPty() {
   return ptyModulo;
 }
 
-/** El interprete del equipo, sin inventar ninguno que no exista. */
-export function interprete() {
-  if (WINDOWS) {
-    return { comando: 'powershell.exe', args: ['-NoLogo', '-NoProfile'], nombre: 'PowerShell' };
+/** Busca un ejecutable en el PATH. */
+function enPath(nombre) {
+  for (const dir of (process.env.PATH ?? '').split(path.delimiter)) {
+    if (dir && fs.existsSync(path.join(dir, nombre))) return path.join(dir, nombre);
   }
-  const shell = process.env.SHELL || '/bin/bash';
-  return { comando: shell, args: ['-i'], nombre: shell.split('/').pop() ?? 'shell' };
+  return null;
+}
+
+/**
+ * Los interpretes que hay DE VERDAD en este equipo. Solo se ofrece lo que
+ * existe: un perfil de WSL sin WSL instalado seria una opcion que falla.
+ */
+export function perfiles() {
+  if (!WINDOWS) {
+    const shell = process.env.SHELL || '/bin/bash';
+    const lista = [{ id: 'sistema', comando: shell, args: ['-i'], nombre: shell.split('/').pop() ?? 'shell' }];
+    for (const s of ['bash', 'zsh', 'fish']) {
+      const ruta = enPath(s);
+      if (ruta && !lista.some((p) => p.comando === ruta)) lista.push({ id: s, comando: ruta, args: ['-i'], nombre: s });
+    }
+    return lista;
+  }
+  const lista = [{ id: 'powershell', comando: 'powershell.exe', args: ['-NoLogo', '-NoProfile'], nombre: 'PowerShell' }];
+  const pwsh = enPath('pwsh.exe');
+  if (pwsh) lista.push({ id: 'pwsh', comando: pwsh, args: ['-NoLogo'], nombre: 'PowerShell 7' });
+  lista.push({ id: 'cmd', comando: 'cmd.exe', args: [], nombre: 'CMD' });
+  const bash = [
+    path.join(process.env.ProgramFiles ?? 'C:\Program Files', 'Git', 'bin', 'bash.exe'),
+    path.join(process.env.LOCALAPPDATA ?? '', 'Programs', 'Git', 'bin', 'bash.exe'),
+  ].find((r) => fs.existsSync(r));
+  if (bash) lista.push({ id: 'gitbash', comando: bash, args: ['--login', '-i'], nombre: 'Git Bash' });
+  const wsl = path.join(process.env.SystemRoot ?? 'C:\Windows', 'System32', 'wsl.exe');
+  if (fs.existsSync(wsl)) lista.push({ id: 'wsl', comando: wsl, args: [], nombre: 'WSL' });
+  return lista;
+}
+
+/** El interprete pedido, o el de siempre si no se pide o no existe. */
+export function interprete(perfil) {
+  const lista = perfiles();
+  return lista.find((p) => p.id === perfil) ?? lista[0];
 }
 
 /** Que consola puede ofrecer este equipo, sin abrir ninguna. */
@@ -74,6 +109,7 @@ export async function disponibilidad() {
   const { nombre } = interprete();
   return {
     shell: nombre,
+    perfiles: perfiles().map(({ id, nombre: n }) => ({ id, nombre: n })),
     modo: pty ? 'terminal' : 'tuberias',
     motivo: pty ? null : `No se pudo cargar el terminal nativo: ${ptyMotivo}`,
   };
@@ -120,7 +156,7 @@ const ENTORNO = () => ({
   PAGER: 'cat',
 });
 
-export async function abrir(projectId, cwd, { cols = 100, rows = 30 } = {}) {
+export async function abrir(projectId, cwd, { cols = 100, rows = 30, perfil } = {}) {
   caducar();
   const sesiones = cajon(projectId);
   const vivas = [...sesiones.values()].filter((s) => s.estado === 'viva');
@@ -129,7 +165,7 @@ export async function abrir(projectId, cwd, { cols = 100, rows = 30 } = {}) {
   }
 
   const pty = await cargarPty();
-  const { comando, args, nombre } = interprete();
+  const { comando, args, nombre } = interprete(perfil);
   const sesion = {
     id: crypto.randomUUID(),
     cwd,

@@ -566,6 +566,8 @@ export interface TerminalDisponibilidad {
   /** "terminal" es un pseudoterminal de verdad; "tuberias" es el plan B. */
   modo: 'terminal' | 'tuberias';
   motivo: string | null;
+  /** Intérpretes instalados en este equipo (PowerShell, CMD, Git Bash, WSL...). */
+  perfiles?: { id: string; nombre: string }[];
 }
 
 export interface TerminalSesion {

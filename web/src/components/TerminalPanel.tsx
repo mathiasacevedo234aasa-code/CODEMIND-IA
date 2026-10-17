@@ -79,6 +79,11 @@ export function TerminalPanel({ visible }: { visible: boolean }) {
   const [sesion, setSesion] = useState<TerminalSesion | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [abriendo, setAbriendo] = useState(false);
+  const [perfil, setPerfil] = useState<string>(() => { try { return localStorage.getItem('codemind.perfil-terminal') ?? ''; } catch { return ''; } });
+  const elegirPerfil = (id: string) => {
+    setPerfil(id);
+    try { localStorage.setItem('codemind.perfil-terminal', id); } catch { /* sin almacenamiento */ }
+  };
   /** Todas las consolas del proyecto, para las pestañas. */
   const [sesiones, setSesiones] = useState<TerminalSesion[]>([]);
   /** Sube al volver la ventana a primer plano, para retomar la lectura. */
@@ -263,7 +268,7 @@ export function TerminalPanel({ visible }: { visible: boolean }) {
     setError(null);
     try {
       ajustar();
-      const { sesion: nueva } = await api.terminalAbrir(project.id, term.current.cols, term.current.rows);
+      const { sesion: nueva } = await api.terminalAbrir(project.id, term.current.cols, term.current.rows, perfil || undefined);
       seq.current = 0;
       term.current.clear();
       sesionRef.current = nueva.id;
@@ -314,6 +319,11 @@ export function TerminalPanel({ visible }: { visible: boolean }) {
               {i + 1}: {s.shell}
             </button>
           ))}
+          {(disponible?.perfiles?.length ?? 0) > 1 && (
+            <select className="perfil-terminal" value={perfil} onChange={(e) => elegirPerfil(e.target.value)} title="Intérprete de las consolas nuevas">
+              {disponible!.perfiles!.map((p) => <option key={p.id} value={p.id}>{p.nombre}</option>)}
+            </select>
+          )}
           <button
             className="btn icon sm"
             title="Abrir otra consola en una pestaña nueva"
@@ -348,6 +358,11 @@ export function TerminalPanel({ visible }: { visible: boolean }) {
                 : 'Comprobando qué intérprete hay en este equipo...'}
             </span>
             <span style={{ flex: 1 }} />
+            {(disponible?.perfiles?.length ?? 0) > 1 && (
+              <select className="perfil-terminal" value={perfil} onChange={(e) => elegirPerfil(e.target.value)} title="Intérprete">
+                {disponible!.perfiles!.map((p) => <option key={p.id} value={p.id}>{p.nombre}</option>)}
+              </select>
+            )}
             <button className="btn sm primary" onClick={() => void abrir()} disabled={abriendo || !disponible}>
               {abriendo ? <span className="spinner" /> : <Icon name="terminal" size={12} />} Abrir la consola
             </button>

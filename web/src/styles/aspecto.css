@@ -416,3 +416,4 @@ kbd {
 .mapa-filtros { display: flex; gap: 6px; align-items: center; margin-bottom: 8px; flex-wrap: wrap; }
 .mapa-filtros select { width: auto; }
 .mapa-impacto { margin-bottom: 10px; display: block; }
+.perfil-terminal { width: auto; padding: 1px 6px; font-size: 12px; height: 24px; }
