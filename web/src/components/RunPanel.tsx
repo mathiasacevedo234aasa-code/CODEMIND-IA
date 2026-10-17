@@ -3,6 +3,7 @@ import { useStore } from '../state/useStore';
 import { api } from '../lib/api';
 import type { RunLogLine, RunProcess, RunScriptsInfo } from '../lib/types';
 import { Icon } from './Icon';
+import { HistorialEjecuciones } from './HistorialEjecuciones';
 import { TarjetaEjecutarArchivo } from './EjecutarArchivo';
 import { LenguajesInstalados } from './LenguajesInstalados';
 import { VistaPreviaViva } from './VistaPreviaViva';
@@ -271,6 +272,8 @@ export function RunPanel() {
           ))}
         </div>
       )}
+
+      <HistorialEjecuciones />
     </div>
   );
 }

@@ -3,6 +3,7 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import crypto from 'node:crypto';
 import { HttpError } from './store.js';
+import { registrar as registrarEjecucion } from './ejecuciones.js';
 
 /**
  * Gestor de procesos reales.
@@ -285,6 +286,7 @@ export async function start(projectId, cwd, { script, command, args = [], label 
     proc.endedAt = new Date().toISOString();
     proc.status = code === 0 ? 'terminado' : 'error';
     appendLine(proc, 'sistema', `El proceso termino con codigo ${code}`);
+    void registrarEjecucion(projectId, proc);
   });
 
   proc.urlTimer = setTimeout(() => {

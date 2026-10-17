@@ -5,6 +5,7 @@ import * as fsbrowse from '../services/fsbrowse.js';
 import * as git from '../services/git.js';
 import * as github from '../services/github.js';
 import * as runner from '../services/runner.js';
+import * as ejecuciones from '../services/ejecuciones.js';
 import * as search from '../services/search.js';
 import * as quality from '../services/quality.js';
 import * as terminal from '../services/terminal.js';
@@ -168,6 +169,16 @@ router.get('/projects/:id/github/pull/previa', wrap(async (req, res) => {
 
 router.post('/projects/:id/github/pull/abortar', wrap(async (req, res) => {
   res.json(await github.abortarPull(await rootOf(req)));
+}));
+
+router.get('/projects/:id/ejecuciones', wrap(async (req, res) => {
+  await getProject(req.params.id);
+  res.json({ ejecuciones: await ejecuciones.listar(req.params.id) });
+}));
+
+router.get('/projects/:id/ejecuciones/:eid', wrap(async (req, res) => {
+  await getProject(req.params.id);
+  res.json({ ejecucion: await ejecuciones.leer(req.params.id, req.params.eid) });
 }));
 
 // --------------------------------------------------------------- busqueda

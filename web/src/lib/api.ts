@@ -351,6 +351,9 @@ export const api = {
   runScripts: (id: string) => request<RunScriptsInfo>(`/api/projects/${id}/run/scripts`),
   runStart: (id: string, payload: { script?: string; command?: string; args?: string[]; label?: string }) =>
     request<{ process: RunProcess }>(`/api/projects/${id}/run/start`, { method: 'POST', ...json(payload) }),
+  ejecuciones: (id: string) => request<{ ejecuciones: EjecucionResumen[] }>(`/api/projects/${id}/ejecuciones`),
+  ejecucion: (id: string, eid: string) =>
+    request<{ ejecucion: EjecucionResumen & { salida: string } }>(`/api/projects/${id}/ejecuciones/${encodeURIComponent(eid)}`),
   terminalDisponible: () => request<TerminalDisponibilidad>('/api/terminal/disponibilidad'),
   terminalListar: (id: string) => request<{ sesiones: TerminalSesion[] }>(`/api/projects/${id}/terminal`),
   terminalAbrir: (id: string, cols: number, rows: number, perfil?: string) =>
@@ -432,3 +435,5 @@ export interface Conversacion {
 }
 
 export interface VersionLocal { id: string; en: string; bytes: number; lineas: number }
+
+export interface EjecucionResumen { id: string; etiqueta: string; comando: string; inicio: string; fin: string; ms: number; codigo: number | null; lineas: number }
