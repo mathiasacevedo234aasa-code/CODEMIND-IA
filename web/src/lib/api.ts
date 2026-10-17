@@ -224,7 +224,7 @@ export const api = {
 
   // IA
   document: (payload: Record<string, unknown>) =>
-    request<{ ok: boolean; problems: string[]; doc: FunctionDoc | null; model: string }>('/api/ai/document', {
+    request<{ ok: boolean; problems: string[]; doc: FunctionDoc | null; model: string; cacheado?: boolean }>('/api/ai/document', {
       method: 'POST',
       ...json(payload),
     }),

@@ -150,7 +150,7 @@ export interface Actions {
   clearJump: () => void;
 
   /** Devuelve 'ok', 'invalida' (respuesta mal formada) o el mensaje del error. */
-  generateDoc: (sym: DetectedSymbol, extraInstruction?: string, opciones?: { enCola?: boolean }) => Promise<'ok' | 'invalida' | string>;
+  generateDoc: (sym: DetectedSymbol, extraInstruction?: string, opciones?: { enCola?: boolean; forzar?: boolean }) => Promise<'ok' | 'invalida' | string>;
   /** La cola de "Documentar archivo", si hay una en marcha. */
   colaDoc: ColaDoc | null;
   documentarArchivo: (ruta: string, opciones?: { carpeta?: boolean }) => Promise<void>;

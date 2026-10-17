@@ -1,4 +1,5 @@
 import { Router } from 'express';
+import * as cacheDocs from '../services/cacheDocs.js';
 import { generateFunctionDoc, chat, chatStream, listModels, testConnection } from '../services/ia.js';
 import { listaProveedores } from '../services/proveedores.js';
 import { comoTexto as glosarioComoTexto } from '../services/glosario.js';
@@ -9,7 +10,7 @@ const router = Router();
 /** Genera una propuesta de documentacion. NO la guarda: eso lo decide el usuario. */
 router.post('/document', async (req, res, next) => {
   try {
-    const { projectId, code, context = {}, model, extraInstruction } = req.body ?? {};
+    const { projectId, code, context = {}, model, extraInstruction, forzar } = req.body ?? {};
     const settings = await readSettings();
 
     if (projectId) {
@@ -35,6 +36,19 @@ router.post('/document', async (req, res, next) => {
       const glosario = await glosarioComoTexto(projectId);
       if (glosario) context.glosario = glosario;
     }
+    // Todo lo que cambia la respuesta entra en la huella.
+    const clave = cacheDocs.huella({
+      code,
+      context,
+      extraInstruction: extraInstruction ?? null,
+      proveedor: settings.proveedor,
+      model: model ?? settings.modelos?.[settings.proveedor] ?? null,
+      temperature: settings.temperature,
+    });
+    if (!forzar) {
+      const previo = await cacheDocs.leer(clave);
+      if (previo) return res.json({ ...previo, cacheado: true });
+    }
     const result = await generateFunctionDoc({
       code,
       context,
@@ -43,6 +57,7 @@ router.post('/document', async (req, res, next) => {
       maxTokens: settings.maxTokens,
       extraInstruction,
     });
+    await cacheDocs.guardar(clave, result).catch(() => {});
     res.json(result);
   } catch (err) {
     next(err);

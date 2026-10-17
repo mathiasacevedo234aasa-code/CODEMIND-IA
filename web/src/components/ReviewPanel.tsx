@@ -79,7 +79,7 @@ export function ReviewPanel() {
     });
     // null = canceló; cadena vacía = regenerar sin indicación.
     if (extra === null) return;
-    void generateDoc(liveFunction, extra || undefined);
+    void generateDoc(liveFunction, extra || undefined, { forzar: true });
   };
 
   const codeChanged = liveFunction && proposal.codeHash !== liveFunction.codeHash;

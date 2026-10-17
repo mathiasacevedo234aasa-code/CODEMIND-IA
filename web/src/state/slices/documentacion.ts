@@ -20,6 +20,8 @@ export const crearDocumentacion = (set: PonerTienda, get: ObtenerTienda) => ({
         projectId: project.id,
         code: sym.code,
         extraInstruction,
+        // "Regenerar" pide otra respuesta aunque el código no haya cambiado.
+        forzar: Boolean(opciones.forzar),
         context: {
           functionId: sym.id,
           filePath: sym.filePath,
@@ -34,6 +36,10 @@ export const crearDocumentacion = (set: PonerTienda, get: ObtenerTienda) => ({
           surrounding,
         },
       });
+
+      if (result.cacheado) {
+        get().log('documentacion', 'info', `${sym.name}: mismo código y mismas opciones que la última vez; se reutilizó aquella respuesta sin llamar a la IA.`);
+      }
 
       if (!result.ok || !result.doc) {
         const detail = result.problems?.join(' ') || 'La respuesta no tiene el formato esperado.';
