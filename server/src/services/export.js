@@ -1,3 +1,4 @@
+import { generarDocx, generarPdf } from './exportBinario.js';
 import { getProject, readDocs, readMemory, readHistory } from './store.js';
 
 /**
@@ -208,6 +209,23 @@ export async function exportarDocumentacion(projectId, formato = 'md') {
   const markdown = generarMarkdown(project, memory, aprobadas, history);
 
   const base = project.name.replace(/[^\w\s-]/g, '').trim().replace(/\s+/g, '-').toLowerCase() || 'documentacion';
+
+  // Los binarios viajan en base64 dentro del mismo JSON: asi la interfaz los
+  // descarga igual que los de texto, sin una ruta aparte.
+  if (formato === 'pdf') {
+    const pdf = await generarPdf(markdown, `${project.name} - documentacion`);
+    return { filename: `${base}-documentacion.pdf`, mime: 'application/pdf', content: pdf.toString('base64'), binario: true, documented: aprobadas.length };
+  }
+  if (formato === 'docx') {
+    const docx = await generarDocx(markdown, `${project.name} - documentacion`);
+    return {
+      filename: `${base}-documentacion.docx`,
+      mime: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+      content: docx.toString('base64'),
+      binario: true,
+      documented: aprobadas.length,
+    };
+  }
 
   if (formato === 'html') {
     return {

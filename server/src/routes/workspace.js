@@ -160,7 +160,7 @@ router.post('/projects/:id/replace/apply', wrap(async (req, res) => {
 // ------------------------------------------------------ exportar documentacion
 
 router.get('/projects/:id/docs/export', wrap(async (req, res) => {
-  const formato = req.query.format === 'html' ? 'html' : 'md';
+  const formato = ['html', 'pdf', 'docx'].includes(req.query.format) ? req.query.format : 'md';
   const resultado = await exportarDocumentacion(req.params.id, formato);
   res.json(resultado);
 }));

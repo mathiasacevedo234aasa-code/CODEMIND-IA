@@ -375,7 +375,7 @@ export const api = {
     request<ReplaceResult>(`/api/projects/${id}/replace/apply`, { method: 'POST', ...json(opciones) }),
 
   // exportar documentacion
-  exportDocs: (id: string, format: 'md' | 'html') =>
+  exportDocs: (id: string, format: 'md' | 'html' | 'pdf' | 'docx') =>
     request<{ filename: string; mime: string; content: string; documented: number }>(
       `/api/projects/${id}/docs/export?format=${format}`,
     ),

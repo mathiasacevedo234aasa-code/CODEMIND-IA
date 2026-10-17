@@ -41,7 +41,7 @@ function ExportarDocumentacion() {
   const log = useStore((s) => s.log);
   const [ocupado, setOcupado] = useState<string | null>(null);
 
-  const exportar = async (formato: 'md' | 'html') => {
+  const exportar = async (formato: 'md' | 'html' | 'pdf' | 'docx') => {
     if (!project) return;
     setOcupado(formato);
     try {
@@ -51,7 +51,11 @@ function ExportarDocumentacion() {
         return;
       }
       // Descarga local: el archivo no pasa por ningún servidor externo.
-      const url = URL.createObjectURL(new Blob([res.content], { type: res.mime }));
+      // PDF y Word llegan en base64: hay que convertirlos a bytes de verdad.
+      const datos = (res as { binario?: boolean }).binario
+        ? Uint8Array.from(atob(res.content), (c) => c.charCodeAt(0))
+        : res.content;
+      const url = URL.createObjectURL(new Blob([datos], { type: res.mime }));
       const enlace = document.createElement('a');
       enlace.href = url;
       enlace.download = res.filename;
@@ -72,6 +76,12 @@ function ExportarDocumentacion() {
       </button>
       <button className="btn sm outline" disabled={Boolean(ocupado)} onClick={() => void exportar('html')} title="Descargar como página web, lista para imprimir">
         {ocupado === 'html' ? <span className="spinner" /> : <Icon name="file" size={13} />} HTML
+      </button>
+      <button className="btn sm outline" disabled={Boolean(ocupado)} onClick={() => void exportar('pdf')} title="Descargar en PDF, para entregar o imprimir">
+        {ocupado === 'pdf' ? <span className="spinner" /> : <Icon name="file" size={13} />} PDF
+      </button>
+      <button className="btn sm outline" disabled={Boolean(ocupado)} onClick={() => void exportar('docx')} title="Descargar como documento de Word (.docx)">
+        {ocupado === 'docx' ? <span className="spinner" /> : <Icon name="docs" size={13} />} Word
       </button>
     </span>
   );
@@ -200,17 +210,45 @@ function FunctionsSection() {
   const statusOf = useStore((s) => s.statusOf);
   const [query, setQuery] = useState('');
   const [file, setFile] = useState('');
+  const [estado, setEstado] = useState<'' | 'aldia' | 'revisar' | 'huerfana'>('');
+  const [termino, setTermino] = useState('');
+  const [glosario, setGlosario] = useState<string[]>([]);
   const [open, setOpen] = useState<string | null>(null);
+  const project = useStore((s) => s.project);
+
+  useEffect(() => {
+    if (!project) return;
+    api.glosario(project.id).then((g) => setGlosario(g.terminos.map((t) => t.termino))).catch(() => {});
+  }, [project]);
 
   const live = useMemo(() => symbolsFn(), [symbolsFn, analysis]);
   const docs = Object.values(approved);
   const files = [...new Set(docs.map((d) => d.filePath))].sort();
 
-  const visible = docs.filter(
-    (d) =>
-      (!query || `${d.name} ${d.filePath}`.toLowerCase().includes(query.toLowerCase())) &&
-      (!file || d.filePath === file),
-  );
+  /**
+   * Se busca DENTRO de la documentación, no solo en el nombre: propósito,
+   * explicación, parámetros, observaciones. Es lo que permite encontrar
+   * "¿dónde se calculaba el IVA?" sin saber cómo se llama la función.
+   */
+  const textoDe = (d: ApprovedDoc) => [
+    d.name, d.filePath, d.doc.proposito, d.doc.explicacion, d.doc.observaciones,
+    ...(d.doc.parametros ?? []).map((p) => `${p.nombre} ${p.descripcion}`),
+    ...(d.doc.flujo ?? []),
+  ].join(' ').toLowerCase();
+
+  const estadoDe = (d: ApprovedDoc) => {
+    const fn = live.find((f) => f.id === d.functionId);
+    if (!fn) return 'huerfana';
+    return statusOf(fn) === 'revisar' ? 'revisar' : 'aldia';
+  };
+
+  const visible = docs.filter((d) => {
+    const texto = textoDe(d);
+    return (!query || texto.includes(query.toLowerCase()))
+      && (!termino || texto.includes(termino.toLowerCase()))
+      && (!file || d.filePath === file)
+      && (!estado || estadoDe(d) === estado);
+  });
 
   if (!docs.length) {
     return <p className="hint">Todavia no hay funciones con documentacion aprobada.</p>;
@@ -219,13 +257,26 @@ function FunctionsSection() {
   return (
     <>
       <div style={{ display: 'flex', gap: 8, marginBottom: 12, flexWrap: 'wrap' }}>
-        <input placeholder="Buscar por nombre..." value={query} onChange={(e) => setQuery(e.target.value)} style={{ flex: 1, minWidth: 180 }} />
+        <input placeholder="Buscar en el texto de la documentación..." value={query} onChange={(e) => setQuery(e.target.value)} style={{ flex: 1, minWidth: 180 }} />
+        <select value={estado} onChange={(e) => setEstado(e.target.value as typeof estado)} style={{ width: 'auto' }}>
+          <option value="">Cualquier estado</option>
+          <option value="aldia">Al día</option>
+          <option value="revisar">Por revisar</option>
+          <option value="huerfana">Su código ya no existe</option>
+        </select>
+        {glosario.length > 0 && (
+          <select value={termino} onChange={(e) => setTermino(e.target.value)} style={{ width: 'auto' }} title="Solo lo que menciona este término del glosario">
+            <option value="">Cualquier término</option>
+            {glosario.map((t) => <option key={t} value={t}>{t}</option>)}
+          </select>
+        )}
         <select value={file} onChange={(e) => setFile(e.target.value)} style={{ width: 'auto' }}>
           <option value="">Todos los archivos</option>
           {files.map((f) => <option key={f} value={f}>{f}</option>)}
         </select>
       </div>
 
+      <p className="hint" style={{ marginBottom: 8 }}>{visible.length} de {docs.length} documentados</p>
       {visible.map((d: ApprovedDoc) => {
         const fn = live.find((f) => f.id === d.functionId);
         const status = fn ? statusOf(fn) : null;
