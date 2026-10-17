@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useStore } from '../state/useStore';
-import { api } from '../lib/api';
+import { api, type Conversacion } from '../lib/api';
 import { Icon } from './Icon';
 
 type Mode = 'comprehension' | 'context' | 'technical' | 'documentation';
@@ -37,6 +37,89 @@ export function AssistantPanel() {
   const [busy, setBusy] = useState(false);
   const [messages, setMessages] = useState<Message[]>([]);
 
+  // ------------------------------------------------- conversaciones guardadas
+  //
+  // Varias por proyecto, guardadas en el backend. La activa se guarda entera
+  // cada vez que termina una respuesta; una conversación vacía no se guarda.
+  const [conversaciones, setConversaciones] = useState<Conversacion[]>([]);
+  const [convId, setConvId] = useState<string | null>(null);
+  const [verLista, setVerLista] = useState(false);
+  const [filtroConv, setFiltroConv] = useState('');
+  const mensajesRef = useRef<Message[]>([]);
+  mensajesRef.current = messages;
+  const convIdRef = useRef<string | null>(null);
+  convIdRef.current = convId;
+
+  useEffect(() => {
+    if (!project) return;
+    setMessages([]);
+    setConvId(null);
+    api.conversaciones(project.id)
+      .then(({ conversaciones: lista }) => {
+        setConversaciones(lista);
+        // Se retoma la última, que es casi siempre la que se quiere seguir.
+        if (lista[0]) {
+          setConvId(lista[0].id);
+          setMessages(lista[0].mensajes);
+        }
+      })
+      .catch(() => setConversaciones([]));
+  }, [project?.id]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const guardarConversacion = async () => {
+    if (!project) return;
+    const mensajes = mensajesRef.current.filter((m) => !m.escribiendo).map(({ who, text, model }) => ({ who, text, model }));
+    if (!mensajes.length) return;
+    try {
+      const { conversacion } = await api.guardarConversacion(project.id, { id: convIdRef.current ?? undefined, mensajes });
+      setConvId(conversacion.id);
+      setConversaciones((l) => [conversacion, ...l.filter((c) => c.id !== conversacion.id)]);
+    } catch (err) {
+      setError(`No se pudo guardar la conversación: ${(err as Error).message}`);
+    }
+  };
+
+  const nuevaConversacion = () => {
+    if (busy) return;
+    setMessages([]);
+    setConvId(null);
+    setVerLista(false);
+  };
+
+  const abrirConversacion = (c: Conversacion) => {
+    if (busy) return;
+    setConvId(c.id);
+    setMessages(c.mensajes);
+    setVerLista(false);
+  };
+
+  const borrarConversacion = async (c: Conversacion) => {
+    if (!project || !window.confirm(`¿Borrar la conversación "${c.titulo}"? No se puede deshacer.`)) return;
+    try {
+      await api.borrarConversacion(project.id, c.id);
+      setConversaciones((l) => l.filter((x) => x.id !== c.id));
+      if (c.id === convId) { setMessages([]); setConvId(null); }
+    } catch (err) {
+      setError((err as Error).message);
+    }
+  };
+
+  // Se guarda cuando termina una respuesta (bien, cortada o con error). Desde
+  // un efecto, para leer los mensajes ya pintados y no los de antes.
+  const estabaOcupado = useRef(false);
+  useEffect(() => {
+    if (estabaOcupado.current && !busy) void guardarConversacion();
+    estabaOcupado.current = busy;
+  }, [busy]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const filtradas = useMemo(() => {
+    const q = filtroConv.trim().toLowerCase();
+    if (!q) return conversaciones;
+    // Se busca en el título y en todo el texto: "lo que me dijo de calcularTotal".
+    return conversaciones.filter((c) =>
+      c.titulo.toLowerCase().includes(q) || c.mensajes.some((m) => m.text.toLowerCase().includes(q)));
+  }, [conversaciones, filtroConv]);
+
   // Solo se ofrece como contexto el archivo de codigo abierto, no una pestana web.
   const activeTab = tabs.find((t) => t.id === activeTabId);
   const activePath = activeTab?.kind === 'file' ? activeTab.path : null;
@@ -60,6 +143,9 @@ export function AssistantPanel() {
    */
   const enviar = async (texto: string, contextoDirecto?: string) => {
     if (!texto.trim() || busy) return;
+    // Lo anterior de esta conversación, para que las preguntas de seguimiento
+    // tengan sentido. Se toma antes de añadir la pregunta nueva.
+    const historial = mensajesRef.current.filter((m) => !m.escribiendo).map(({ who, text }) => ({ who, text }));
     setMessages((m) => [...m, { who: 'user', text: texto }]);
     setBusy(true);
     try {
@@ -95,6 +181,7 @@ export function AssistantPanel() {
         mode: contextoDirecto ? 'comprehension' : mode,
         question: texto,
         contextText,
+        historial,
       }, anadir, corte.signal);
 
       setMessages((m) => {
@@ -157,6 +244,41 @@ export function AssistantPanel() {
 
   return (
     <div className="chat">
+      <div className="conv-barra">
+        <button className="btn sm outline" onClick={() => setVerLista((v) => !v)} title="Conversaciones guardadas de este proyecto">
+          <Icon name={verLista ? 'chevronDown' : 'chevronRight'} size={12} />
+          <span className="conv-titulo">{conversaciones.find((c) => c.id === convId)?.titulo ?? 'Conversación nueva'}</span>
+          {conversaciones.length > 0 && <span className="tag muted">{conversaciones.length}</span>}
+        </button>
+        <span style={{ flex: 1 }} />
+        <button className="btn sm outline" disabled={busy} onClick={nuevaConversacion} title="Empezar otra conversación">
+          <Icon name="plus" size={12} /> Nueva
+        </button>
+      </div>
+      {verLista && (
+        <div className="conv-lista">
+          <input
+            autoFocus
+            placeholder="Buscar en las conversaciones..."
+            value={filtroConv}
+            onChange={(e) => setFiltroConv(e.target.value)}
+          />
+          {filtradas.length === 0 && <p className="hint">{conversaciones.length ? 'Ninguna coincide.' : 'Todavía no hay conversaciones guardadas.'}</p>}
+          {filtradas.map((c) => (
+            <div key={c.id} className={`conv-fila ${c.id === convId ? 'activa' : ''}`} onClick={() => abrirConversacion(c)}>
+              <span className="conv-titulo">{c.titulo}</span>
+              <span className="hint">{c.mensajes.length} · {new Date(c.actualizada).toLocaleDateString()}</span>
+              <button
+                className="btn icon sm"
+                title="Borrar esta conversación"
+                onClick={(e) => { e.stopPropagation(); void borrarConversacion(c); }}
+              >
+                <Icon name="close" size={11} />
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
       <div className="chat-log" ref={chatRef}>
         {messages.length === 0 && (
           <div className="empty" style={{ height: 'auto', paddingTop: 30 }}>

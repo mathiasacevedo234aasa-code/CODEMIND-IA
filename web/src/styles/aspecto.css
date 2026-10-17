@@ -356,3 +356,14 @@ kbd {
 }
 .consola-pestana:hover { color: var(--text); }
 .consola-pestana.activa { color: var(--text); background: var(--bg-elev, var(--panel)); border-color: var(--border); }
+
+/* Conversaciones del asistente */
+.conv-barra { display: flex; align-items: center; gap: 6px; padding: 6px 10px; border-bottom: 1px solid var(--border); }
+.conv-barra .btn { max-width: 70%; }
+.conv-titulo { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+.conv-lista { padding: 8px 10px; border-bottom: 1px solid var(--border); max-height: 260px; overflow: auto; display: flex; flex-direction: column; gap: 2px; }
+.conv-lista input { margin-bottom: 6px; }
+.conv-fila { display: flex; align-items: center; gap: 8px; padding: 4px 6px; border-radius: 6px; cursor: pointer; font-size: 12.5px; }
+.conv-fila .conv-titulo { flex: 1; }
+.conv-fila:hover { background: var(--hover, rgba(127,127,127,.12)); }
+.conv-fila.activa { background: var(--accent-soft, rgba(91,140,255,.15)); }

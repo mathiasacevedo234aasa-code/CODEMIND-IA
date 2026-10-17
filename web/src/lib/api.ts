@@ -238,6 +238,12 @@ export const api = {
   probarIA: (proveedor?: string) =>
     request<PruebaConexion>(`/api/ai/test${proveedor ? `?proveedor=${encodeURIComponent(proveedor)}` : ''}`),
 
+  conversaciones: (id: string) => request<{ conversaciones: Conversacion[] }>(`/api/projects/${id}/conversaciones`),
+  guardarConversacion: (id: string, conversacion: { id?: string; titulo?: string; mensajes: Conversacion['mensajes'] }) =>
+    request<{ conversacion: Conversacion }>(`/api/projects/${id}/conversaciones`, { method: 'PUT', ...json({ conversacion }) }),
+  borrarConversacion: (id: string, cid: string) =>
+    request<{ ok: true }>(`/api/projects/${id}/conversaciones/${encodeURIComponent(cid)}`, { method: 'DELETE' }),
+
   glosario: (id: string) => request<Glosario>(`/api/projects/${id}/glosario`),
   glosarioProponer: (id: string, elementos: { nombre: string; tipo: string; archivo: string }[]) =>
     request<{ glosario: Glosario; nuevas: number; descartadas: number; modelo: string; proveedor: string }>(
@@ -407,3 +413,11 @@ export interface PreviaPull {
 }
 
 export interface StashEntrada { ref: string; cuando: string; mensaje: string }
+
+export interface Conversacion {
+  id: string;
+  titulo: string;
+  creada: string;
+  actualizada: string;
+  mensajes: { who: 'user' | 'ai'; text: string; model?: string }[];
+}

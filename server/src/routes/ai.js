@@ -51,7 +51,7 @@ router.post('/document', async (req, res, next) => {
  * asi que vive aparte para que las dos rutas no se desincronicen.
  */
 async function prepararChat(body) {
-  const { projectId, mode = 'comprehension', question, contextText = '', model } = body ?? {};
+  const { projectId, mode = 'comprehension', question, contextText = '', model, historial } = body ?? {};
   const settings = await readSettings();
   let material = contextText;
 
@@ -86,6 +86,7 @@ async function prepararChat(body) {
     question,
     contextText: material,
     idioma: settings.idioma ?? 'es',
+    historial,
     model: model ?? null,
     temperature: settings.temperature,
     maxTokens: settings.maxTokens,

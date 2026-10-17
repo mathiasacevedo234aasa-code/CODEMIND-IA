@@ -237,11 +237,18 @@ export async function generateFunctionDoc({ code, context, model, temperature, m
 }
 
 /** Los mensajes de una consulta al asistente, iguales con o sin streaming. */
-function mensajesDeChat({ mode = 'comprehension', question, contextText, idioma }) {
+function mensajesDeChat({ mode = 'comprehension', question, contextText, idioma, historial = [] }) {
   if (!question || !question.trim()) throw new HttpError(400, 'La pregunta esta vacia.');
   const modeRule = MODE_RULES[mode] || MODE_RULES.comprehension;
+  // Los ultimos turnos de la conversacion, para que "y eso por que?" tenga
+  // sentido. Pocos y recortados: el material del proyecto pesa mas.
+  const previos = (Array.isArray(historial) ? historial : [])
+    .filter((m) => m && (m.who === 'user' || m.who === 'ai') && typeof m.text === 'string' && m.text.trim())
+    .slice(-8)
+    .map((m) => ({ role: m.who === 'user' ? 'user' : 'assistant', content: m.text.slice(0, 4000) }));
   return [
     { role: 'system', content: `${reglasBase(idioma)}\n\n${modeRule}` },
+    ...previos,
     {
       role: 'user',
       content: [
@@ -253,15 +260,15 @@ function mensajesDeChat({ mode = 'comprehension', question, contextText, idioma 
   ];
 }
 
-export async function chat({ mode, question, contextText, idioma, model, temperature, maxTokens }) {
-  const messages = mensajesDeChat({ mode, question, contextText, idioma });
+export async function chat({ mode, question, contextText, idioma, historial, model, temperature, maxTokens }) {
+  const messages = mensajesDeChat({ mode, question, contextText, idioma, historial });
   const result = await completar({ messages, modelo: model, temperature, maxTokens, jsonMode: false });
   return { answer: result.content, model: result.model, proveedor: result.proveedor, usage: result.usage };
 }
 
 /** Lo mismo, pero entregando el texto a trozos segun llega. */
-export async function chatStream({ mode, question, contextText, idioma, model, temperature, maxTokens }, alTrozo, opciones) {
-  const messages = mensajesDeChat({ mode, question, contextText, idioma });
+export async function chatStream({ mode, question, contextText, idioma, historial, model, temperature, maxTokens }, alTrozo, opciones) {
+  const messages = mensajesDeChat({ mode, question, contextText, idioma, historial });
   const result = await completarStream({ messages, modelo: model, temperature, maxTokens }, alTrozo, opciones);
   return { answer: result.content, model: result.model, proveedor: result.proveedor };
 }

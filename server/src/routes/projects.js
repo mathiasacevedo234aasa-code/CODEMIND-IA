@@ -1,4 +1,5 @@
 import { Router } from 'express';
+import * as conversaciones from '../services/conversaciones.js';
 import {
   listProjects,
   getProject,
@@ -136,6 +137,36 @@ router.put('/:id/session', async (req, res, next) => {
     await getProject(req.params.id);
     const { tabs = [], activeTabId = null, leftView = 'explorador' } = req.body?.session ?? {};
     await writeSession(req.params.id, { tabs, activeTabId, leftView });
+    res.json({ ok: true });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// ------------------------------------------------------- conversaciones
+
+router.get('/:id/conversaciones', async (req, res, next) => {
+  try {
+    await getProject(req.params.id);
+    res.json({ conversaciones: await conversaciones.listar(req.params.id) });
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.put('/:id/conversaciones', async (req, res, next) => {
+  try {
+    await getProject(req.params.id);
+    res.json({ conversacion: await conversaciones.guardar(req.params.id, req.body?.conversacion) });
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.delete('/:id/conversaciones/:cid', async (req, res, next) => {
+  try {
+    await getProject(req.params.id);
+    await conversaciones.borrar(req.params.id, req.params.cid);
     res.json({ ok: true });
   } catch (err) {
     next(err);
