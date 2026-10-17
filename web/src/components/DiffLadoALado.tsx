@@ -5,6 +5,7 @@ import { useStore } from '../state/useStore';
 import { api } from '../lib/api';
 import { languageOf } from '../lib/analyzer';
 import { Icon } from './Icon';
+import { registrarTemaImportado, useTemaMonaco } from '../lib/tema';
 
 /**
  * Comparación lado a lado, de solo lectura.
@@ -28,7 +29,7 @@ export function DiffLadoALado({ ruta, staged = false, alCerrar, cargar, titulo, 
   etiqueta?: string;
 }) {
   const project = useStore((s) => s.project);
-  const theme = useStore((s) => s.settings.editor.theme);
+  const temaMonaco = useTemaMonaco();
   const [datos, setDatos] = useState<Versiones | null>(null);
   const [fallo, setFallo] = useState<string | null>(null);
   const [cambios, setCambios] = useState(0);
@@ -80,7 +81,8 @@ export function DiffLadoALado({ ruta, staged = false, alCerrar, cargar, titulo, 
               original={datos.antes}
               modified={datos.despues}
               language={languageOf(ruta)}
-              theme={theme === 'dark' ? 'vs-dark' : 'light'}
+              theme={temaMonaco}
+              beforeMount={registrarTemaImportado}
               options={{ readOnly: true, originalEditable: false, renderSideBySide: true, minimap: { enabled: false }, automaticLayout: true }}
               onMount={(ed) => {
                 editor.current = ed;

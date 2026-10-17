@@ -10,6 +10,7 @@ import { WebView } from './WebView';
 import { Icon } from './Icon';
 import { VistaMarkdown } from './VistaMarkdown';
 import { HistorialLocal } from './HistorialLocal';
+import { registrarTemaImportado, useTemaMonaco } from '../lib/tema';
 import { BotonEjecutarArchivo } from './EjecutarArchivo';
 
 /**
@@ -68,6 +69,7 @@ function MitadEditor({ mitad, dividido }: { mitad: Mitad; dividido: boolean }) {
   const emmetActivo = useStore((s) => s.settings.editor.emmet);
   const setCursor = useStore((s) => s.setCursor);
   const [vistaMd, setVistaMd] = useState(true);
+  const temaMonaco = useTemaMonaco();
   const [historial, setHistorial] = useState<string | null>(null);
   const fijarTab = useStore((s) => s.fijarTab);
 
@@ -272,7 +274,8 @@ ${texto.slice(0, 8000)}
           <Editor
             key={`${mitad}:${active.path}`}
             height="100%"
-            theme={settings.editor.theme === 'dark' ? 'vs-dark' : 'light'}
+            theme={temaMonaco}
+            beforeMount={registrarTemaImportado}
             path={active.path}
             language={languageOf(active.path)}
             value={activeFile.content}

@@ -445,7 +445,10 @@ export interface ProjectMemory {
 }
 
 export interface EditorSettings {
-  theme: 'dark' | 'light';
+  /** 'sistema' sigue el modo claro/oscuro del sistema operativo. */
+  theme: 'dark' | 'light' | 'sistema';
+  /** Tema de VS Code importado para el editor (null = el de siempre). */
+  temaVsCode?: TemaVsCode | null;
   fontSize: number;
   tabSize: number;
   wordWrap: boolean;
@@ -704,4 +707,13 @@ export interface SnippetPropio {
   descripcion: string;
   lenguaje: string;
   cuerpo: string;
+}
+
+/** Un tema de VS Code convertido al formato de Monaco. */
+export interface TemaVsCode {
+  nombre: string;
+  base: 'vs' | 'vs-dark';
+  oscuro: boolean;
+  reglas: { token: string; foreground?: string; fontStyle?: string }[];
+  colores: Record<string, string>;
 }

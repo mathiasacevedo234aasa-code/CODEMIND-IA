@@ -23,6 +23,7 @@ import { Welcome } from './components/Welcome';
 import { DialogHost } from './components/DialogHost';
 import { Icon } from './components/Icon';
 import { useT } from './lib/i18n';
+import { useTemaOscuro } from './lib/tema';
 
 /**
  * Lo pesado se carga cuando hace falta, no al arrancar.
@@ -71,7 +72,7 @@ export default function App() {
   const idioma = useStore((s) => s.settings.idioma ?? 'es');
   const boot = useStore((s) => s.boot);
   const project = useStore((s) => s.project);
-  const theme = useStore((s) => s.settings.editor.theme);
+  const theme = useTemaOscuro() ? 'dark' : 'light';
   const error = useStore((s) => s.error);
   const setError = useStore((s) => s.setError);
   const respaldoDoc = useStore((s) => s.respaldoDoc);

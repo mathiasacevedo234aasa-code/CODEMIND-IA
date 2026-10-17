@@ -4,6 +4,8 @@ import { EditorAppearance } from './EditorAppearance';
 import { ProveedorIADialog } from './ProveedorIADialog';
 import { useT } from '../lib/i18n';
 import { SnippetsPropios } from './SnippetsPropios';
+import { convertirTemaVsCode, registrarTemaImportado } from '../lib/tema';
+import { useState } from 'react';
 
 export function SettingsDialog() {
   const t = useT();
@@ -11,6 +13,7 @@ export function SettingsDialog() {
   const setOpen = useStore((s) => s.setSettingsOpen);
   const settings = useStore((s) => s.settings);
   const saveSettings = useStore((s) => s.saveSettings);
+  const [falloTema, setFalloTema] = useState<string | null>(null);
 
   if (!open) return null;
 
@@ -92,11 +95,55 @@ export function SettingsDialog() {
             <label>{t('Tema')}</label>
             <select
               value={settings.editor.theme}
-              onChange={(e) => void saveSettings({ editor: { ...settings.editor, theme: e.target.value as 'dark' | 'light' } })}
+              onChange={(e) => void saveSettings({ editor: { ...settings.editor, theme: e.target.value as 'dark' | 'light' | 'sistema' } })}
             >
+              <option value="sistema">{t('Como el sistema')}</option>
               <option value="dark">{t('Oscuro')}</option>
               <option value="light">{t('Claro')}</option>
             </select>
+          </div>
+
+          <div className="field">
+            <label>{t('Tema del editor de VS Code')}</label>
+            {settings.editor.temaVsCode ? (
+              <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                <span className="tag info">{settings.editor.temaVsCode.nombre}</span>
+                <span className="hint">{settings.editor.temaVsCode.reglas.length} reglas de color</span>
+                <span style={{ flex: 1 }} />
+                <button className="btn sm outline" onClick={() => void saveSettings({ editor: { ...settings.editor, temaVsCode: null } })}>
+                  Quitar
+                </button>
+              </div>
+            ) : (
+              <input
+                type="file"
+                accept=".json,application/json"
+                onChange={(e) => {
+                  const archivo = e.target.files?.[0];
+                  e.target.value = '';
+                  if (!archivo) return;
+                  setFalloTema(null);
+                  void archivo.text().then(async (texto) => {
+                    try {
+                      const tema = convertirTemaVsCode(texto, archivo.name);
+                      // Primero se define en Monaco y luego se guarda: al revés, el
+                      // editor pediría un tema que aún no existe.
+                      const monaco = await import('../lib/monaco').then(() => import('monaco-editor'));
+                      registrarTemaImportado(monaco, tema);
+                      await saveSettings({ editor: { ...settings.editor, temaVsCode: tema } });
+                    } catch (err) {
+                      setFalloTema((err as Error).message);
+                    }
+                  });
+                }}
+              />
+            )}
+            {falloTema && <p className="hint" style={{ color: 'var(--bad)' }}>{falloTema}</p>}
+            <p className="hint">
+              El .json de un tema (en VS Code: carpeta de la extensión, <code>themes/*.json</code>). Los colores del editor pasan
+              tal cual; el resaltado de sintaxis se parece mucho pero no siempre es idéntico, porque Monaco y VS Code
+              clasifican el código de forma algo distinta.
+            </p>
           </div>
 
           <EditorAppearance />

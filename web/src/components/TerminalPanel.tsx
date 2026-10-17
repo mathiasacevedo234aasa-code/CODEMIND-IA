@@ -6,6 +6,7 @@ import { useStore } from '../state/useStore';
 import { api } from '../lib/api';
 import type { TerminalDisponibilidad, TerminalSesion } from '../lib/types';
 import { Icon } from './Icon';
+import { useTemaOscuro } from '../lib/tema';
 
 /**
  * Consola del proyecto.
@@ -46,7 +47,7 @@ const TEMA_CLARO = {
 
 export function TerminalPanel({ visible }: { visible: boolean }) {
   const project = useStore((s) => s.project);
-  const temaOscuro = useStore((s) => s.settings.editor.theme === 'dark');
+  const temaOscuro = useTemaOscuro();
   const terminalSesionId = useStore((s) => s.terminalSesionId);
   const setTerminalSesion = useStore((s) => s.setTerminalSesion);
 

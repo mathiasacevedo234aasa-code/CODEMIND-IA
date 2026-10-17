@@ -3,6 +3,7 @@ import { useStore } from '../state/useStore';
 import { api } from '../lib/api';
 import { Icon } from './Icon';
 import { useT } from '../lib/i18n';
+import { useTemaOscuro } from '../lib/tema';
 
 export function TopBar() {
   const t = useT();
@@ -29,7 +30,7 @@ export function TopBar() {
   const setRightTab = useStore((s) => s.setRightTab);
 
   const dirty = Object.values(files).filter((f) => f.content !== f.saved);
-  const theme = settings.editor.theme;
+  const theme = useTemaOscuro() ? 'dark' : 'light';
 
   /**
    * Abrir la vista previa es levantar el servidor del proyecto y enseñarlo.

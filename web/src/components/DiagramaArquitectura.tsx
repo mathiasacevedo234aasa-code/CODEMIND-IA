@@ -3,10 +3,11 @@ import { useStore } from '../state/useStore';
 import { construirMapa } from '../lib/projectMap';
 import { dibujarMermaid, mermaidDesdeMapa } from '../lib/diagrama';
 import { Icon } from './Icon';
+import { useTemaOscuro } from '../lib/tema';
 
 /** Pinta un diagrama Mermaid; si el código no es válido, lo dice en vez de quedarse en blanco. */
 function Lienzo({ codigo }: { codigo: string }) {
-  const oscuro = useStore((s) => s.settings.editor.theme === 'dark');
+  const oscuro = useTemaOscuro();
   const [svg, setSvg] = useState<string | null>(null);
   const [fallo, setFallo] = useState<string | null>(null);
   useEffect(() => {
