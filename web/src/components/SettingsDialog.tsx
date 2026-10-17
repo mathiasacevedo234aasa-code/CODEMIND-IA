@@ -3,6 +3,7 @@ import { Icon } from './Icon';
 import { EditorAppearance } from './EditorAppearance';
 import { ProveedorIADialog } from './ProveedorIADialog';
 import { useT } from '../lib/i18n';
+import { SnippetsPropios } from './SnippetsPropios';
 
 export function SettingsDialog() {
   const t = useT();
@@ -99,6 +100,8 @@ export function SettingsDialog() {
           </div>
 
           <EditorAppearance />
+
+          <SnippetsPropios />
         </div>
         <div className="modal-foot">
           <button className="btn primary" onClick={() => setOpen(false)}>{t('Cerrar')}</button>

@@ -156,6 +156,34 @@ export function registrarProveedores(monaco: typeof Monaco) {
     },
   });
 
+  // ------------------------------------------------------ snippets propios
+  //
+  // Los que el usuario crea en Configuración. Se leen de los ajustes en cada
+  // petición, así que uno nuevo funciona en el acto, sin recargar nada.
+  monaco.languages.registerCompletionItemProvider({ scheme: 'file' }, {
+    provideCompletionItems(modelo, posicion) {
+      const snippets = useStore.getState().settings.snippets ?? [];
+      if (!snippets.length) return { suggestions: [] };
+      const lenguaje = modelo.getLanguageId();
+      const palabra = modelo.getWordUntilPosition(posicion);
+      const rango = new monaco.Range(posicion.lineNumber, palabra.startColumn, posicion.lineNumber, palabra.endColumn);
+      return {
+        suggestions: snippets
+          .filter((s) => s.prefijo && (!s.lenguaje || s.lenguaje === lenguaje))
+          .map((s) => ({
+            label: { label: s.prefijo, description: 'snippet propio' },
+            kind: monaco.languages.CompletionItemKind.Snippet,
+            insertText: s.cuerpo,
+            insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
+            detail: s.descripcion || 'Snippet propio',
+            documentation: { value: `\`\`\`\n${s.cuerpo}\n\`\`\`` },
+            range: rango,
+            sortText: `0${s.prefijo}`,
+          })),
+      };
+    },
+  });
+
   // Saltar a OTRO archivo lo tiene que hacer la aplicación: Monaco por sí solo
   // no sabe abrir pestañas. Se abre el archivo y se lleva el cursor a la línea.
   monaco.editor.registerEditorOpener({

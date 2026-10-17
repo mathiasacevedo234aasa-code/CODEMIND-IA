@@ -483,6 +483,8 @@ export interface AppSettings {
   idioma?: 'es' | 'en';
   /** Precio por millón de tokens (USD) por 'proveedor:modelo', puesto por el usuario. */
   precios?: Record<string, { entrada: number; salida: number }>;
+  /** Snippets creados por el usuario. */
+  snippets?: SnippetPropio[];
   maxTokens: number;
   editor: EditorSettings;
 }
@@ -690,4 +692,12 @@ export interface EstadoPreview {
   ultimaRecarga?: string | null;
   /** Por ejemplo, que no se pueden vigilar los cambios en esa carpeta. */
   aviso?: string | null;
+}
+
+/** Un snippet del usuario. `lenguaje` vacío = en todos. Cuerpo con la sintaxis de Monaco. */
+export interface SnippetPropio {
+  prefijo: string;
+  descripcion: string;
+  lenguaje: string;
+  cuerpo: string;
 }
