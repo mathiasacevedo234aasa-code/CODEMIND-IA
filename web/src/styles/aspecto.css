@@ -411,3 +411,8 @@ kbd {
 .plantilla span { font-size: 11.5px; color: var(--text-dim); }
 .plantilla:hover { border-color: var(--accent); }
 .plantilla.elegida { border-color: var(--accent); background: var(--accent-soft, rgba(91,140,255,.12)); }
+
+/* Mapa: filtros e impacto */
+.mapa-filtros { display: flex; gap: 6px; align-items: center; margin-bottom: 8px; flex-wrap: wrap; }
+.mapa-filtros select { width: auto; }
+.mapa-impacto { margin-bottom: 10px; display: block; }
