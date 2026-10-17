@@ -9,6 +9,7 @@ import { panelDe, type PanelEditor as Mitad } from '../lib/types';
 import { WebView } from './WebView';
 import { Icon } from './Icon';
 import { VistaMarkdown } from './VistaMarkdown';
+import { HistorialLocal } from './HistorialLocal';
 import { BotonEjecutarArchivo } from './EjecutarArchivo';
 
 /**
@@ -67,6 +68,7 @@ function MitadEditor({ mitad, dividido }: { mitad: Mitad; dividido: boolean }) {
   const emmetActivo = useStore((s) => s.settings.editor.emmet);
   const setCursor = useStore((s) => s.setCursor);
   const [vistaMd, setVistaMd] = useState(true);
+  const [historial, setHistorial] = useState<string | null>(null);
   const fijarTab = useStore((s) => s.fijarTab);
 
   // El editor vivo, junto al archivo para el que se creó. Guardar también la
@@ -219,6 +221,12 @@ ${texto.slice(0, 8000)}
             Vista previa
           </button>
         )}
+        {active?.kind === 'file' && (
+          <button className="btn icon sm" title="Historial local: versiones anteriores de este archivo" onClick={() => setHistorial(active.path)}>
+            <Icon name="history" size={13} />
+          </button>
+        )}
+        {historial && <HistorialLocal ruta={historial} alCerrar={() => setHistorial(null)} />}
         {enfocada && <BotonEjecutarArchivo />}
         {active && (
           <button

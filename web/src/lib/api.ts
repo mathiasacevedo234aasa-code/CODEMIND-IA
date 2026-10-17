@@ -152,6 +152,10 @@ export const api = {
     request<{ path: string }>(`/api/projects/${id}/entry`, { method: 'POST', ...json({ path, kind }) }),
   rename: (id: string, from: string, to: string) =>
     request<{ from: string; to: string }>(`/api/projects/${id}/rename`, { method: 'POST', ...json({ from, to }) }),
+  historialLocal: (id: string, path: string) =>
+    request<{ versiones: VersionLocal[] }>(`/api/projects/${id}/historial-local?path=${encodeURIComponent(path)}`),
+  versionLocal: (id: string, path: string, v: string) =>
+    request<{ contenido: string }>(`/api/projects/${id}/historial-local/version?path=${encodeURIComponent(path)}&v=${encodeURIComponent(v)}`),
   copyEntry: (id: string, from: string, to: string) =>
     request<{ from: string; to: string }>(`/api/projects/${id}/copy`, { method: 'POST', ...json({ from, to }) }),
   deleteEntry: (id: string, path: string) =>
@@ -423,3 +427,5 @@ export interface Conversacion {
   actualizada: string;
   mensajes: { who: 'user' | 'ai'; text: string; model?: string }[];
 }
+
+export interface VersionLocal { id: string; en: string; bytes: number; lineas: number }

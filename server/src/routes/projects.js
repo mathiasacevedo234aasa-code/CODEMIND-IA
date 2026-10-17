@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import * as conversaciones from '../services/conversaciones.js';
+import * as historialLocal from '../services/historialLocal.js';
 import {
   listProjects,
   getProject,
@@ -151,6 +152,26 @@ router.put('/:id/session', async (req, res, next) => {
     const { tabs = [], activeTabId = null, leftView = 'explorador' } = req.body?.session ?? {};
     await writeSession(req.params.id, { tabs, activeTabId, leftView });
     res.json({ ok: true });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// ------------------------------------------------------- historial local
+
+router.get('/:id/historial-local', async (req, res, next) => {
+  try {
+    await getProject(req.params.id);
+    res.json({ versiones: await historialLocal.listar(req.params.id, String(req.query.path ?? '')) });
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.get('/:id/historial-local/version', async (req, res, next) => {
+  try {
+    await getProject(req.params.id);
+    res.json({ contenido: await historialLocal.leer(req.params.id, String(req.query.path ?? ''), String(req.query.v ?? '')) });
   } catch (err) {
     next(err);
   }

@@ -314,6 +314,10 @@ export async function writeFileContent(projectId, relPath, content) {
   const abs = resolveWithin(base, relPath);
   if (abs === base) throw new HttpError(400, 'Ruta de archivo invalida.');
   await fs.mkdir(path.dirname(abs), { recursive: true });
+  // Lo que habia antes pasa al historial local (ver services/historialLocal.js).
+  const anterior = await fs.readFile(abs, 'utf8').catch(() => null);
+  const { apartar } = await import('./historialLocal.js');
+  await apartar(projectId, relPath, anterior, content ?? '');
   await fs.writeFile(abs, content ?? '', 'utf8');
   await touchProject(projectId);
   const stat = await fs.stat(abs);
