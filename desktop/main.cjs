@@ -34,6 +34,10 @@ const carpetaPortable = process.env.PORTABLE_EXECUTABLE_DIR
 if (carpetaPortable) {
   fs.mkdirSync(carpetaPortable, { recursive: true });
   app.setPath('userData', carpetaPortable);
+  // Por si alguna versión de Electron no las deriva de userData.
+  app.setPath('sessionData', carpetaPortable);
+  app.setPath('logs', path.join(carpetaPortable, 'logs'));
+  app.setPath('crashDumps', path.join(carpetaPortable, 'crashDumps'));
 }
 
 // Sin esto, dos instancias competirian por la misma carpeta de datos.
