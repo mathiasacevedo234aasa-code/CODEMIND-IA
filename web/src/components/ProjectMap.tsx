@@ -1,8 +1,9 @@
-import { useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useStore } from '../state/useStore';
 import { calcularPosiciones, construirMapa, type MapaProyecto } from '../lib/projectMap';
 import type { SymbolCategory } from '../lib/types';
 import { Icon } from './Icon';
+import { api } from '../lib/api';
 
 const ANCHO = 880;
 const ALTO = 460;
@@ -41,6 +42,15 @@ export function ProjectMap() {
   const [filtroCarpeta, setFiltroCarpeta] = useState('');
   const [filtroTipo, setFiltroTipo] = useState<SymbolCategory | ''>('');
   const lienzo = useRef<SVGSVGElement | null>(null);
+  const project = useStore((s) => s.project);
+  const [busqueda, setBusqueda] = useState('');
+  const [colorPor, setColorPor] = useState<'tipo' | 'carpeta'>('tipo');
+  const [commits, setCommits] = useState<{ hash: string; fecha: string; asunto: string; archivos: string[] }[]>([]);
+  const [verCommit, setVerCommit] = useState<number | null>(null);
+  useEffect(() => {
+    if (!project) return;
+    api.lineaTiempo(project.id).then((r) => setCommits(r.commits)).catch(() => setCommits([]));
+  }, [project]);
 
   const documentados = useMemo(
     () => new Set(Object.values(approved).map((d) => d.functionId)),
@@ -91,6 +101,18 @@ export function ProjectMap() {
       </p>
     );
   }
+
+  // Búsqueda con foco: el primer archivo que encaja se resalta y el resto se apaga.
+  const buscado = busqueda.trim()
+    ? mapa.nodos.find((n) => n.path.toLowerCase().includes(busqueda.trim().toLowerCase()))?.path ?? null
+    : null;
+  // Colores por carpeta (cada una el suyo) en vez de por tipo.
+  const carpetasColor = [...new Set(mapa.nodos.map((n) => n.carpeta))].sort();
+  const PALETA_CARPETAS = ['#5b8cff', '#3fb984', '#d9a441', '#cf649a', '#56b6c2', '#e06c75', '#a07cdf', '#8dc891'];
+  const colorDe = (n: { carpeta: string; categoria: SymbolCategory }) =>
+    colorPor === 'carpeta' ? PALETA_CARPETAS[carpetasColor.indexOf(n.carpeta) % PALETA_CARPETAS.length] : COLOR[n.categoria];
+  // Línea de tiempo: los archivos que tocó el commit elegido.
+  const delCommit = verCommit !== null ? new Set(commits[verCommit]?.archivos ?? []) : null;
 
   const radio = (simbolos: number) => Math.max(7, Math.min(20, 7 + Math.sqrt(simbolos) * 2.6));
 
@@ -166,6 +188,11 @@ export function ProjectMap() {
           <option value="">Todos los tipos</option>
           {(Object.keys(ETIQUETA) as SymbolCategory[]).map((c) => <option key={c} value={c}>{ETIQUETA[c]}</option>)}
         </select>
+        <input placeholder="Buscar un archivo…" value={busqueda} onChange={(e) => setBusqueda(e.target.value)} style={{ maxWidth: 180 }} />
+        <select value={colorPor} onChange={(e) => setColorPor(e.target.value as 'tipo' | 'carpeta')} title="Cómo colorear los archivos">
+          <option value="tipo">Color por tipo</option>
+          <option value="carpeta">Color por carpeta</option>
+        </select>
         <span style={{ flex: 1 }} />
         <button className="btn sm outline" onClick={() => void exportar('svg')}>Exportar SVG</button>
         <button className="btn sm outline" onClick={() => void exportar('png')}>Exportar PNG</button>
@@ -191,10 +218,35 @@ export function ProjectMap() {
         </div>
       )}
 
+      {commits.length > 0 && (
+        <div className="linea-tiempo">
+          <label className="hint" style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+            <input type="checkbox" style={{ width: 'auto' }} checked={verCommit !== null} onChange={(e) => setVerCommit(e.target.checked ? 0 : null)} />
+            Línea de tiempo
+          </label>
+          {verCommit !== null && (
+            <>
+              <input
+                type="range" min={0} max={commits.length - 1} value={commits.length - 1 - verCommit}
+                onChange={(e) => setVerCommit(commits.length - 1 - Number(e.target.value))}
+                title="Arrastra para recorrer los commits, del más antiguo al más reciente"
+              />
+              <span className="hint">
+                <code>{commits[verCommit].hash}</code> {commits[verCommit].fecha} · {commits[verCommit].asunto} · {commits[verCommit].archivos.length} archivo(s)
+              </span>
+            </>
+          )}
+        </div>
+      )}
+
       <div className="mapa-leyenda">
-        {(Object.keys(COLOR) as SymbolCategory[]).map((c) => (
-          <span key={c}><i style={{ background: COLOR[c] }} /> {ETIQUETA[c]}</span>
-        ))}
+        {colorPor === 'tipo'
+          ? (Object.keys(COLOR) as SymbolCategory[]).map((c) => (
+            <span key={c}><i style={{ background: COLOR[c] }} /> {ETIQUETA[c]}</span>
+          ))
+          : carpetasColor.map((c, i) => (
+            <span key={c}><i style={{ background: PALETA_CARPETAS[i % PALETA_CARPETAS.length] }} /> {c || '(raíz)'}</span>
+          ))}
         <span style={{ flex: 1 }} />
         <span>{mapa.nodos.length} archivo(s) · {mapa.aristas.length} dependencia(s)</span>
       </div>
@@ -244,7 +296,11 @@ export function ProjectMap() {
             const pos = posicionDe.get(nodo.path);
             if (!pos) return null;
             const r = radio(nodo.simbolos);
-            const atenuado = impacto
+            const atenuado = delCommit
+              ? !delCommit.has(nodo.path)
+              : buscado
+                ? nodo.path !== buscado
+                : impacto
               ? !enImpacto(nodo.path)
               : Boolean(encima) && encima !== nodo.path &&
                 !mapa.aristas.some((a) =>
@@ -260,7 +316,8 @@ export function ProjectMap() {
                 onClick={() => setElegido(elegido === nodo.path ? null : nodo.path)}
                 onDoubleClick={() => abrir(nodo.path)}
               >
-                <circle cx={pos.x} cy={pos.y} r={r} fill={COLOR[nodo.categoria]} opacity={0.85} />
+                <circle cx={pos.x} cy={pos.y} r={r} fill={colorDe(nodo)} opacity={0.85} />
+                {(nodo.path === buscado || delCommit?.has(nodo.path)) && <circle cx={pos.x} cy={pos.y} r={r + 6} fill="none" stroke="var(--accent)" strokeWidth="2.5" />}
                 {nodo.path === elegido && <circle cx={pos.x} cy={pos.y} r={r + 6} fill="none" stroke="var(--accent)" strokeWidth="2.5" />}
                 {impacto?.has(nodo.path) && <circle cx={pos.x} cy={pos.y} r={r + 5} fill="none" stroke="var(--bad)" strokeWidth="2" strokeDasharray="3 2" />}
                 {nodo.documentados > 0 && (

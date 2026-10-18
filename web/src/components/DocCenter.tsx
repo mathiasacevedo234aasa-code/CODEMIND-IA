@@ -7,6 +7,7 @@ import { Icon } from './Icon';
 import { DiagramaArquitectura } from './DiagramaArquitectura';
 import { DocIncompleta } from './DocIncompleta';
 import { BotonResumen } from './Resumenes';
+import { MapaFunciones } from './MapaFunciones';
 import { pedirBorrador, type Borrador } from '../lib/borradorGeneral';
 const ProjectMap = lazy(() => import('./ProjectMap').then((m) => ({ default: m.ProjectMap })));
 import { GlosarioPanel } from './GlosarioPanel';
@@ -220,6 +221,7 @@ function ArchitectureSection() {
   const analysis = useStore((s) => s.analysis);
   const saveMemory = useStore((s) => s.saveMemory);
   const [notes, setNotes] = useState(memory?.architectureNotes ?? '');
+  const [vistaMapa, setVistaMapa] = useState<'archivos' | 'funciones'>('archivos');
 
   useEffect(() => setNotes(memory?.architectureNotes ?? ''), [memory]);
 
@@ -235,7 +237,13 @@ function ArchitectureSection() {
 
   return (
     <>
-      <Suspense fallback={<p className="hint">Dibujando el mapa...</p>}><ProjectMap /></Suspense>
+      <div className="mapa-filtros">
+        <button className={`mode-chip ${vistaMapa === 'archivos' ? 'active' : ''}`} onClick={() => setVistaMapa('archivos')}>Mapa de archivos</button>
+        <button className={`mode-chip ${vistaMapa === 'funciones' ? 'active' : ''}`} onClick={() => setVistaMapa('funciones')}>Llamadas entre funciones</button>
+      </div>
+      {vistaMapa === 'archivos'
+        ? <Suspense fallback={<p className="hint">Dibujando el mapa...</p>}><ProjectMap /></Suspense>
+        : <MapaFunciones />}
       <DiagramaArquitectura />
 
       <h4 style={{ margin: '20px 0 8px' }}>Archivos analizados</h4>

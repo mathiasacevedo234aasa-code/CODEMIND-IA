@@ -508,3 +508,4 @@ kbd {
 .visor-tramos-texto { flex: 1; overflow: auto; margin: 0; padding: 10px 14px; font-family: var(--mono); font-size: 12.5px; white-space: pre; }
 .barra-markdown { display: flex; gap: 3px; padding: 3px 8px; border-bottom: 1px solid var(--border); flex-wrap: wrap; } .barra-markdown .btn { min-width: 28px; padding: 0 6px; }
 .marcador-glifo::before { content: '★'; color: #5b8cff; font-size: 13px; display: block; text-align: center; }
+.linea-tiempo { display: flex; gap: 8px; align-items: center; margin-bottom: 8px; flex-wrap: wrap; } .linea-tiempo input[type=range] { flex: 1; min-width: 160px; }

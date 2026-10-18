@@ -165,6 +165,8 @@ export const api = {
   guardarMarcadores: (id: string, marcadores: { ruta: string; linea: number; nota: string }[]) =>
     request<{ marcadores: unknown[] }>(`/api/projects/${id}/marcadores`, { method: 'PUT', ...json({ marcadores }) }),
   usuarioGit: () => request<{ nombre: string | null; correo: string | null }>('/api/git/usuario'),
+  lineaTiempo: (id: string, n = 40) =>
+    request<{ commits: { hash: string; fecha: string; autor: string; asunto: string; archivos: string[] }[] }>(`/api/projects/${id}/git/linea-tiempo?n=${n}`),
   leerBorrador: (id: string) => request<{ content: string }>(`/api/projects/${id}/borrador`),
   guardarBorrador: (id: string, content: string) =>
     request<{ ok: true }>(`/api/projects/${id}/borrador`, { method: 'PUT', ...json({ content }) }),

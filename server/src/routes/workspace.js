@@ -109,6 +109,20 @@ router.post('/projects/:id/git/deshacer-commit', wrap(async (req, res) => {
   res.json({ ...r, status: await git.status(cwd) });
 }));
 
+/** Los ultimos commits con los archivos que toco cada uno, para la linea de tiempo del mapa. */
+router.get('/projects/:id/git/linea-tiempo', wrap(async (req, res) => {
+  const cwd = await rootOf(req);
+  const n = Math.min(200, Math.max(1, Number(req.query.n) || 40));
+  const r = await git.run(cwd, ['log', '-n', String(n), '--name-only', '--format=%x1e%h%x1f%ad%x1f%an%x1f%s', '--date=short'], { allowFailure: true });
+  if (r.code !== 0) return res.json({ commits: [] });
+  const commits = r.stdout.split(String.fromCharCode(30)).filter((b) => b.trim()).map((b) => {
+    const [cabecera, ...resto] = b.split(/\r?\n/);
+    const [hash, fecha, autor, asunto] = cabecera.split(String.fromCharCode(31));
+    return { hash, fecha, autor, asunto, archivos: resto.map((l) => l.trim()).filter(Boolean) };
+  });
+  res.json({ commits });
+}));
+
 router.get('/projects/:id/git/stash', wrap(async (req, res) => {
   res.json({ lista: await git.stashListar(await rootOf(req)) });
 }));
