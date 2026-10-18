@@ -105,6 +105,34 @@ await git.stashRecuperar(yo, 'stash@{0}');
 ok(g(yo, 'status', '--porcelain').includes('nuevo.txt') && (await git.stashListar(yo)).length === 0, 'stash se recupera');
 ok(Boolean(await lanza(() => git.stashDescartar(yo, '--all'))), 'rechaza referencias de stash raras');
 
+console.log('Historial de un archivo, blame, grafo, cherry-pick y etiquetas');
+const h = path.join(tmp, 'historia');
+g(tmp, 'init', '-q', '-b', 'main', h);
+g(h, 'config', 'user.email', 'p@p'); g(h, 'config', 'user.name', 'Ana'); g(h, 'config', 'core.autocrlf', 'false');
+await escribir(h, 'f.js', 'uno\n'); g(h, 'add', '.'); g(h, 'commit', '-qm', 'primero');
+await escribir(h, 'f.js', 'uno\ndos\n'); g(h, 'commit', '-qam', 'segundo');
+const hist = await git.historialArchivo(h, 'f.js');
+ok(hist.length === 2 && hist[0].asunto === 'segundo', 'historial del archivo, el más reciente primero');
+const bl = await git.blame(h, 'f.js');
+ok(bl.lineas.length === 2 && bl.commits[bl.lineas[1].hash].asunto === 'segundo' && bl.commits[bl.lineas[0].hash].autor === 'Ana', 'blame: cada línea con su commit y autor');
+g(h, 'checkout', '-q', '-b', 'otra');
+await escribir(h, 'g.js', 'nuevo\n'); g(h, 'add', '.'); g(h, 'commit', '-qm', 'en otra rama');
+const enOtra = g(h, 'rev-parse', 'HEAD');
+g(h, 'checkout', '-q', 'main');
+const gr = await git.grafo(h);
+ok(gr.commits.some((c) => c.hash === enOtra && !c.enRamaActual) && gr.commits.some((c) => c.refs.includes('otra')), 'el grafo ve la otra rama y sabe qué no está en la actual');
+await git.cherryPick(h, enOtra);
+ok(g(h, 'log', '-1', '--format=%s') === 'en otra rama', 'cherry-pick trae el commit a la rama actual');
+await escribir(h, 'sucio.js', 'x');
+ok(Boolean(await lanza(() => git.cherryPick(h, enOtra))), 'no hace cherry-pick con cambios sin confirmar');
+await fs.rm(path.join(h, 'sucio.js'));
+await git.crearEtiqueta(h, 'v1.0.0', 'Primera versión');
+const et = await git.etiquetas(h);
+ok(et[0]?.nombre === 'v1.0.0' && et[0].mensaje === 'Primera versión', 'crea y lista etiquetas anotadas');
+ok(Boolean(await lanza(() => git.crearEtiqueta(h, 'v1.0.0', 'otra vez'))), 'no pisa una etiqueta existente');
+ok(Boolean(await lanza(() => git.crearEtiqueta(h, '--force', 'x'))), 'rechaza nombres de etiqueta raros');
+ok((await git.borrarEtiqueta(h, 'v1.0.0')).length === 0, 'borra la etiqueta');
+
 console.log('Un proyecto interno no ve el repositorio de fuera');
 // La carpeta de datos (y con ella los proyectos internos) dentro de otro
 // repositorio: es lo que pasa en desarrollo, con los datos dentro del repo de

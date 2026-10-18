@@ -10,6 +10,7 @@ import { WebView } from './WebView';
 import { Icon } from './Icon';
 import { VistaMarkdown } from './VistaMarkdown';
 import { HistorialLocal } from './HistorialLocal';
+import { HistoriaGit } from './HistoriaGit';
 import { Esquema } from './Esquema';
 import { VisorMedio, VisorTramos } from './Visores';
 import { BarraMarkdown } from './BarraMarkdown';
@@ -81,6 +82,8 @@ function MitadEditor({ mitad, dividido }: { mitad: Mitad; dividido: boolean }) {
   const [vistaMd, setVistaMd] = useState(true);
   const temaMonaco = useTemaMonaco();
   const [historial, setHistorial] = useState<string | null>(null);
+  const [historiaGit, setHistoriaGit] = useState<string | null>(null);
+  const gitDisponible = useStore((s) => s.gitAvailable);
   const [verEsquema, setVerEsquema] = useState(false);
   const monacoRef = useRef<typeof Monaco | null>(null);
   const marcas = useRef<string[]>([]);
@@ -416,6 +419,12 @@ ${texto.slice(0, 8000)}
           </button>
         )}
         {historial && <HistorialLocal ruta={historial} alCerrar={() => setHistorial(null)} />}
+        {active?.kind === 'file' && gitDisponible && !esBorrador(active.path) && !activeFile?.vista && (
+          <button className="btn icon sm" title="Historia en git: commits y quién escribió cada línea (blame)" onClick={() => setHistoriaGit(active.path)}>
+            <Icon name="git" size={13} />
+          </button>
+        )}
+        {historiaGit && <HistoriaGit ruta={historiaGit} alCerrar={() => setHistoriaGit(null)} />}
         {enfocada && <BotonEjecutarArchivo />}
         {active && (
           <button

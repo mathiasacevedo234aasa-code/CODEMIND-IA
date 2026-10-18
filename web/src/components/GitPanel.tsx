@@ -2,6 +2,8 @@ import { lazy, Suspense, useCallback, useEffect, useRef, useState } from 'react'
 import { useStore } from '../state/useStore';
 import { api, type StashEntrada } from '../lib/api';
 import { BotonResumen } from './Resumenes';
+import { GrafoRamas } from './GrafoRamas';
+import { Etiquetas } from './Etiquetas';
 // Usa Monaco: se carga junto con él, solo si se pide la comparación.
 const DiffLadoALado = lazy(() =>
   import('../lib/monaco').then(() => import('./DiffLadoALado')).then((m) => ({ default: m.DiffLadoALado })));
@@ -133,6 +135,7 @@ export function GitPanel() {
   const [ladoALado, setLadoALado] = useState<{ ruta: string; staged: boolean } | null>(null);
   const [stashes, setStashes] = useState<StashEntrada[]>([]);
   const [diffStaged, setDiffStaged] = useState(false);
+  const [verRamas, setVerRamas] = useState(false);
 
   const alive = useRef(true);
   useEffect(() => {
@@ -255,10 +258,13 @@ export function GitPanel() {
           title="Crear una rama nueva"
           disabled={busy}
           onClick={() => void (async () => {
+            const sugerencias = nombresDeRama(status);
             const name = await ask({
               title: 'Nueva rama',
               label: `Se creará a partir de ${status.branch ?? 'la rama actual'}`,
               placeholder: 'arreglo/carrito',
+              value: sugerencias[0] ?? '',
+              hint: sugerencias.length ? `Sugerencias según tus cambios: ${sugerencias.join(' · ')}` : undefined,
               confirmText: 'Crear rama',
               validate: validarNombreRama,
             });
@@ -283,6 +289,17 @@ export function GitPanel() {
         </div>
       )}
 
+      <div style={{ display: 'flex', gap: 4, padding: '0 10px 6px' }}>
+        <button className={`mode-chip ${!verRamas ? 'active' : ''}`} onClick={() => setVerRamas(false)}>Cambios</button>
+        <button className={`mode-chip ${verRamas ? 'active' : ''}`} onClick={() => setVerRamas(true)}>Ramas y versiones</button>
+      </div>
+
+      {verRamas ? (
+        <div className="panel-body" style={{ padding: 10 }}>
+          <GrafoRamas alCambiar={() => void load()} />
+          <Etiquetas />
+        </div>
+      ) : (
       <div className="panel-body">
         {status.clean && (
           <p className="hint" style={{ padding: 12 }}>No hay cambios pendientes. El árbol de trabajo está limpio.</p>
@@ -452,6 +469,22 @@ export function GitPanel() {
           </div>
         )}
       </div>
+      )}
     </div>
   );
+}
+
+/**
+ * Nombres de rama sugeridos a partir de los cambios que tienes: el tipo
+ * (docs, chore, feature/fix) y el archivo principal. Solo sugerencias.
+ */
+function nombresDeRama(status: GitStatus): string[] {
+  const cambios = [...status.staged, ...status.unstaged, ...status.untracked];
+  if (!cambios.length) return [];
+  const slug = (t: string) => t.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 40);
+  const base = slug((cambios[0].path.split('/').pop() ?? '').replace(/\.[^.]+$/, '')) || 'cambios';
+  const tipos = new Set(cambios.map((c) => c.kind));
+  if (tipos.size === 1 && tipos.has('documentacion')) return [`docs/${base}`];
+  if (tipos.size === 1 && tipos.has('configuracion')) return [`chore/${base}`];
+  return [`feature/${base}`, `fix/${base}`];
 }

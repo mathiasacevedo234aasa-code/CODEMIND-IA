@@ -165,6 +165,17 @@ export const api = {
   guardarMarcadores: (id: string, marcadores: { ruta: string; linea: number; nota: string }[]) =>
     request<{ marcadores: unknown[] }>(`/api/projects/${id}/marcadores`, { method: 'PUT', ...json({ marcadores }) }),
   usuarioGit: () => request<{ nombre: string | null; correo: string | null }>('/api/git/usuario'),
+  historialGit: (id: string, path: string) =>
+    request<{ commits: { corto: string; hash: string; autor: string; fecha: string; asunto: string }[] }>(`/api/projects/${id}/git/archivo?path=${encodeURIComponent(path)}`),
+  blame: (id: string, path: string) => request<BlameResultado>(`/api/projects/${id}/git/blame?path=${encodeURIComponent(path)}`),
+  grafo: (id: string) => request<{ commits: CommitGrafo[]; head: string | null }>(`/api/projects/${id}/git/grafo`),
+  cherryPick: (id: string, cuerpo: { hash?: string; abortar?: boolean }) =>
+    request<{ status: GitStatus }>(`/api/projects/${id}/git/cherry-pick`, { method: 'POST', ...json(cuerpo) }),
+  etiquetas: (id: string) => request<{ etiquetas: { nombre: string; fecha: string; commit: string; mensaje: string }[] }>(`/api/projects/${id}/git/etiquetas`),
+  etiquetar: (id: string, cuerpo: { nombre?: string; mensaje?: string; borrar?: string }) =>
+    request<{ etiquetas: { nombre: string; fecha: string; commit: string; mensaje: string }[] }>(`/api/projects/${id}/git/etiquetas`, { method: 'POST', ...json(cuerpo) }),
+  subirEtiqueta: (id: string, nombre: string) =>
+    request<{ output: string }>(`/api/projects/${id}/github/etiqueta`, { method: 'POST', ...json({ nombre }) }),
   estadisticas: (id: string) => request<EstadisticasProyecto>(`/api/projects/${id}/estadisticas`),
   lineaTiempo: (id: string, n = 40) =>
     request<{ commits: { hash: string; fecha: string; autor: string; asunto: string; archivos: string[] }[] }>(`/api/projects/${id}/git/linea-tiempo?n=${n}`),
@@ -492,4 +503,14 @@ export interface EstadisticasProyecto {
   masGrandes: { ruta: string; bytes: number }[];
   git: null | { commits: number; porMes: Record<string, number>; autores: { nombre: string; commits: number }[]; masModificados: { ruta: string; veces: number }[] };
   documentacion: { aprobadas: number; porMes: Record<string, number> };
+}
+
+export interface BlameResultado {
+  lineas: { linea: number; hash: string; texto: string }[];
+  commits: Record<string, { hash: string; autor?: string; fecha?: string; asunto?: string }>;
+}
+
+export interface CommitGrafo {
+  hash: string; corto: string; autor: string; fecha: string; asunto: string;
+  padres: string[]; refs: string[]; enRamaActual: boolean;
 }

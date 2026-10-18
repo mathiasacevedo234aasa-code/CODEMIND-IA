@@ -487,3 +487,19 @@ export async function abortarPull(cwd) {
   }
   throw new HttpError(409, 'No hay ninguna fusion ni rebase a medias que deshacer.');
 }
+
+/** Sube una etiqueta (version) a GitHub. Nunca con --force. */
+export async function pushEtiqueta(cwd, nombre) {
+  const token = await getToken();
+  if (!token) throw new HttpError(400, 'Conecta tu cuenta de GitHub antes de subir etiquetas.');
+  await requireRepo(cwd);
+  const n = String(nombre ?? '').trim();
+  if (!/^[\w][\w.\-/]{0,99}$/.test(n)) throw new HttpError(400, 'Nombre de etiqueta no valido.');
+  const res = await run(cwd, ['push', 'origin', `refs/tags/${n}`], { allowFailure: true, env: await authEnv(token), timeout: 120000 });
+  const output = redact(`${res.stdout}\n${res.stderr}`.trim(), token);
+  if (res.code !== 0) {
+    if (/already exists|rejected/i.test(output)) throw new HttpError(409, `En GitHub ya hay una etiqueta "${n}" distinta. No se sobrescribe.`);
+    throw new HttpError(502, `No se pudo subir la etiqueta: ${output.split('\n').filter(Boolean).slice(-2).join(' ')}`);
+  }
+  return { output };
+}

@@ -111,6 +111,39 @@ router.post('/projects/:id/git/deshacer-commit', wrap(async (req, res) => {
 }));
 
 /** Los ultimos commits con los archivos que toco cada uno, para la linea de tiempo del mapa. */
+router.get('/projects/:id/git/archivo', wrap(async (req, res) => {
+  res.json({ commits: await git.historialArchivo(await rootOf(req), req.query.path) });
+}));
+
+router.get('/projects/:id/git/blame', wrap(async (req, res) => {
+  res.json(await git.blame(await rootOf(req), req.query.path));
+}));
+
+router.get('/projects/:id/git/grafo', wrap(async (req, res) => {
+  res.json(await git.grafo(await rootOf(req), Number(req.query.n) || 150));
+}));
+
+router.post('/projects/:id/git/cherry-pick', wrap(async (req, res) => {
+  const cwd = await rootOf(req);
+  if (req.body?.abortar) await git.abortarCherryPick(cwd);
+  else await git.cherryPick(cwd, req.body?.hash);
+  res.json({ status: await git.status(cwd) });
+}));
+
+router.post('/projects/:id/github/etiqueta', wrap(async (req, res) => {
+  res.json(await github.pushEtiqueta(await rootOf(req), req.body?.nombre));
+}));
+
+router.get('/projects/:id/git/etiquetas', wrap(async (req, res) => {
+  res.json({ etiquetas: await git.etiquetas(await rootOf(req)) });
+}));
+
+router.post('/projects/:id/git/etiquetas', wrap(async (req, res) => {
+  const cwd = await rootOf(req);
+  const b = req.body ?? {};
+  res.json({ etiquetas: b.borrar ? await git.borrarEtiqueta(cwd, b.borrar) : await git.crearEtiqueta(cwd, b.nombre, b.mensaje, b.commit) });
+}));
+
 router.get('/projects/:id/git/linea-tiempo', wrap(async (req, res) => {
   const cwd = await rootOf(req);
   const n = Math.min(200, Math.max(1, Number(req.query.n) || 40));
