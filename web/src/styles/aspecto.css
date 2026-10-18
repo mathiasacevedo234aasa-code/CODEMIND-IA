@@ -580,3 +580,33 @@ div:has(> .btn.sm + .btn.sm):not(.tabs):not(.bottom-tabs):not(.panel-head):not(.
 .ext { min-width: 18px; width: auto; padding: 0 2px; letter-spacing: -0.02em; overflow: visible; }
 /* Dentro de una tarjeta, un botón que no cabe junto al título baja de línea. */
 .card div:has(> .btn) { flex-wrap: wrap; row-gap: 6px; }
+
+/* ------------------------------------------------------ comodidad */
+
+/* La consola no hereda el estilo de los mensajes del chat (cada línea medía el doble). */
+.log-line .msg { padding: 0; line-height: 1.55; font-size: inherit; border-radius: 0; background: none; border: 0; }
+.log-line { align-items: baseline; }
+
+/* Transiciones suaves en lo que se pulsa, sin marear (se respeta "reducir movimiento"). */
+.btn, .tag, .tab, .bottom-tab, .card, input, select, textarea { transition: background-color .12s, border-color .12s, color .12s, box-shadow .12s; }
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; animation-duration: 0s !important; scroll-behavior: auto !important; } }
+
+/* Campos: se ve claramente cuál está activo. */
+input:focus, select:focus, textarea:focus { border-color: var(--accent) !important; box-shadow: 0 0 0 3px var(--accent-soft); outline: none; }
+
+/* Botones deshabilitados: se entiende que no se pueden pulsar, pero se leen. */
+.btn:disabled { opacity: .55; cursor: not-allowed; }
+
+/* Zonas de pulsación un poco más cómodas en los iconos. */
+.btn.icon { min-width: 26px; min-height: 26px; }
+
+/* Desplazamiento suave y barras de scroll discretas que se ven al pasar el ratón. */
+.panel-body, .doc-lectura, .chat-log, .bottom-body { scroll-behavior: smooth; }
+::-webkit-scrollbar-thumb { background: color-mix(in srgb, var(--border-strong) 70%, transparent); border: 2px solid transparent; background-clip: padding-box; }
+::-webkit-scrollbar-thumb:hover { background-color: var(--text-faint); }
+
+/* Textos largos más cómodos de leer. */
+.doc-section p, .doc-section li, .msg.ai { max-width: 75ch; }
+
+/* Selección de texto con el color de la aplicación. */
+::selection { background: var(--accent-soft); }
