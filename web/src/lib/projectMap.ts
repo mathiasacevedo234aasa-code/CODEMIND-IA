@@ -31,6 +31,8 @@ export interface AristaMapa {
   hasta: string;
   /** Especificador original, tal y como aparece escrito en el código. */
   via: string;
+  /** import('x'): se carga cuando hace falta. Se dibuja punteada. */
+  dinamica?: boolean;
 }
 
 export interface MapaProyecto {
@@ -120,7 +122,7 @@ function categoriaDe(simbolos: DetectedSymbol[]): SymbolCategory {
 const ES_ENTRADA = /(^|\/)(index|main|app|server)\.(html?|[jt]sx?|mjs)$|\.html?$/i;
 
 export function construirMapa(
-  analysis: Record<string, { symbols: DetectedSymbol[]; imports: string[] }>,
+  analysis: Record<string, { symbols: DetectedSymbol[]; imports: string[]; importsDinamicos?: string[] }>,
   documentados: Set<string>,
 ): MapaProyecto {
   const rutas = Object.keys(analysis);
@@ -132,7 +134,11 @@ export function construirMapa(
   const salientes = new Map<string, number>();
 
   for (const ruta of rutas) {
-    for (const especificador of analysis[ruta].imports) {
+    const todos = [
+      ...analysis[ruta].imports.map((e) => ({ e, dinamica: false })),
+      ...(analysis[ruta].importsDinamicos ?? []).map((e) => ({ e, dinamica: true })),
+    ];
+    for (const { e: especificador, dinamica } of todos) {
       const destino = resolver(ruta, especificador, existentes);
       if (!destino) {
         // No es un archivo del proyecto. Puede ser un paquete externo o un
@@ -147,7 +153,7 @@ export function construirMapa(
       if (destino === ruta) continue; // un archivo que se importa a sí mismo no aporta nada
       if (aristas.some((a) => a.desde === ruta && a.hasta === destino)) continue;
 
-      aristas.push({ desde: ruta, hasta: destino, via: especificador });
+      aristas.push({ desde: ruta, hasta: destino, via: especificador, ...(dinamica ? { dinamica: true } : {}) });
       entrantes.set(destino, (entrantes.get(destino) ?? 0) + 1);
       salientes.set(ruta, (salientes.get(ruta) ?? 0) + 1);
     }

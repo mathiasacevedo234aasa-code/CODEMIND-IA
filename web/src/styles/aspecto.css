@@ -509,3 +509,11 @@ kbd {
 .barra-markdown { display: flex; gap: 3px; padding: 3px 8px; border-bottom: 1px solid var(--border); flex-wrap: wrap; } .barra-markdown .btn { min-width: 28px; padding: 0 6px; }
 .marcador-glifo::before { content: '★'; color: #5b8cff; font-size: 13px; display: block; text-align: center; }
 .linea-tiempo { display: flex; gap: 8px; align-items: center; margin-bottom: 8px; flex-wrap: wrap; } .linea-tiempo input[type=range] { flex: 1; min-width: 160px; }
+
+/* Barras de las estadísticas */
+.barras { display: flex; flex-direction: column; gap: 4px; }
+.barra-fila { display: grid; grid-template-columns: minmax(80px, 140px) 1fr auto; gap: 8px; align-items: center; font-size: 12px; }
+.barra-etiqueta { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--text-dim); }
+.barra-pista { height: 8px; background: var(--bg-hover); border-radius: 4px; overflow: hidden; }
+.barra-pista > span { display: block; height: 100%; background: var(--accent); border-radius: 4px; }
+.barra-valor { font-variant-numeric: tabular-nums; }

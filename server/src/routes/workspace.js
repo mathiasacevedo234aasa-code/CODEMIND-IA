@@ -7,6 +7,7 @@ import * as github from '../services/github.js';
 import * as runner from '../services/runner.js';
 import * as ejecuciones from '../services/ejecuciones.js';
 import { resumir } from '../services/resumenes.js';
+import { estadisticas } from '../services/estadisticas.js';
 import * as search from '../services/search.js';
 import * as quality from '../services/quality.js';
 import * as terminal from '../services/terminal.js';
@@ -184,6 +185,11 @@ router.get('/projects/:id/github/pull/previa', wrap(async (req, res) => {
 
 router.post('/projects/:id/github/pull/abortar', wrap(async (req, res) => {
   res.json(await github.abortarPull(await rootOf(req)));
+}));
+
+router.get('/projects/:id/estadisticas', wrap(async (req, res) => {
+  await getProject(req.params.id);
+  res.json(await estadisticas(req.params.id, await rootOf(req)));
 }));
 
 router.post('/projects/:id/resumen', wrap(async (req, res) => {

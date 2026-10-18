@@ -165,6 +165,7 @@ export const api = {
   guardarMarcadores: (id: string, marcadores: { ruta: string; linea: number; nota: string }[]) =>
     request<{ marcadores: unknown[] }>(`/api/projects/${id}/marcadores`, { method: 'PUT', ...json({ marcadores }) }),
   usuarioGit: () => request<{ nombre: string | null; correo: string | null }>('/api/git/usuario'),
+  estadisticas: (id: string) => request<EstadisticasProyecto>(`/api/projects/${id}/estadisticas`),
   lineaTiempo: (id: string, n = 40) =>
     request<{ commits: { hash: string; fecha: string; autor: string; asunto: string; archivos: string[] }[] }>(`/api/projects/${id}/git/linea-tiempo?n=${n}`),
   leerBorrador: (id: string) => request<{ content: string }>(`/api/projects/${id}/borrador`),
@@ -482,4 +483,13 @@ export interface EnvioIA {
   usd: number | null;
   mensajes: { role: string; content: string }[];
   respuesta: string;
+}
+
+export interface EstadisticasProyecto {
+  archivos: number;
+  lineas: number;
+  porLenguaje: { ext: string; archivos: number; lineas: number; bytes: number }[];
+  masGrandes: { ruta: string; bytes: number }[];
+  git: null | { commits: number; porMes: Record<string, number>; autores: { nombre: string; commits: number }[]; masModificados: { ruta: string; veces: number }[] };
+  documentacion: { aprobadas: number; porMes: Record<string, number> };
 }

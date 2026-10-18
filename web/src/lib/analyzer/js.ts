@@ -17,6 +17,7 @@ import { CATEGORIA_DE } from '../types.ts';
 export interface AnalisisJs {
   simbolos: DetectedSymbol[];
   imports: string[];
+  importsDinamicos?: string[];
   classes: string[];
   error: string | null;
 }
@@ -179,6 +180,8 @@ export function analizarJs(
 
   const simbolos: DetectedSymbol[] = [];
   const imports: string[] = [];
+  // import('./x.js'): se carga cuando el código lo pide, no al arrancar.
+  const dinamicos: string[] = [];
   const classes: string[] = [];
   const ocurrencias = new Map<string, number>();
   const classStack: string[] = [];
@@ -224,6 +227,13 @@ export function analizarJs(
 
   walk(ast, (node, parent) => {
     if (node.type === 'ImportDeclaration' && node.source?.value) imports.push(String(node.source.value));
+    // require('x') con texto fijo es una dependencia como un import (CommonJS);
+    // import('x') es dinámica. Con una variable dentro no se puede saber a qué.
+    if (node.type === 'CallExpression' && node.arguments?.[0]?.type === 'StringLiteral') {
+      if (node.callee?.type === 'Import') dinamicos.push(String(node.arguments[0].value));
+      else if (node.callee?.type === 'Identifier' && node.callee.name === 'require') imports.push(String(node.arguments[0].value));
+    }
+    if (node.type === 'ImportExpression' && node.source?.type === 'StringLiteral') dinamicos.push(String(node.source.value));
 
     if (node.type === 'ClassDeclaration' || node.type === 'ClassExpression') {
       const name = node.id?.name;
@@ -300,5 +310,5 @@ export function analizarJs(
     }
   });
 
-  return { simbolos, imports: [...new Set(imports)], classes: [...new Set(classes)], error: null };
+  return { simbolos, imports: [...new Set(imports)], importsDinamicos: [...new Set(dinamicos)], classes: [...new Set(classes)], error: null };
 }

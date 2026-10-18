@@ -396,6 +396,15 @@ ${texto.slice(0, 8000)}
             Vista previa
           </button>
         )}
+        {active?.kind === 'file' && esConfiguracion(active.path) && (
+          <button
+            className="btn sm outline"
+            title="La IA explica para qué sirve cada parte de este archivo (no lo cambia)"
+            onClick={() => explicarConfiguracion(active.path, activeFile?.content ?? '')}
+          >
+            Explicar
+          </button>
+        )}
         {active?.kind === 'file' && (
           <button className={`btn icon sm ${verEsquema ? 'activo' : ''}`} title="Esquema del archivo" onClick={() => setVerEsquema((v) => !v)}>
             <Icon name="fn" size={13} />
@@ -531,4 +540,20 @@ function ajusteDeLinea(ruta: string, editor: { wordWrap: boolean; ajusteSiempre?
   if (lista(editor.ajusteNunca).includes(ext)) return false;
   if (lista(editor.ajusteSiempre).includes(ext)) return true;
   return editor.wordWrap;
+}
+
+/** Archivos de configuración que merece la pena poder explicar de un clic. */
+function esConfiguracion(ruta: string) {
+  const n = (ruta.split('/').pop() ?? '').toLowerCase();
+  return /^(package\.json|tsconfig.*\.json|jsconfig\.json|\.eslintrc.*|eslint\.config\..*|\.prettierrc.*|vite\.config\..*|webpack\.config\..*|babel\.config\..*|docker-compose.*\.ya?ml|dockerfile|\.gitignore|\.editorconfig|pyproject\.toml|requirements\.txt|cargo\.toml|go\.mod|composer\.json|pom\.xml|build\.gradle.*|\.env\.example)$/i.test(n);
+}
+
+function explicarConfiguracion(ruta: string, contenido: string) {
+  useStore.getState().askAssistant(
+    `Explica ${ruta.split('/').pop()}: para qué sirve cada sección, opción o script, en el orden en que aparecen, y qué efecto tiene en el proyecto. No propongas cambios.`,
+    `Archivo ${ruta}:
+\`\`\`
+${contenido.slice(0, 15000)}
+\`\`\``,
+  );
 }

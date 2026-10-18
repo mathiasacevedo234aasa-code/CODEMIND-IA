@@ -286,8 +286,9 @@ export function ProjectMap() {
                 strokeWidth={activa ? 1.8 : 1}
                 opacity={relacionada(a.desde, a.hasta) ? 0.9 : 0.12}
                 markerEnd={activa ? 'url(#punta-activa)' : 'url(#punta)'}
+                strokeDasharray={a.dinamica ? '5 4' : undefined}
               >
-                <title>{`${a.desde} → ${a.hasta}  (${a.via})`}</title>
+                <title>{`${a.desde} → ${a.hasta}  (${a.via})${a.dinamica ? ' · carga dinámica: solo cuando hace falta' : ''}`}</title>
               </line>
             );
           })}

@@ -3,6 +3,7 @@ import { analizarJs } from './js.ts';
 import { analizarHtml } from './html.ts';
 import { analizarCss, importacionesCss } from './css.ts';
 import { analizarMarkdown } from './markdown.ts';
+import { analizarDockerfile, analizarSql, analizarYaml } from './configuracion.ts';
 import { analizarConGramatica, extensionesConGramatica, gramaticaDe, NOMBRE_LENGUAJE } from './treesitter.ts';
 
 /**
@@ -20,12 +21,16 @@ const PROPIOS = new Set([
   'html', 'htm', 'vue', 'svelte', 'astro',
   'css', 'scss', 'less',
   'md', 'mdx',
+  'yml', 'yaml', 'sql', 'dockerfile',
 ]);
 
 /** Todo lo analizable: lo propio mas los lenguajes que llevan gramatica. */
 const SOPORTADOS = new Set([...PROPIOS, ...extensionesConGramatica()]);
 
 export function extensionOf(path: string): string {
+  // Dockerfile no lleva extensión: se reconoce por el nombre.
+  const nombre = path.split('/').pop() ?? path;
+  if (/^dockerfile$/i.test(nombre) || /\.dockerfile$/i.test(nombre)) return 'dockerfile';
   const i = path.lastIndexOf('.');
   return i === -1 ? '' : path.slice(i + 1).toLowerCase();
 }
@@ -36,7 +41,7 @@ export function languageOf(path: string): string {
     js: 'javascript', mjs: 'javascript', cjs: 'javascript', jsx: 'javascript',
     ts: 'typescript', mts: 'typescript', cts: 'typescript', tsx: 'typescript',
     html: 'html', htm: 'html', css: 'css', scss: 'scss', less: 'less',
-    json: 'json', md: 'markdown', mdx: 'markdown', vue: 'html', svelte: 'html',
+    json: 'json', md: 'markdown', sql: 'sql', dockerfile: 'dockerfile', mdx: 'markdown', vue: 'html', svelte: 'html',
     astro: 'html', svg: 'xml', yml: 'yaml', yaml: 'yaml',
     // Los que llevan gramatica: el identificador de Monaco coincide casi
     // siempre con el de tree-sitter, salvo estos.
@@ -75,6 +80,8 @@ export interface FileAnalysis {
   symbols: DetectedSymbol[];
   /** Especificadores tal y como aparecen en el codigo, sin resolver. */
   imports: string[];
+  /** import('x'): dependencias que se cargan bajo demanda. */
+  importsDinamicos?: string[];
   classes: string[];
   error: string | null;
 }
@@ -128,11 +135,17 @@ export function analyzeFile(filePath: string, source: string): FileAnalysis {
     };
   } else if (ext === 'css' || ext === 'scss' || ext === 'less') {
     resultado = { symbols: analizarCss(filePath, source), imports: importacionesCss(source), classes: [], error: null };
+  } else if (ext === 'yml' || ext === 'yaml') {
+    resultado = { symbols: analizarYaml(filePath, source), imports: [], classes: [], error: null };
+  } else if (ext === 'sql') {
+    resultado = { symbols: analizarSql(filePath, source), imports: [], classes: [], error: null };
+  } else if (ext === 'dockerfile') {
+    resultado = { symbols: analizarDockerfile(filePath, source), imports: [], classes: [], error: null };
   } else if (ext === 'md' || ext === 'mdx') {
     resultado = { symbols: analizarMarkdown(filePath, source), imports: [], classes: [], error: null };
   } else {
     const res = analizarJs(filePath, source, { lenguaje: languageOf(filePath) });
-    resultado = { symbols: res.simbolos, imports: res.imports, classes: res.classes, error: res.error };
+    resultado = { symbols: res.simbolos, imports: res.imports, importsDinamicos: res.importsDinamicos, classes: res.classes, error: res.error };
   }
 
   // Código incompleto: se conserva lo último que sí se pudo analizar, para no
@@ -162,7 +175,7 @@ export function analyzeFile(filePath: string, source: string): FileAnalysis {
  */
 export async function analizarArchivo(filePath: string, source: string): Promise<FileAnalysis> {
   const ext = extensionOf(filePath);
-  if (!gramaticaDe(ext)) return analyzeFile(filePath, source);
+  if (!gramaticaDe(ext) || PROPIOS.has(ext)) return analyzeFile(filePath, source);
 
   let resultado: FileAnalysis;
   try {

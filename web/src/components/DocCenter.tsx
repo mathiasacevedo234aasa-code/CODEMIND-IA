@@ -8,15 +8,17 @@ import { DiagramaArquitectura } from './DiagramaArquitectura';
 import { DocIncompleta } from './DocIncompleta';
 import { BotonResumen } from './Resumenes';
 import { MapaFunciones } from './MapaFunciones';
+import { Estadisticas } from './Estadisticas';
 import { pedirBorrador, type Borrador } from '../lib/borradorGeneral';
 const ProjectMap = lazy(() => import('./ProjectMap').then((m) => ({ default: m.ProjectMap })));
 import { GlosarioPanel } from './GlosarioPanel';
 
-type Section = 'general' | 'arquitectura' | 'glosario' | 'funciones' | 'incompleta' | 'decisiones' | 'progreso' | 'historial';
+type Section = 'general' | 'arquitectura' | 'estadisticas' | 'glosario' | 'funciones' | 'incompleta' | 'decisiones' | 'progreso' | 'historial';
 
 const SECTIONS: { id: Section; label: string }[] = [
   { id: 'general', label: 'Descripcion general' },
   { id: 'arquitectura', label: 'Arquitectura' },
+  { id: 'estadisticas', label: 'Estadísticas' },
   { id: 'glosario', label: 'Glosario' },
   { id: 'funciones', label: 'Documentacion de funciones' },
   { id: 'incompleta', label: 'Incompleta' },
@@ -627,6 +629,7 @@ export function DocCenter() {
           {section === 'general' && <GeneralSection />}
           {section === 'arquitectura' && <ArchitectureSection />}
           {section === 'incompleta' && <DocIncompleta />}
+          {section === 'estadisticas' && <Estadisticas />}
           {section === 'glosario' && <GlosarioPanel />}
           {section === 'funciones' && <FunctionsSection />}
           {section === 'decisiones' && <DecisionsSection />}
