@@ -82,7 +82,7 @@ async function prepararChat(body) {
   const settings = await readSettings();
   let material = contextText;
 
-  if (projectId && (mode === 'context' || mode === 'comprehension')) {
+  if (projectId && ['context', 'comprehension', 'principiante', 'clase', 'repaso'].includes(mode)) {
     const project = await getProject(projectId);
     const memory = await readMemory(projectId);
     const store = await readDocs(projectId);

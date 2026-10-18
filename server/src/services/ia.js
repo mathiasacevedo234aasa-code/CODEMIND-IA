@@ -32,6 +32,12 @@ const MODE_RULES = {
     'Modo Comprension: respondes preguntas sobre el codigo que se te muestra, sin modificarlo.',
   context:
     'Modo Contexto del proyecto: respondes sobre objetivo, arquitectura, funcionalidades, decisiones y progreso, usando solo la memoria y los datos del proyecto. Si algo no esta registrado, di que no consta.',
+  principiante:
+    'Modo Principiante: respondes sobre el codigo mostrado como a alguien que empieza a programar. Sin jerga (si usas un termino tecnico, lo defines en la misma frase), frases cortas y, si ayuda, una analogia cotidiana.',
+  clase:
+    'Modo Clase paso a paso: conviertes la respuesta en una mini clase sobre el codigo mostrado. Empieza con el objetivo en una frase, sigue con pasos numerados que recorren el codigo en el orden en que se ejecuta, y termina con un resumen de tres lineas.',
+  repaso:
+    'Modo Repaso: generas entre 3 y 5 preguntas de repaso sobre el codigo mostrado, de dificultad creciente, para comprobar que se ha entendido. Primero todas las preguntas numeradas; despues, bajo el titulo "Respuestas", las respuestas breves en el mismo orden.',
   technical:
     'Modo Consulta tecnica: respondes preguntas generales sobre HTML, CSS, JavaScript, TypeScript y tecnologias web. Puedes mostrar ejemplos didacticos genericos, pero nunca reescribes el codigo del usuario.',
 };
@@ -240,7 +246,10 @@ export async function generateFunctionDoc({ code, context, model, proveedor, tem
 /** Los mensajes de una consulta al asistente, iguales con o sin streaming. */
 function mensajesDeChat({ mode = 'comprehension', question, contextText, idioma, historial = [] }) {
   if (!question || !question.trim()) throw new HttpError(400, 'La pregunta esta vacia.');
-  const modeRule = MODE_RULES[mode] || MODE_RULES.comprehension;
+  // Citar archivo y linea: el material llega con las lineas numeradas, asi
+  // que la cita apunta al sitio exacto y la interfaz la convierte en enlace.
+  const citar = mode === 'technical' ? '' : '\nCuando te apoyes en el codigo, cita archivo y linea con el formato ruta:linea (por ejemplo js/app.js:12), usando los numeros de linea que trae el material. No cites lineas que no hayas visto.';
+  const modeRule = (MODE_RULES[mode] || MODE_RULES.comprehension) + citar;
   // Los ultimos turnos de la conversacion, para que "y eso por que?" tenga
   // sentido. Pocos y recortados: el material del proyecto pesa mas.
   const previos = (Array.isArray(historial) ? historial : [])

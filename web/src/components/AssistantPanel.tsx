@@ -2,12 +2,16 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { useStore } from '../state/useStore';
 import { api, type Conversacion } from '../lib/api';
 import { esFalloDelServicio, siguienteProveedor } from '../lib/respaldo';
+import { numerarLineas, TextoConCitas } from './TextoConCitas';
 import { Icon } from './Icon';
 
-type Mode = 'comprehension' | 'context' | 'technical' | 'documentation';
+type Mode = 'comprehension' | 'principiante' | 'clase' | 'repaso' | 'context' | 'technical' | 'documentation';
 
 const MODES: { id: Mode; label: string; hint: string }[] = [
   { id: 'comprehension', label: 'Comprension', hint: 'Preguntas sobre el codigo abierto o seleccionado. No lo modifica.' },
+  { id: 'principiante', label: 'Principiante', hint: 'Sobre el código abierto, sin jerga y con frases cortas, como para quien empieza.' },
+  { id: 'clase', label: 'Clase paso a paso', hint: 'Una mini clase: objetivo, recorrido del código en orden y resumen.' },
+  { id: 'repaso', label: 'Repaso', hint: 'Preguntas para comprobar que has entendido el código abierto, con las respuestas al final.' },
   { id: 'context', label: 'Contexto', hint: 'Objetivo, arquitectura, progreso y decisiones registradas del proyecto.' },
   { id: 'technical', label: 'Consulta tecnica', hint: 'Dudas generales de HTML, CSS, JavaScript, TypeScript y frameworks.' },
   { id: 'documentation', label: 'Documentacion', hint: 'Para documentar una funcion usa el boton del panel de funciones.' },
@@ -33,7 +37,18 @@ export function AssistantPanel() {
   const [mode, setMode] = useState<Mode>('comprehension');
   const [includeFile, setIncludeFile] = useState(true);
   /** Archivos extra que el usuario quiere que la IA tenga delante. */
-  const [extras, setExtras] = useState<Set<string>>(new Set());
+  // Archivos fijos como contexto: se recuerdan por proyecto (en este equipo).
+  const claveFijos = project ? `codemind.contexto-fijo.${project.id}` : null;
+  const [extras, setExtrasEstado] = useState<Set<string>>(new Set());
+  useEffect(() => {
+    if (!claveFijos) return;
+    try { setExtrasEstado(new Set(JSON.parse(localStorage.getItem(claveFijos) ?? '[]'))); } catch { setExtrasEstado(new Set()); }
+  }, [claveFijos]);
+  const setExtras = (f: (previo: Set<string>) => Set<string>) => setExtrasEstado((previo) => {
+    const siguiente = f(previo);
+    try { if (claveFijos) localStorage.setItem(claveFijos, JSON.stringify([...siguiente])); } catch { /* sin almacenamiento */ }
+    return siguiente;
+  });
   const [eligiendoArchivos, setEligiendoArchivos] = useState(false);
   const [question, setQuestion] = useState('');
   const [busy, setBusy] = useState(false);
@@ -146,7 +161,20 @@ export function AssistantPanel() {
     const parts: string[] = [];
     if (mode !== 'technical' && inventory) parts.push(inventory);
     if (includeFile && active && mode !== 'technical') {
-      parts.push(`Archivo actualmente abierto (${active.path}):\n\`\`\`\n${active.content.slice(0, 12000)}\n\`\`\``);
+      parts.push(`Archivo actualmente abierto (${active.path}), con las líneas numeradas:\n\`\`\`\n${numerarLineas(active.content)}\n\`\`\``);
+    }
+    // Los archivos fijos (hasta ~40.000 caracteres entre todos, para no
+    // desbordar al modelo). Lo del editor manda sobre lo del disco.
+    if (mode !== 'technical') {
+      let presupuesto = 40000;
+      for (const ruta of extras) {
+        if (ruta === active?.path || presupuesto <= 0) continue;
+        const contenido = files[ruta]?.content ?? sources[ruta];
+        if (typeof contenido !== 'string') continue;
+        const trozo = contenido.slice(0, Math.min(12000, presupuesto));
+        presupuesto -= trozo.length;
+        parts.push(`Archivo fijado como contexto (${ruta}), con las líneas numeradas:\n\`\`\`\n${numerarLineas(trozo)}\n\`\`\``);
+      }
     }
     return parts.join('\n\n');
   };
@@ -175,7 +203,7 @@ export function AssistantPanel() {
       coste = `$${f(min)}–$${f(max)}`;
     }
     return { entrada, salidaMax, coste };
-  }, [messages, question, mode, includeFile, active?.path, active?.content, inventory, settings]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [messages, question, mode, includeFile, active?.path, active?.content, inventory, settings, extras, sources]); // eslint-disable-line react-hooks/exhaustive-deps
 
   /**
    * Envia una consulta. `contextoDirecto` permite lanzarla desde fuera (por
@@ -332,7 +360,7 @@ export function AssistantPanel() {
         {messages.map((m, i) => (
           <div key={i} className={`msg ${m.who}`}>
             <div className="who">{m.who === 'user' ? 'Tú' : `Asistente${m.model ? ` · ${m.model}` : ''}`}</div>
-            {m.text || (m.escribiendo ? <span className="hint"><span className="spinner" /> Pensando...</span> : '')}
+            {m.text ? (m.who === 'ai' && !m.escribiendo ? <TextoConCitas texto={m.text} /> : m.text) : (m.escribiendo ? <span className="hint"><span className="spinner" /> Pensando...</span> : '')}
             {m.escribiendo && m.text && <span className="cursor-escribiendo" />}
           </div>
         ))}
