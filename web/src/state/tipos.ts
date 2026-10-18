@@ -104,7 +104,7 @@ export interface State {
   logs: LogEntry[];
   error: string | null;
   /** Dónde está el cursor del editor con el foco (para las migas y la barra de estado). */
-  cursor: { path: string; line: number; column: number } | null;
+  cursor: { path: string; line: number; column: number; cursores?: number } | null;
   setCursor: (c: State['cursor']) => void;
   /** Fija o suelta una pestaña: las fijadas van primero y no se cierran sin querer. */
   fijarTab: (id: string) => void;
@@ -139,6 +139,8 @@ export interface Actions {
   dividirEditor: () => void;
   moverTabAPanel: (id: string, panel: PanelEditor) => void;
   unirEditor: () => void;
+  /** Cierra un grupo: sus pestañas pasan al primero, sin cerrar ninguna. */
+  cerrarGrupo: (panel: PanelEditor) => void;
   setPanelActivo: (panel: PanelEditor) => void;
   setTerminalSesion: (id: string | null) => void;
   setSymbolSeleccionado: (id: string | null) => void;
@@ -147,8 +149,9 @@ export interface Actions {
   setActiveTab: (id: string) => void;
   updateWebTab: (id: string, url: string) => void;
   editFile: (path: string, content: string) => void;
-  saveFile: (path?: string) => Promise<void>;
-  saveAll: () => Promise<void>;
+  /** `formatear`: guardado a mano (Ctrl+S, Guardar). El autoguardado nunca formatea. */
+  saveFile: (path?: string, opciones?: { formatear?: boolean }) => Promise<void>;
+  saveAll: (opciones?: { formatear?: boolean }) => Promise<void>;
   createEntry: (path: string, kind: 'file' | 'dir') => Promise<void>;
   renameEntry: (from: string, to: string) => Promise<void>;
   copyEntry: (from: string, to: string) => Promise<void>;

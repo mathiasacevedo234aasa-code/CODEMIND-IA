@@ -1,3 +1,5 @@
+import path from 'node:path';
+import fs from 'node:fs/promises';
 import { Router } from 'express';
 import * as conversaciones from '../services/conversaciones.js';
 import * as historialLocal from '../services/historialLocal.js';
@@ -22,6 +24,7 @@ import {
   newId,
   HttpError,
   workspaceDir,
+  projectDir,
 } from '../services/store.js';
 
 const router = Router();
@@ -167,6 +170,32 @@ router.put('/:id/session', async (req, res, next) => {
     await getProject(req.params.id);
     const { tabs = [], activeTabId = null, leftView = 'explorador' } = req.body?.session ?? {};
     await writeSession(req.params.id, { tabs, activeTabId, leftView });
+    res.json({ ok: true });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// --------------------------------------------------------------- borrador
+//
+// Un bloc de notas por proyecto, fuera de la carpeta del proyecto: lo que
+// escribes ahí nunca acaba en tu código ni en git.
+
+const borradorDe = (id) => path.join(projectDir(id), 'borrador.txt');
+
+router.get('/:id/borrador', async (req, res, next) => {
+  try {
+    await getProject(req.params.id);
+    res.json({ content: await fs.readFile(borradorDe(req.params.id), 'utf8').catch(() => '') });
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.put('/:id/borrador', async (req, res, next) => {
+  try {
+    await getProject(req.params.id);
+    await fs.writeFile(borradorDe(req.params.id), String(req.body?.content ?? '').slice(0, 2_000_000), 'utf8');
     res.json({ ok: true });
   } catch (err) {
     next(err);

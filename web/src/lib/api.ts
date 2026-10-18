@@ -159,6 +159,9 @@ export const api = {
     request<{ versiones: VersionLocal[] }>(`/api/projects/${id}/historial-local?path=${encodeURIComponent(path)}`),
   versionLocal: (id: string, path: string, v: string) =>
     request<{ contenido: string }>(`/api/projects/${id}/historial-local/version?path=${encodeURIComponent(path)}&v=${encodeURIComponent(v)}`),
+  leerBorrador: (id: string) => request<{ content: string }>(`/api/projects/${id}/borrador`),
+  guardarBorrador: (id: string, content: string) =>
+    request<{ ok: true }>(`/api/projects/${id}/borrador`, { method: 'PUT', ...json({ content }) }),
   copyEntry: (id: string, from: string, to: string) =>
     request<{ from: string; to: string }>(`/api/projects/${id}/copy`, { method: 'POST', ...json({ from, to }) }),
   deleteEntry: (id: string, path: string) =>

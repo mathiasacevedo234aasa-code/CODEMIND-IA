@@ -459,6 +459,8 @@ export interface EditorSettings {
   zoomInterfaz?: number;
   /** Alto contraste: negro, blanco y bordes marcados. */
   altoContraste?: boolean;
+  /** Formatear con Prettier al guardar a mano. */
+  formatearAlGuardar?: boolean;
   fontSize: number;
   tabSize: number;
   wordWrap: boolean;
@@ -524,7 +526,9 @@ export interface LogEntry {
 
 /** Una pestaña del área central: un archivo del proyecto o una página web. */
 /** En que mitad del editor vive una pestana cuando esta dividido. */
-export type PanelEditor = 'a' | 'b';
+/** Grupos del editor, de izquierda a derecha. Hasta cuatro. */
+export type PanelEditor = 'a' | 'b' | 'c' | 'd';
+export const GRUPOS: PanelEditor[] = ['a', 'b', 'c', 'd'];
 
 export type CenterTab =
   | { kind: 'file'; id: string; path: string; panel?: PanelEditor; fijada?: boolean }

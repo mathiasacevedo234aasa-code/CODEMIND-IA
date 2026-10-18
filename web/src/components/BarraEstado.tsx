@@ -71,6 +71,7 @@ export function BarraEstado() {
         </button>
       )}
       <span style={{ flex: 1 }} />
+      {(cursor?.cursores ?? 1) > 1 && <span title="Varios cursores: lo que escribas va a todos. Esc vuelve a uno.">{cursor!.cursores} cursores · Esc para uno</span>}
       {ruta && cursor?.path === ruta && <span>Ln {cursor.line}, Col {cursor.column}</span>}
       {ruta && <span>{languageOf(ruta)}</span>}
       <button onClick={() => setSettingsOpen(true)} title="Proveedor y modelo de IA">

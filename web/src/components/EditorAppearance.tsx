@@ -133,6 +133,7 @@ export function EditorAppearance() {
             ['minimap', 'Minimapa', 'Vista reducida del archivo en el lateral.'],
             ['emmet', 'Abreviaturas Emmet', 'Escribe html:5 y pulsa Tab para desplegar la página entera.'],
             ['autoSave', 'Autoguardado', 'Guarda solo tras una pausa al escribir. Ctrl+S sigue funcionando.'],
+            ['formatearAlGuardar', 'Formatear al guardar (Prettier)', 'Al guardar a mano, ordena espacios y comillas de JS, TS, CSS, HTML, JSON, Markdown y YAML. Respeta tu .prettierrc. Nunca en el autoguardado.'],
           ] as const).map(([key, label, ayuda]) => (
             <label key={key} className="switch-row">
               <input

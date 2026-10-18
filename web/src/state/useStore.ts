@@ -60,7 +60,7 @@ export const useStore = create<Tienda>((set, get) => ({
   terminalSesionId: null,
   symbolSeleccionado: null,
   panelActivo: 'a',
-  ultimoPorPanel: { a: null, b: null },
+  ultimoPorPanel: { a: null, b: null, c: null, d: null },
   activeTabId: null,
   files: {},
   saving: false,

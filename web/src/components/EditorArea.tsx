@@ -5,12 +5,13 @@ import { languageOf } from '../lib/analyzer';
 import { fontStackOf } from '../lib/editorFonts';
 import { activarEmmet } from '../lib/emmet';
 import { registrarProveedores } from '../lib/proveedoresMonaco';
-import { panelDe, type PanelEditor as Mitad } from '../lib/types';
+import { GRUPOS, panelDe, type PanelEditor as Mitad } from '../lib/types';
 import { WebView } from './WebView';
 import { Icon } from './Icon';
 import { VistaMarkdown } from './VistaMarkdown';
 import { HistorialLocal } from './HistorialLocal';
 import { Esquema } from './Esquema';
+import { esBorrador } from '../lib/borrador';
 import { fijarEditorActivo } from '../lib/editorActivo';
 import type * as Monaco from 'monaco-editor';
 import { registrarTemaImportado, useTemaMonaco } from '../lib/tema';
@@ -28,13 +29,15 @@ export function EditorArea() {
   const tabs = useStore((s) => s.tabs);
   const saveFile = useStore((s) => s.saveFile);
 
-  const dividido = tabs.some((t) => panelDe(t) === 'b');
+  // Los grupos con alguna pestaña (el primero siempre).
+  const grupos = GRUPOS.filter((g) => g === 'a' || tabs.some((t) => panelDe(t) === g));
+  const dividido = grupos.length > 1;
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') {
         e.preventDefault();
-        void saveFile();
+        void saveFile(undefined, { formatear: true });
       }
     };
     window.addEventListener('keydown', onKey);
@@ -43,8 +46,7 @@ export function EditorArea() {
 
   return (
     <div className={`editor-mitades ${dividido ? 'dividido' : ''}`}>
-      <MitadEditor mitad="a" dividido={dividido} />
-      {dividido && <MitadEditor mitad="b" dividido />}
+      {grupos.map((g) => <MitadEditor key={g} mitad={g} dividido={dividido} />)}
     </div>
   );
 }
@@ -59,7 +61,7 @@ function MitadEditor({ mitad, dividido }: { mitad: Mitad; dividido: boolean }) {
   const setPanelActivo = useStore((s) => s.setPanelActivo);
   const closeTab = useStore((s) => s.closeTab);
   const dividirEditor = useStore((s) => s.dividirEditor);
-  const unirEditor = useStore((s) => s.unirEditor);
+  const cerrarGrupo = useStore((s) => s.cerrarGrupo);
   const updateWebTab = useStore((s) => s.updateWebTab);
   const editFile = useStore((s) => s.editFile);
   const saveFile = useStore((s) => s.saveFile);
@@ -128,13 +130,13 @@ function MitadEditor({ mitad, dividido }: { mitad: Mitad; dividido: boolean }) {
       editor.onDidChangeCursorPosition(guardarVista);
       editor.onDidScrollChange(guardarVista);
     }
-    editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyS, () => void saveFile());
+    editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyS, () => void saveFile(undefined, { formatear: true }));
     editor.onDidFocusEditorText(() => setPanelActivo(mitad));
     // La posición del cursor la usan las migas y la barra de estado.
     const rutaMontada = active?.kind === 'file' ? active.path : null;
     const avisarCursor = () => {
       const p = editor.getPosition();
-      if (rutaMontada && p && editor.hasTextFocus()) setCursor({ path: rutaMontada, line: p.lineNumber, column: p.column });
+      if (rutaMontada && p && editor.hasTextFocus()) setCursor({ path: rutaMontada, line: p.lineNumber, column: p.column, cursores: editor.getSelections()?.length ?? 1 });
     };
     editor.onDidChangeCursorPosition(avisarCursor);
     editor.onDidFocusEditorText(avisarCursor);
@@ -144,6 +146,26 @@ function MitadEditor({ mitad, dividido }: { mitad: Mitad; dividido: boolean }) {
 
     // "Explícame esto" sobre cualquier trozo de código, no solo funciones
     // detectadas. Aparece en el menú contextual y tiene atajo propio.
+    // Renombrar en todo el proyecto, con vista previa (F2).
+    editor.addAction({
+      id: 'codemind.renombrar',
+      label: 'Renombrar en todo el proyecto…',
+      keybindings: [monaco.KeyCode.F2],
+      contextMenuGroupId: 'navigation',
+      contextMenuOrder: 1.6,
+      run: (ed) => {
+        const pos = ed.getPosition();
+        const palabra = pos ? ed.getModel()?.getWordAtPosition(pos)?.word : null;
+        if (palabra) window.dispatchEvent(new CustomEvent('codemind:renombrar', { detail: palabra }));
+      },
+    });
+    // Cuántos cursores hay: con varios, la barra de estado lo dice y recuerda Esc.
+    editor.onDidChangeCursorSelection(() => {
+      const n = editor.getSelections()?.length ?? 1;
+      const c = useStore.getState().cursor;
+      if (c && (c.cursores ?? 1) !== n) useStore.getState().setCursor({ ...c, cursores: n });
+    });
+
     editor.addAction({
       id: 'codemind.explicar-seleccion',
       label: 'Explicar esta selección con la IA',
@@ -248,7 +270,7 @@ ${texto.slice(0, 8000)}
       <div className="tabs">
         {mias.map((tab) => {
           const dirty = tab.kind === 'file' && files[tab.path] && files[tab.path].content !== files[tab.path].saved;
-          const label = tab.kind === 'file' ? tab.path.split('/').pop() : tab.title;
+          const label = tab.kind === 'file' ? (esBorrador(tab.path) ? 'Borrador' : tab.path.split('/').pop()) : tab.title;
           return (
             <div
               key={tab.id}
@@ -290,7 +312,7 @@ ${texto.slice(0, 8000)}
             <Icon name="fn" size={13} />
           </button>
         )}
-        {active?.kind === 'file' && (
+        {active?.kind === 'file' && !esBorrador(active.path) && (
           <button className="btn icon sm" title="Historial local: versiones anteriores de este archivo" onClick={() => setHistorial(active.path)}>
             <Icon name="history" size={13} />
           </button>
@@ -300,14 +322,14 @@ ${texto.slice(0, 8000)}
         {active && (
           <button
             className="btn icon sm"
-            title={mitad === 'a' && !dividido ? 'Dividir el editor: ver dos archivos a la vez' : 'Mandar esta pestaña a la otra mitad'}
+            title={!dividido ? 'Dividir el editor: ver dos archivos a la vez' : 'Mandar esta pestaña a un grupo nuevo a la derecha (hasta 4)'}
             onClick={() => { setActiveTab(active.id); dividirEditor(); }}
           >
             <Icon name="columns" size={13} />
           </button>
         )}
-        {dividido && mitad === 'b' && (
-          <button className="btn icon sm" title="Deshacer la división (no cierra nada)" onClick={() => unirEditor()}>
+        {dividido && mitad !== 'a' && (
+          <button className="btn icon sm" title="Cerrar este grupo (sus pestañas pasan al primero; no se cierra ninguna)" onClick={() => cerrarGrupo(mitad)}>
             <Icon name="close" size={13} />
           </button>
         )}

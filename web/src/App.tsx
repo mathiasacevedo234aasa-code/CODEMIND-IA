@@ -15,6 +15,7 @@ import { Bienvenida } from './components/Bienvenida';
 import { ColaCarpetaFlotante, OfertaBorrador } from './components/DocArchivoBarra';
 import { ComparacionAbierta } from './components/Comparacion';
 import { BarraEstado } from './components/BarraEstado';
+import { RenombrarSimbolo } from './components/RenombrarSimbolo';
 import { DocLectura, useDocumentadosDelArchivo } from './components/DocLectura';
 import { AssistantPanel } from './components/AssistantPanel';
 import { BottomPanel } from './components/BottomPanel';
@@ -99,6 +100,12 @@ export default function App() {
   const docCenterOpen = useStore((s) => s.docCenterOpen);
 
   const [left, setLeft] = useState(260);
+  const [renombrando, setRenombrando] = useState<string | null>(null);
+  useEffect(() => {
+    const pedir = (e: Event) => setRenombrando((e as CustomEvent<string>).detail);
+    window.addEventListener('codemind:renombrar', pedir);
+    return () => window.removeEventListener('codemind:renombrar', pedir);
+  }, []);
   const [right, setRight] = useState(380);
 
   useEffect(() => { void boot(); }, [boot]);
@@ -242,6 +249,7 @@ export default function App() {
       )}
 
       <BarraEstado />
+      {renombrando && <RenombrarSimbolo nombre={renombrando} alCerrar={() => setRenombrando(null)} />}
       {docCenterOpen && <Suspense fallback={null}><DocCenter /></Suspense>}
       <SettingsDialog />
       <DialogHost />

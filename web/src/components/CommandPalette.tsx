@@ -5,6 +5,7 @@ import { Icon } from './Icon';
 import { exportarDiagnostico } from '../lib/diagnostico';
 import { puntuar } from '../lib/difuso';
 import { accionEditor } from '../lib/editorActivo';
+import { BORRADOR } from '../lib/borrador';
 
 interface Comando {
   id: string;
@@ -78,7 +79,7 @@ export function CommandPalette() {
   const comandos = useMemo<Comando[]>(() => {
     const tema = settings.editor.theme;
     return [
-      { id: 'guardar', titulo: 'Guardar todo', grupo: 'Archivo', atajo: 'Ctrl+S', icono: 'save', accion: () => void saveAll() },
+      { id: 'guardar', titulo: 'Guardar todo', grupo: 'Archivo', atajo: 'Ctrl+S', icono: 'save', accion: () => void saveAll({ formatear: true }) },
       { id: 'abrir-carpeta', titulo: 'Abrir una carpeta del equipo', grupo: 'Archivo', icono: 'folderOpen', accion: () => setFolderPickerOpen(true) },
       { id: 'cerrar-proyecto', titulo: 'Cerrar el proyecto', grupo: 'Archivo', icono: 'close', accion: closeProject },
 
@@ -109,6 +110,14 @@ export function CommandPalette() {
         id: `plegar-${n}`, titulo: `Plegar al nivel ${n}`, grupo: 'Editor', icono: 'columns',
         accion: () => { accionEditor(`editor.foldLevel${n}`); },
       })),
+      { id: 'mc-siguiente', titulo: 'Multicursor: añadir la siguiente coincidencia', grupo: 'Editor', atajo: 'Ctrl+D', icono: 'edit', accion: () => { accionEditor('editor.action.addSelectionToNextFindMatch'); } },
+      { id: 'mc-todas', titulo: 'Multicursor: un cursor en cada coincidencia', grupo: 'Editor', atajo: 'Ctrl+Shift+L', icono: 'edit', accion: () => { accionEditor('editor.action.selectHighlights'); } },
+      { id: 'mc-arriba', titulo: 'Multicursor: añadir cursor arriba', grupo: 'Editor', atajo: 'Ctrl+Alt+↑', icono: 'edit', accion: () => { accionEditor('editor.action.insertCursorAbove'); } },
+      { id: 'mc-abajo', titulo: 'Multicursor: añadir cursor abajo', grupo: 'Editor', atajo: 'Ctrl+Alt+↓', icono: 'edit', accion: () => { accionEditor('editor.action.insertCursorBelow'); } },
+      { id: 'mc-lineas', titulo: 'Multicursor: un cursor al final de cada línea seleccionada', grupo: 'Editor', atajo: 'Shift+Alt+I', icono: 'edit', accion: () => { accionEditor('editor.action.insertCursorAtEndOfEachLineSelected'); } },
+      { id: 'renombrar', titulo: 'Renombrar en todo el proyecto (palabra bajo el cursor)', grupo: 'Editor', atajo: 'F2', icono: 'edit', accion: () => { accionEditor('codemind.renombrar'); } },
+      { id: 'borrador', titulo: 'Abrir el borrador del proyecto (notas que no van al código)', grupo: 'Archivo', icono: 'edit', accion: () => void openFile(BORRADOR) },
+      { id: 'juntar-grupos', titulo: 'Juntar todos los grupos del editor en uno', grupo: 'Editor', icono: 'columns', accion: () => useStore.getState().unirEditor() },
       { id: 'plegar-todo', titulo: 'Plegar todo', grupo: 'Editor', icono: 'columns', accion: () => { accionEditor('editor.foldAll'); } },
       { id: 'desplegar-todo', titulo: 'Desplegar todo', grupo: 'Editor', icono: 'columns', accion: () => { accionEditor('editor.unfoldAll'); } },
       { id: 'diagnostico', titulo: 'Exportar diagnóstico (para reportar un fallo)', grupo: 'Ayuda', icono: 'docs', accion: () => { void exportarDiagnostico(); } },

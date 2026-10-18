@@ -108,6 +108,8 @@ const ATAJOS: [string, string][] = [
   ['Ctrl+T', 'Ir a un símbolo del proyecto'],
   ['Ctrl+K Ctrl+1…7', 'Plegar el código al nivel 1…7 (Ctrl+K Ctrl+J despliega todo)'],
   ['F12 / Ctrl+clic', 'Ir a la definición de lo que hay bajo el cursor'],
+  ['F2', 'Renombrar en todo el proyecto, con vista previa'],
+  ['Ctrl+D / Ctrl+Shift+L', 'Varios cursores: siguiente coincidencia / todas'],
   ['F5', 'Ejecutar el archivo abierto en el Terminal'],
   ['Ctrl+S', 'Guardar'],
   ['Ctrl+Shift+F', 'Buscar y reemplazar en todo el proyecto'],

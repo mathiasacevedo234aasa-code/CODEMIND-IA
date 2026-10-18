@@ -78,7 +78,7 @@ export function TopBar() {
             </span>
           </div>
 
-          <button className="btn outline" onClick={() => void saveAll()} disabled={!dirty.length || saving} title="Ctrl+S">
+          <button className="btn outline" onClick={() => void saveAll({ formatear: true })} disabled={!dirty.length || saving} title="Ctrl+S">
             <Icon name="save" />
             {t('Guardar')}
           </button>

@@ -1,5 +1,7 @@
+import { esBorrador } from '../../lib/borrador';
+import { formatear, sePuedeFormatear } from '../../lib/formatear';
 import { api } from '../../lib/api';
-import { panelDe } from '../../lib/types';
+import { GRUPOS, panelDe } from '../../lib/types';
 import { analizarArchivo, forgetFile, isAnalyzable } from '../../lib/analyzer';
 import type { PanelEditor } from '../../lib/types';
 import type { ObtenerTienda, PonerTienda, Tienda } from '../tipos';
@@ -33,7 +35,7 @@ export const crearPestanas = (set: PonerTienda, get: ObtenerTienda) => ({
       return;
     }
     try {
-      const { content } = await api.readFile(project.id, path);
+      const { content } = esBorrador(path) ? await api.leerBorrador(project.id) : await api.readFile(project.id, path);
       set((s) => ({
         files: { ...s.files, [path]: { content, saved: content } },
         tabs: s.tabs.some((t) => t.id === id)
@@ -151,8 +153,22 @@ export const crearPestanas = (set: PonerTienda, get: ObtenerTienda) => ({
     const { activeTabId, tabs } = get();
     const actual = tabs.find((t) => t.id === activeTabId);
     if (!actual) return;
-    const destino: PanelEditor = panelDe(actual) === 'a' ? 'b' : 'a';
-    get().moverTabAPanel(actual.id, destino);
+    // Un grupo nuevo a la derecha mientras quepan (hasta 4); con los cuatro
+    // en uso, al siguiente, en círculo.
+    const enUso = GRUPOS.filter((g) => g === 'a' || tabs.some((t) => panelDe(t) === g));
+    const libre = GRUPOS.find((g) => !enUso.includes(g));
+    const siguiente = enUso[(enUso.indexOf(panelDe(actual)) + 1) % enUso.length];
+    get().moverTabAPanel(actual.id, libre ?? siguiente);
+  },
+
+  cerrarGrupo(panel: PanelEditor) {
+    if (panel === 'a') return;
+    set((s) => ({
+      tabs: s.tabs.map((t) => (panelDe(t) === panel ? { ...t, panel: 'a' as PanelEditor } : t)),
+      panelActivo: s.panelActivo === panel ? 'a' : s.panelActivo,
+      ultimoPorPanel: { ...s.ultimoPorPanel, [panel]: null },
+    }));
+    get().persistSession();
   },
 
   moverTabAPanel(id, panel) {
@@ -170,7 +186,7 @@ export const crearPestanas = (set: PonerTienda, get: ObtenerTienda) => ({
     set((s) => ({
       tabs: s.tabs.map((t) => ({ ...t, panel: 'a' as PanelEditor })),
       panelActivo: 'a',
-      ultimoPorPanel: { a: s.activeTabId, b: null },
+      ultimoPorPanel: { a: s.activeTabId, b: null, c: null, d: null },
     }));
     get().persistSession();
   },
@@ -238,7 +254,7 @@ export const crearPestanas = (set: PonerTienda, get: ObtenerTienda) => ({
     );
   },
 
-  async saveFile(path) {
+  async saveFile(path, opciones = {}) {
     const project = get().project;
     const active = get().tabs.find((t) => t.id === get().activeTabId);
     const target = path ?? (active?.kind === 'file' ? active.path : null);
@@ -248,8 +264,19 @@ export const crearPestanas = (set: PonerTienda, get: ObtenerTienda) => ({
 
     set({ saving: true });
     try {
-      await api.writeFile(project.id, target, file.content);
-      set((s) => ({ files: { ...s.files, [target]: { ...s.files[target], saved: file.content } } }));
+      let contenido = file.content;
+      if (esBorrador(target)) {
+        await api.guardarBorrador(project.id, contenido);
+        set((s) => ({ files: { ...s.files, [target]: { ...s.files[target], saved: contenido } } }));
+        return;
+      }
+      if (opciones.formatear && get().settings.editor.formatearAlGuardar && sePuedeFormatear(target)) {
+        const r = await formatear(project.id, target, contenido);
+        if (r.error) get().log('errores', 'warn', `${target}: no se pudo formatear (${r.error}). Se guarda tal cual.`);
+        contenido = r.texto;
+      }
+      await api.writeFile(project.id, target, contenido);
+      set((s) => ({ files: { ...s.files, [target]: { ...s.files[target], content: contenido, saved: contenido } } }));
       get().log('sistema', 'info', `Guardado: ${target}`);
     } catch (err) {
       set({ error: (err as Error).message });
@@ -259,10 +286,10 @@ export const crearPestanas = (set: PonerTienda, get: ObtenerTienda) => ({
     }
   },
 
-  async saveAll() {
+  async saveAll(opciones = {}) {
     const files = get().files;
     for (const [path, file] of Object.entries(files)) {
-      if (file.content !== file.saved) await get().saveFile(path);
+      if (file.content !== file.saved) await get().saveFile(path, opciones);
     }
     await get().refreshTree();
   },
