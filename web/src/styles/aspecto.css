@@ -528,3 +528,55 @@ kbd {
 .blame-texto { white-space: pre; overflow: hidden; }
 .grafo-fila { display: flex; align-items: center; gap: 6px; font-size: 12px; overflow: hidden; white-space: nowrap; }
 .grafo-fila .commit-subject { flex: 1; overflow: hidden; text-overflow: ellipsis; }
+
+/* ---------------------------------------------- correcciones de maquetación */
+
+/* Columnas con scroll: sus hijos no se aplastan (se solapaban unos sobre otros). */
+.doc-lectura > *, .chat-log > *, .conv-lista > *, .doc-section > * { flex-shrink: 0; }
+
+/* Las etiquetas nunca se parten en dos líneas ni se estiran como un óvalo. */
+.tag { white-space: nowrap; flex-shrink: 0; align-self: center; line-height: 1.5; height: auto; }
+.param-row { align-items: start; }
+.param-row > .tag { align-self: start; margin-top: 2px; }
+
+/* Cabeceras de panel: el título se recorta antes que empujar a los botones. */
+.panel-head { min-width: 0; gap: 6px; }
+.panel-head { flex-wrap: wrap; row-gap: 4px; height: auto; min-height: 36px; }
+.panel-head .panel-title { white-space: nowrap; flex-shrink: 0; }
+.panel-head .btn { flex-shrink: 0; }
+
+/* Botones: el texto no se parte ni se sale del botón. */
+.btn { white-space: nowrap; }
+.btn.sm { flex-shrink: 0; }
+
+/* Barras de revisión y traducción bajo la documentación. */
+.revision-doc, .traduccion { margin-top: 10px; display: block; }
+.revision-doc > div, .traduccion > div { row-gap: 6px; }
+
+/* Textos largos (rutas, nombres) no desbordan su caja. */
+.hint, .meta, .card { overflow-wrap: break-word; }
+.card h4, .card strong { min-width: 6em; }
+
+/* Nada se sale de la ventana: sin barra horizontal en toda la página. */
+html, body, #root { overflow: hidden; }
+.workspace, .center-column { min-width: 0; overflow: hidden; }
+
+/* Pestañas (editor y panel inferior): se desplazan si no caben, con barra fina. */
+.tabs, .bottom-tabs { overflow-x: auto; overflow-y: hidden; min-width: 0; }
+.tabs::-webkit-scrollbar, .bottom-tabs::-webkit-scrollbar { height: 3px; }
+.tabs::-webkit-scrollbar-thumb, .bottom-tabs::-webkit-scrollbar-thumb { background: transparent; }
+.tabs:hover::-webkit-scrollbar-thumb, .bottom-tabs:hover::-webkit-scrollbar-thumb { background: var(--border-strong); }
+.bottom-tabs > * { flex-shrink: 0; }
+
+/* Esquina entre dos barras de desplazamiento: sin el cuadro blanco. */
+::-webkit-scrollbar-corner { background: transparent; }
+
+/* La cabecera fija de la documentación tapa todo lo que pasa por debajo (el panel tiene 10px de margen arriba). */
+.doc-lectura .doc-lectura-cabecera { top: -10px; margin-top: -10px; padding-top: 12px; }
+/* Filas de botones: si no caben, bajan a la línea siguiente en vez de salirse. */
+div:has(> .btn.sm + .btn.sm):not(.tabs):not(.bottom-tabs):not(.panel-head):not(.modal-head):not(.editor-toolbar) { flex-wrap: wrap; row-gap: 4px; }
+.panel-body { overflow-x: hidden; }
+/* Etiqueta de tipo de archivo (JS, HTML, CSS…): cabe entera. */
+.ext { min-width: 18px; width: auto; padding: 0 2px; letter-spacing: -0.02em; overflow: visible; }
+/* Dentro de una tarjeta, un botón que no cabe junto al título baja de línea. */
+.card div:has(> .btn) { flex-wrap: wrap; row-gap: 6px; }
