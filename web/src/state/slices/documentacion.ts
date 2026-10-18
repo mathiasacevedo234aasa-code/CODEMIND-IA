@@ -107,10 +107,11 @@ export const crearDocumentacion = (set: PonerTienda, get: ObtenerTienda) => ({
     // Una carpeta incluye todo lo de dentro, subcarpetas incluidas; '' es el
     // proyecto entero.
     const dentro = (p: string) => (carpeta ? !ruta || p.startsWith(`${ruta}/`) : p === ruta);
+    // Con `desactualizados`, también lo aprobado cuyo código cambió después.
     const pendientes = get().symbols().filter((x) =>
       dentro(x.filePath)
       && !x.menor
-      && !get().approved[x.id]
+      && (!get().approved[x.id] || (opciones.desactualizados && get().statusOf(x) === 'revisar'))
       && !get().proposals.some((p) => p.functionId === x.id));
 
     if (!pendientes.length) {

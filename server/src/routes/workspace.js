@@ -204,7 +204,7 @@ router.post('/projects/:id/replace/apply', wrap(async (req, res) => {
 
 router.get('/projects/:id/docs/export', wrap(async (req, res) => {
   const formato = ['html', 'pdf', 'docx'].includes(req.query.format) ? req.query.format : 'md';
-  const resultado = await exportarDocumentacion(req.params.id, formato);
+  const resultado = await exportarDocumentacion(req.params.id, formato, { bilingue: req.query.bilingue === '1' });
   res.json(resultado);
 }));
 

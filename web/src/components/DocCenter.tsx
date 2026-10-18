@@ -5,17 +5,19 @@ import type { ApprovedDoc, ProjectMemory } from '../lib/types';
 import { DocView } from './DocView';
 import { Icon } from './Icon';
 import { DiagramaArquitectura } from './DiagramaArquitectura';
+import { DocIncompleta } from './DocIncompleta';
 import { pedirBorrador, type Borrador } from '../lib/borradorGeneral';
 const ProjectMap = lazy(() => import('./ProjectMap').then((m) => ({ default: m.ProjectMap })));
 import { GlosarioPanel } from './GlosarioPanel';
 
-type Section = 'general' | 'arquitectura' | 'glosario' | 'funciones' | 'decisiones' | 'progreso' | 'historial';
+type Section = 'general' | 'arquitectura' | 'glosario' | 'funciones' | 'incompleta' | 'decisiones' | 'progreso' | 'historial';
 
 const SECTIONS: { id: Section; label: string }[] = [
   { id: 'general', label: 'Descripcion general' },
   { id: 'arquitectura', label: 'Arquitectura' },
   { id: 'glosario', label: 'Glosario' },
   { id: 'funciones', label: 'Documentacion de funciones' },
+  { id: 'incompleta', label: 'Incompleta' },
   { id: 'decisiones', label: 'Registro de decisiones' },
   { id: 'progreso', label: 'Registro de progreso' },
   { id: 'historial', label: 'Historial' },
@@ -42,12 +44,13 @@ function ExportarDocumentacion() {
   const setError = useStore((s) => s.setError);
   const log = useStore((s) => s.log);
   const [ocupado, setOcupado] = useState<string | null>(null);
+  const [bilingue, setBilingue] = useState(false);
 
   const exportar = async (formato: 'md' | 'html' | 'pdf' | 'docx') => {
     if (!project) return;
     setOcupado(formato);
     try {
-      const res = await api.exportDocs(project.id, formato);
+      const res = await api.exportDocs(project.id, formato, bilingue);
       if (!res.documented) {
         setError('Todavía no hay ningún elemento con documentación aprobada que exportar.');
         return;
@@ -72,7 +75,10 @@ function ExportarDocumentacion() {
   };
 
   return (
-    <span style={{ display: 'flex', gap: 6 }}>
+    <span style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+      <label className="hint" style={{ display: 'flex', gap: 4, alignItems: 'center' }} title="Incluye, tras cada elemento, su traducción guardada (si es de la versión actual)">
+        <input type="checkbox" style={{ width: 'auto' }} checked={bilingue} onChange={(e) => setBilingue(e.target.checked)} /> Bilingüe
+      </label>
       <button className="btn sm outline" disabled={Boolean(ocupado)} onClick={() => void exportar('md')} title="Descargar en Markdown">
         {ocupado === 'md' ? <span className="spinner" /> : <Icon name="docs" size={13} />} Markdown
       </button>
@@ -608,6 +614,7 @@ export function DocCenter() {
         <div className="modal-body">
           {section === 'general' && <GeneralSection />}
           {section === 'arquitectura' && <ArchitectureSection />}
+          {section === 'incompleta' && <DocIncompleta />}
           {section === 'glosario' && <GlosarioPanel />}
           {section === 'funciones' && <FunctionsSection />}
           {section === 'decisiones' && <DecisionsSection />}

@@ -393,6 +393,8 @@ export interface ApprovedDoc {
   model: string | null;
   edited: boolean;
   relinkedAt?: string;
+  /** Traducciones guardadas; `de` es la versión aprobada que se tradujo. */
+  traducciones?: Record<string, { doc: FunctionDoc; de: string; en: string }>;
 }
 
 export interface Proposal {

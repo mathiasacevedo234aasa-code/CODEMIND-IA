@@ -2,6 +2,7 @@ import { useMemo } from 'react';
 import { useStore } from '../state/useStore';
 import { panelDe } from '../lib/types';
 import { DocView } from './DocView';
+import { TraduccionDoc } from './TraduccionDoc';
 import { Icon } from './Icon';
 import { DocArchivoBarra } from './DocArchivoBarra';
 
@@ -122,6 +123,7 @@ export function DocLectura() {
       <div className="doc-lectura-cuerpo">
         <DocView doc={doc.doc} kind={doc.kind} />
       </div>
+      <TraduccionDoc key={doc.versionId} doc={doc} />
 
       <p className="hint" style={{ padding: '8px 0 0' }}>
         Aprobada el {new Date(doc.approvedAt).toLocaleString('es')}

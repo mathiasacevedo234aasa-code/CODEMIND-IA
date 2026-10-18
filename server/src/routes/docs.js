@@ -8,7 +8,7 @@ import {
   newId,
   readSettings,
 } from '../services/store.js';
-import { validateDoc } from '../services/ia.js';
+import { validateDoc, traducirDoc } from '../services/ia.js';
 import * as glosario from '../services/glosario.js';
 
 const router = Router();
@@ -156,6 +156,42 @@ router.post('/:id/docs/relink', async (req, res, next) => {
     if (filePath) entry.filePath = filePath;
     entry.relinkedAt = new Date().toISOString();
     store.approved[toFunctionId] = entry;
+    await writeDocs(req.params.id, store);
+    res.json({ approved: store.approved });
+  } catch (err) {
+    next(err);
+  }
+});
+
+/**
+ * Version bilingue. POST genera la traduccion (no guarda nada); PUT guarda
+ * la que el usuario acepto. Las traducciones viven junto a la documentacion
+ * aprobada, en `traducciones[idioma]`, y quedan obsoletas si esta cambia.
+ */
+router.post('/:id/docs/:functionId/traduccion', async (req, res, next) => {
+  try {
+    await getProject(req.params.id);
+    const store = await readDocs(req.params.id);
+    const entry = store.approved[req.params.functionId];
+    if (!entry) return res.status(404).json({ error: 'Ese elemento no tiene documentacion aprobada.' });
+    const idioma = req.body?.idioma === 'es' ? 'es' : 'en';
+    const settings = await readSettings();
+    res.json(await traducirDoc({ doc: entry.doc, idioma, temperature: settings.temperature, maxTokens: settings.maxTokens }));
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.put('/:id/docs/:functionId/traduccion', async (req, res, next) => {
+  try {
+    await getProject(req.params.id);
+    const store = await readDocs(req.params.id);
+    const entry = store.approved[req.params.functionId];
+    if (!entry) return res.status(404).json({ error: 'Ese elemento no tiene documentacion aprobada.' });
+    const idioma = req.body?.idioma === 'es' ? 'es' : 'en';
+    if (!req.body?.doc || typeof req.body.doc !== 'object') return res.status(400).json({ error: 'Falta la traduccion.' });
+    // Se apunta de que version es la traduccion, para saber si se queda vieja.
+    entry.traducciones = { ...(entry.traducciones ?? {}), [idioma]: { doc: req.body.doc, de: entry.versionId, en: new Date().toISOString() } };
     await writeDocs(req.params.id, store);
     res.json({ approved: store.approved });
   } catch (err) {

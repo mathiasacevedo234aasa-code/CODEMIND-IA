@@ -188,7 +188,7 @@ export interface Actions {
   generateDoc: (sym: DetectedSymbol, extraInstruction?: string, opciones?: { enCola?: boolean; forzar?: boolean; proveedor?: string }) => Promise<'ok' | 'invalida' | string>;
   /** La cola de "Documentar archivo", si hay una en marcha. */
   colaDoc: ColaDoc | null;
-  documentarArchivo: (ruta: string, opciones?: { carpeta?: boolean }) => Promise<void>;
+  documentarArchivo: (ruta: string, opciones?: { carpeta?: boolean; desactualizados?: boolean }) => Promise<void>;
   cancelarColaDoc: () => void;
   pausarColaDoc: (pausada: boolean) => void;
   approveProposal: (proposalId: string) => Promise<void>;

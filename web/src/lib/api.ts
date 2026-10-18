@@ -406,10 +406,14 @@ export const api = {
     request<ReplaceResult>(`/api/projects/${id}/replace/apply`, { method: 'POST', ...json(opciones) }),
 
   // exportar documentacion
-  exportDocs: (id: string, format: 'md' | 'html' | 'pdf' | 'docx') =>
+  exportDocs: (id: string, format: 'md' | 'html' | 'pdf' | 'docx', bilingue = false) =>
     request<{ filename: string; mime: string; content: string; documented: number }>(
-      `/api/projects/${id}/docs/export?format=${format}`,
+      `/api/projects/${id}/docs/export?format=${format}${bilingue ? '&bilingue=1' : ''}`,
     ),
+  traducirDoc: (id: string, functionId: string, idioma: 'es' | 'en') =>
+    request<{ doc: FunctionDoc; model: string }>(`/api/projects/${id}/docs/${encodeURIComponent(functionId)}/traduccion`, { method: 'POST', ...json({ idioma }) }),
+  guardarTraduccion: (id: string, functionId: string, idioma: 'es' | 'en', doc: FunctionDoc) =>
+    request<{ approved: Record<string, ApprovedDoc> }>(`/api/projects/${id}/docs/${encodeURIComponent(functionId)}/traduccion`, { method: 'PUT', ...json({ idioma, doc }) }),
   hostPreview: (html: string) =>
     request<{ id: string; url: string }>('/api/preview', { method: 'POST', ...json({ html }) }),
 };

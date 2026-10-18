@@ -57,7 +57,7 @@ function bloquesDeDocumento(doc) {
   return partes;
 }
 
-function generarMarkdown(project, memory, aprobadas, history) {
+function generarMarkdown(project, memory, aprobadas, history, { bilingue = false } = {}) {
   const out = [];
   out.push(`# ${project.name}`);
   out.push('');
@@ -109,6 +109,15 @@ function generarMarkdown(project, memory, aprobadas, history) {
         );
         for (const [titulo, cuerpo] of bloquesDeDocumento(entrada.doc)) {
           out.push(`**${titulo}**`, '', cuerpo, '');
+        }
+        // Versión bilingüe: solo traducciones de ESTA versión aprobada; una
+        // traducción de una versión anterior diría cosas que ya no son ciertas.
+        if (bilingue) {
+          for (const [idioma, t] of Object.entries(entrada.traducciones ?? {})) {
+            if (t.de !== entrada.versionId) continue;
+            out.push(`_${idioma === 'en' ? 'English version' : 'Versión en español'}_`, '');
+            for (const [titulo, cuerpo] of bloquesDeDocumento(t.doc)) out.push(`**${titulo}**`, '', cuerpo, '');
+          }
         }
         out.push('---', '');
       }
@@ -203,7 +212,7 @@ ${cuerpo}
 </html>`;
 }
 
-export async function exportarDocumentacion(projectId, formato = 'md') {
+export async function exportarDocumentacion(projectId, formato = 'md', opciones = {}) {
   const project = await getProject(projectId);
   const [docs, memory, history] = await Promise.all([
     readDocs(projectId),
@@ -212,7 +221,7 @@ export async function exportarDocumentacion(projectId, formato = 'md') {
   ]);
 
   const aprobadas = Object.values(docs.approved);
-  const markdown = generarMarkdown(project, memory, aprobadas, history);
+  const markdown = generarMarkdown(project, memory, aprobadas, history, opciones);
 
   const base = project.name.replace(/[^\w\s-]/g, '').trim().replace(/\s+/g, '-').toLowerCase() || 'documentacion';
 

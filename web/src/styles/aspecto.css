@@ -475,3 +475,4 @@ kbd {
 .barra-estado > span, .barra-estado > button { display: inline-flex; align-items: center; gap: 4px; padding: 0 6px; height: 100%; }
 .barra-estado > button { background: none; border: 0; color: inherit; font: inherit; cursor: pointer; }
 .barra-estado > button:hover { background: var(--bg-hover); color: var(--text); }
+.traduccion { margin-top: 10px; padding-top: 8px; border-top: 1px dashed var(--border); }

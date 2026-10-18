@@ -286,3 +286,32 @@ export const listModels = (proveedor) => listarModelos(proveedor);
 
 /** El modelo que se usaria ahora mismo, sin llamar a nadie. */
 export const resolveModel = (proveedor, pedido) => resolverModelo(proveedor, pedido);
+
+/**
+ * Traduce una documentacion ya aprobada a otro idioma, para la version
+ * bilingue. Mismas claves, mismos datos: solo cambia el idioma del texto.
+ * Los nombres de codigo (funciones, parametros, tipos) no se traducen.
+ */
+export async function traducirDoc({ doc, idioma, model, temperature, maxTokens }) {
+  if (!doc || typeof doc !== 'object') throw new HttpError(400, 'No hay documentacion que traducir.');
+  const destino = idioma === 'en' ? 'ingles' : 'espanol';
+  const messages = [
+    {
+      role: 'system',
+      content: [
+        `Eres un traductor tecnico. Traduce al ${destino} los TEXTOS del JSON que recibes.`,
+        'Devuelve solo el JSON, con exactamente las mismas claves y la misma estructura.',
+        'No traduzcas nombres de codigo: funciones, variables, parametros, tipos, rutas ni fragmentos de codigo de "ejemplo".',
+        'No anadas ni quites informacion: es una traduccion, no una reescritura.',
+      ].join(' '),
+    },
+    { role: 'user', content: JSON.stringify(doc) },
+  ];
+  const result = await completar({ messages, modelo: model, temperature: Math.min(temperature ?? 0.2, 0.3), maxTokens, jsonMode: true });
+  const traducido = extractJson(result.content);
+  if (!traducido || typeof traducido !== 'object') throw new HttpError(502, 'La traduccion no vino en el formato esperado. Puedes volver a intentarlo.');
+  // Las claves que no vinieran se dejan como estaban: nunca se pierde un campo.
+  const faltan = Object.keys(doc).filter((k) => !(k in traducido));
+  for (const k of faltan) traducido[k] = doc[k];
+  return { doc: traducido, model: result.model, faltan };
+}
