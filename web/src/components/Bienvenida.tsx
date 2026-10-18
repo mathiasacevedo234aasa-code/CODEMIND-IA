@@ -104,7 +104,9 @@ function Tour({ alTerminar }: { alTerminar: () => void }) {
 
 const ATAJOS: [string, string][] = [
   ['Ctrl+Shift+P', 'Paleta de comandos: cualquier acción y cualquier archivo'],
+  ['Ctrl+P', 'Ir a un archivo (búsqueda difusa)'],
   ['Ctrl+T', 'Ir a un símbolo del proyecto'],
+  ['Ctrl+K Ctrl+1…7', 'Plegar el código al nivel 1…7 (Ctrl+K Ctrl+J despliega todo)'],
   ['F12 / Ctrl+clic', 'Ir a la definición de lo que hay bajo el cursor'],
   ['F5', 'Ejecutar el archivo abierto en el Terminal'],
   ['Ctrl+S', 'Guardar'],

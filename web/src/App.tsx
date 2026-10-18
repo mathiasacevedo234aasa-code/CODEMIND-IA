@@ -122,6 +122,10 @@ export default function App() {
         e.preventDefault();
         setPaletteOpen(true);
       }
+      if (ctrl && !e.shiftKey && !e.altKey && e.key.toLowerCase() === 'p') {
+        e.preventDefault();
+        window.dispatchEvent(new Event('codemind:paleta-archivos'));
+      }
       if (ctrl && e.shiftKey && e.key.toLowerCase() === 't') {
         e.preventDefault();
         void useStore.getState().reabrirCerrada();

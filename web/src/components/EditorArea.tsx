@@ -10,6 +10,9 @@ import { WebView } from './WebView';
 import { Icon } from './Icon';
 import { VistaMarkdown } from './VistaMarkdown';
 import { HistorialLocal } from './HistorialLocal';
+import { Esquema } from './Esquema';
+import { fijarEditorActivo } from '../lib/editorActivo';
+import type * as Monaco from 'monaco-editor';
 import { registrarTemaImportado, useTemaMonaco } from '../lib/tema';
 import { BotonEjecutarArchivo } from './EjecutarArchivo';
 
@@ -71,6 +74,12 @@ function MitadEditor({ mitad, dividido }: { mitad: Mitad; dividido: boolean }) {
   const [vistaMd, setVistaMd] = useState(true);
   const temaMonaco = useTemaMonaco();
   const [historial, setHistorial] = useState<string | null>(null);
+  const [verEsquema, setVerEsquema] = useState(false);
+  const monacoRef = useRef<typeof Monaco | null>(null);
+  const marcas = useRef<string[]>([]);
+  const projectId = useStore((s) => s.project?.id);
+  const analysisMarcas = useStore((s) => s.analysis);
+  const approvedMarcas = useStore((s) => s.approved);
   const fijarTab = useStore((s) => s.fijarTab);
 
   // El editor vivo, junto al archivo para el que se creó. Guardar también la
@@ -95,7 +104,30 @@ function MitadEditor({ mitad, dividido }: { mitad: Mitad; dividido: boolean }) {
 
   const onMount: OnMount = (editor, monaco) => {
     editorRef.current = active?.kind === 'file' ? { editor, path: active.path } : null;
+    monacoRef.current = monaco;
     setMontajes((n) => n + 1);
+    fijarEditorActivo(editor);
+    editor.onDidFocusEditorText(() => fijarEditorActivo(editor));
+
+    // Cursor y scroll se recuerdan por archivo: al volver a abrirlo, todo
+    // está donde lo dejaste (salvo que se pida saltar a una línea concreta).
+    const rutaVista = active?.kind === 'file' ? active.path : null;
+    const claveVista = rutaVista && projectId ? `codemind.vista.${projectId}.${rutaVista}` : null;
+    if (claveVista) {
+      try {
+        const guardada = localStorage.getItem(claveVista);
+        if (guardada) editor.restoreViewState(JSON.parse(guardada));
+      } catch { /* sin almacenamiento o estado viejo: se empieza arriba */ }
+      let espera: number | undefined;
+      const guardarVista = () => {
+        window.clearTimeout(espera);
+        espera = window.setTimeout(() => {
+          try { localStorage.setItem(claveVista, JSON.stringify(editor.saveViewState())); } catch { /* sin almacenamiento */ }
+        }, 400);
+      };
+      editor.onDidChangeCursorPosition(guardarVista);
+      editor.onDidScrollChange(guardarVista);
+    }
     editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyS, () => void saveFile());
     editor.onDidFocusEditorText(() => setPanelActivo(mitad));
     // La posición del cursor la usan las migas y la barra de estado.
@@ -181,6 +213,29 @@ ${texto.slice(0, 8000)}
 
   // Al quedarse sin ningún archivo abierto, Monaco desaparece: hay que soltar
   // la referencia para no darle órdenes a un editor que ya no existe.
+  // Marcas en el minimapa y en la regla lateral: verde lo documentado, naranja
+  // lo que cambió desde que se documentó. Se ve de un vistazo dónde mirar.
+  useEffect(() => {
+    const montado = editorRef.current;
+    const monaco = monacoRef.current;
+    if (!montado || !monaco || active?.kind !== 'file' || montado.path !== active.path) return;
+    const st = useStore.getState();
+    const nuevas = (analysisMarcas[active.path]?.symbols ?? [])
+      .filter((x) => !x.menor && st.statusOf(x) !== 'sin-documentar')
+      .map((x) => {
+        const color = st.statusOf(x) === 'revisar' ? '#d9a441' : '#3fb984';
+        return {
+          range: new monaco.Range(x.line, 1, x.line, 1),
+          options: {
+            isWholeLine: true,
+            minimap: { color, position: monaco.editor.MinimapPosition.Inline },
+            overviewRuler: { color, position: monaco.editor.OverviewRulerLane.Left },
+          },
+        };
+      });
+    marcas.current = montado.editor.deltaDecorations(marcas.current, nuevas);
+  }, [analysisMarcas, approvedMarcas, active, montajes]);
+
   useEffect(() => {
     if (active?.kind !== 'file') editorRef.current = null;
   }, [active]);
@@ -228,6 +283,11 @@ ${texto.slice(0, 8000)}
             onClick={() => setVistaMd((v) => !v)}
           >
             Vista previa
+          </button>
+        )}
+        {active?.kind === 'file' && (
+          <button className={`btn icon sm ${verEsquema ? 'activo' : ''}`} title="Esquema del archivo" onClick={() => setVerEsquema((v) => !v)}>
+            <Icon name="fn" size={13} />
           </button>
         )}
         {active?.kind === 'file' && (
@@ -307,6 +367,7 @@ ${texto.slice(0, 8000)}
           />
         ) : null}
         {esMdConVista && activeFile && <VistaMarkdown texto={activeFile.content} />}
+        {verEsquema && active?.kind === 'file' && <Esquema ruta={active.path} alCerrar={() => setVerEsquema(false)} />}
       </div>
     </div>
   );

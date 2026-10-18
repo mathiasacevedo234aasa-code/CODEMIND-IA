@@ -3,6 +3,8 @@ import { useStore } from '../state/useStore';
 import { useEjecutarArchivo, useplanDelArchivo } from './EjecutarArchivo';
 import { Icon } from './Icon';
 import { exportarDiagnostico } from '../lib/diagnostico';
+import { puntuar } from '../lib/difuso';
+import { accionEditor } from '../lib/editorActivo';
 
 interface Comando {
   id: string;
@@ -48,6 +50,14 @@ export function CommandPalette() {
   const closeProject = useStore((s) => s.closeProject);
 
   const [texto, setTexto] = useState('');
+  // Ctrl+P: solo archivos, como en cualquier editor.
+  const [soloArchivos, setSoloArchivos] = useState(false);
+  useEffect(() => {
+    const abrirArchivos = () => { setSoloArchivos(true); setAbierta(true); };
+    window.addEventListener('codemind:paleta-archivos', abrirArchivos);
+    return () => window.removeEventListener('codemind:paleta-archivos', abrirArchivos);
+  }, [setAbierta]);
+  useEffect(() => { if (!abierta) setSoloArchivos(false); }, [abierta]);
   const [indice, setIndice] = useState(0);
   const entradaRef = useRef<HTMLInputElement | null>(null);
   const listaRef = useRef<HTMLDivElement | null>(null);
@@ -95,6 +105,12 @@ export function CommandPalette() {
           }]
         : []),
 
+      ...[1, 2, 3].map((n) => ({
+        id: `plegar-${n}`, titulo: `Plegar al nivel ${n}`, grupo: 'Editor', icono: 'columns',
+        accion: () => { accionEditor(`editor.foldLevel${n}`); },
+      })),
+      { id: 'plegar-todo', titulo: 'Plegar todo', grupo: 'Editor', icono: 'columns', accion: () => { accionEditor('editor.foldAll'); } },
+      { id: 'desplegar-todo', titulo: 'Desplegar todo', grupo: 'Editor', icono: 'columns', accion: () => { accionEditor('editor.unfoldAll'); } },
       { id: 'diagnostico', titulo: 'Exportar diagnóstico (para reportar un fallo)', grupo: 'Ayuda', icono: 'docs', accion: () => { void exportarDiagnostico(); } },
       { id: 'ver-atajos', titulo: 'Ver los atajos de teclado', grupo: 'Ayuda', atajo: 'Ctrl+/', icono: 'docs', accion: () => { window.dispatchEvent(new Event('codemind:atajos')); } },
       { id: 'ver-tour', titulo: 'Repetir el recorrido de bienvenida', grupo: 'Ayuda', icono: 'play', accion: () => { window.dispatchEvent(new Event('codemind:tour')); } },
@@ -162,15 +178,20 @@ export function CommandPalette() {
 
     if (soloAcciones) return acciones;
 
+    // Los archivos, ordenados por lo bien que encajan (iniciales, letras
+    // seguidas, el nombre antes que la carpeta).
     const rutas = archivos
-      .filter((p) => encaja(p))
+      .map((p) => ({ p, n: consulta ? Math.max(puntuar(consulta, p), puntuar(consulta, p.split('/').pop() ?? p) * 1.2) : 1 }))
+      .filter((x) => x.n > 0)
+      .sort((a, b) => b.n - a.n)
       .slice(0, 40)
-      .map((p) => ({ tipo: 'archivo' as const, path: p }));
+      .map(({ p }) => ({ tipo: 'archivo' as const, path: p }));
+    if (soloArchivos) return rutas;
 
     // Sin texto se muestran primero las acciones; con texto, los archivos,
     // que es lo que se busca la mayoría de las veces.
     return consulta ? [...rutas, ...acciones] : [...acciones, ...rutas];
-  }, [comandos, archivos, consulta, soloAcciones]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [comandos, archivos, consulta, soloAcciones, soloArchivos]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => { setIndice(0); }, [texto]);
 
@@ -221,7 +242,7 @@ export function CommandPalette() {
             ref={entradaRef}
             type="text"
             value={texto}
-            placeholder="Escribe para buscar un archivo, o > para ver las acciones"
+            placeholder={soloArchivos ? 'Ir a un archivo (búsqueda difusa)' : 'Escribe para buscar un archivo, o > para ver las acciones'}
             onChange={(e) => setTexto(e.target.value)}
             onKeyDown={alPulsarTecla}
             spellCheck={false}
