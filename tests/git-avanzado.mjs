@@ -105,6 +105,17 @@ await git.stashRecuperar(yo, 'stash@{0}');
 ok(g(yo, 'status', '--porcelain').includes('nuevo.txt') && (await git.stashListar(yo)).length === 0, 'stash se recupera');
 ok(Boolean(await lanza(() => git.stashDescartar(yo, '--all'))), 'rechaza referencias de stash raras');
 
+console.log('Un proyecto interno no ve el repositorio de fuera');
+// La carpeta de datos (y con ella los proyectos internos) dentro de otro
+// repositorio: es lo que pasa en desarrollo, con los datos dentro del repo de
+// la aplicacion. git no debe subir hasta el de fuera.
+g(tmp, 'init', '-q');
+const interno = path.join(process.env.CODEMIND_DATA_DIR, 'projects', 'prj_x', 'workspace');
+await fs.mkdir(interno, { recursive: true });
+await escribir(interno, 'a.js', 'x');
+const st = await git.status(interno);
+ok(!st.isRepo, 'el estado de git del proyecto interno no es el del repositorio que lo contiene');
+
 await fs.rm(tmp, { recursive: true, force: true }).catch(() => {});
 console.log(fallos ? `\n${fallos} fallo(s)` : '\nTodo bien.');
 process.exit(fallos ? 1 : 0);
