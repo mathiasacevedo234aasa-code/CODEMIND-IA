@@ -11,6 +11,20 @@ import { Icon } from './Icon';
  * sustituciones habría y en qué archivos, y solo después se escribe. Cambiar
  * decenas de archivos a ciegas es la forma más rápida de romper un proyecto.
  */
+/** Expresiones regulares que se usan a menudo. */
+const PLANTILLAS_REGEX: [string, string][] = [
+  ['TODO / FIXME', '\\b(TODO|FIXME|HACK)\\b'],
+  ['console.log', 'console\\.(log|debug)\\('],
+  ['Correo electrónico', '[\\w.+-]+@[\\w-]+\\.[\\w.]+'],
+  ['URL', 'https?://[^\\s"\'<>)]+'],
+  ['Color hexadecimal', '#(?:[0-9a-fA-F]{3}){1,2}\\b'],
+  ['Número', '\\b\\d+(?:\\.\\d+)?\\b'],
+  ['Fecha AAAA-MM-DD', '\\b\\d{4}-\\d{2}-\\d{2}\\b'],
+  ['Dirección IP', '\\b(?:\\d{1,3}\\.){3}\\d{1,3}\\b'],
+  ['Línea vacía repetida', '\\n\\s*\\n\\s*\\n'],
+  ['Espacios al final', '[ \\t]+$'],
+];
+
 export function SearchPanel() {
   const project = useStore((s) => s.project);
   const setError = useStore((s) => s.setError);
@@ -30,18 +44,39 @@ export function SearchPanel() {
   const [previa, setPrevia] = useState<ReplaceResult | null>(null);
   const [buscando, setBuscando] = useState(false);
   const [plegados, setPlegados] = useState<Set<string>>(new Set());
+  /** Dónde buscar: todo el proyecto, solo lo abierto o solo lo modificado (git). */
+  const [alcance, setAlcance] = useState<'todo' | 'abiertos' | 'modificados'>('todo');
+  const [hayDeshacer, setHayDeshacer] = useState(false);
+  // Historial de búsquedas (en este equipo).
+  const [historial, setHistorial] = useState<string[]>(() => { try { return JSON.parse(localStorage.getItem('codemind.busquedas') ?? '[]'); } catch { return []; } });
+  const recordar = (q: string) => setHistorial((h) => {
+    const n = [q, ...h.filter((x) => x !== q)].slice(0, 20);
+    try { localStorage.setItem('codemind.busquedas', JSON.stringify(n)); } catch { /* sin almacenamiento */ }
+    return n;
+  });
 
   const entradaRef = useRef<HTMLInputElement | null>(null);
   useEffect(() => { entradaRef.current?.focus(); }, []);
 
-  const construir = (): SearchOptions => ({ query, ...opciones, include, exclude });
+  const construir = (soloRutas?: string[]): SearchOptions => ({ query, ...opciones, include, exclude, ...(soloRutas ? { soloRutas } : {}) });
+
+  /** Las rutas del alcance elegido, o nada si es todo el proyecto. */
+  const rutasDelAlcance = async (): Promise<string[] | undefined> => {
+    if (alcance === 'abiertos') return Object.keys(useStore.getState().files);
+    if (alcance === 'modificados' && project) {
+      const st = await api.gitStatus(project.id).catch(() => null);
+      return st?.isRepo ? [...st.staged, ...st.unstaged, ...st.untracked].map((c) => c.path) : [];
+    }
+    return undefined;
+  };
 
   const buscar = async () => {
     if (!project || !query.trim()) return;
     setBuscando(true);
     setPrevia(null);
+    recordar(query.trim());
     try {
-      setResultados(await api.search(project.id, construir()));
+      setResultados(await api.search(project.id, construir(await rutasDelAlcance())));
     } catch (err) {
       setError((err as Error).message);
       setResultados(null);
@@ -54,7 +89,7 @@ export function SearchPanel() {
     if (!project || !query.trim()) return;
     setBuscando(true);
     try {
-      setPrevia(await api.replacePreview(project.id, { ...construir(), replacement }));
+      setPrevia(await api.replacePreview(project.id, { ...construir(await rutasDelAlcance()), replacement }));
     } catch (err) {
       setError((err as Error).message);
     } finally {
@@ -64,12 +99,13 @@ export function SearchPanel() {
 
   const aplicarReemplazo = async () => {
     if (!project || !previa) return;
-    const resumen = `Se van a sustituir ${previa.totalReplacements} coincidencia(s) en ${previa.files.length} archivo(s).\n\nEsta acción modifica tus archivos y no se puede deshacer desde la aplicación.\n\n¿Continuar?`;
+    const resumen = `Se van a sustituir ${previa.totalReplacements} coincidencia(s) en ${previa.files.length} archivo(s).\n\nModifica tus archivos. Podrás deshacerlo con «Deshacer el reemplazo» mientras no los toques después.\n\n¿Continuar?`;
     if (!window.confirm(resumen)) return;
 
     setBuscando(true);
     try {
-      const res = await api.replaceApply(project.id, { ...construir(), replacement });
+      const res = await api.replaceApply(project.id, { ...construir(await rutasDelAlcance()), replacement });
+      setHayDeshacer(true);
       log('sistema', 'info', `Reemplazo aplicado: ${res.totalReplacements} sustitución(es) en ${res.files.length} archivo(s).`);
       setPrevia(null);
       await refreshTree();
@@ -115,7 +151,11 @@ export function SearchPanel() {
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             onKeyDown={(e) => { if (e.key === 'Enter') void buscar(); }}
+            list="historial-busquedas"
           />
+          <datalist id="historial-busquedas">
+            {historial.map((h) => <option key={h} value={h} />)}
+          </datalist>
         </div>
 
         {mostrarReemplazo && (
@@ -151,6 +191,48 @@ export function SearchPanel() {
             {buscando ? <span className="spinner" /> : <Icon name="search" size={12} />} Buscar
           </button>
         </div>
+
+        <div style={{ display: 'flex', gap: 4, paddingLeft: 32 }}>
+          <select value={alcance} onChange={(e) => setAlcance(e.target.value as typeof alcance)} title="Dónde buscar">
+            <option value="todo">Todo el proyecto</option>
+            <option value="abiertos">Solo archivos abiertos</option>
+            <option value="modificados">Solo modificados (Git)</option>
+          </select>
+          <select
+            value=""
+            title="Plantillas de expresiones regulares"
+            onChange={(e) => { if (!e.target.value) return; setQuery(e.target.value); setOpciones((o) => ({ ...o, regex: true })); }}
+          >
+            <option value="">Plantillas regex…</option>
+            {PLANTILLAS_REGEX.map(([nombre, re]) => <option key={nombre} value={re}>{nombre}</option>)}
+          </select>
+        </div>
+        {hayDeshacer && (
+          <div style={{ paddingLeft: 32 }}>
+            <button
+              className="btn sm outline"
+              onClick={() => void (async () => {
+                try {
+                  const r = await api.deshacerReemplazo(project.id);
+                  log('sistema', 'info', `Reemplazo deshecho: ${r.restaurados.length} archivo(s) restaurados.`);
+                  setHayDeshacer(false);
+                  // Lo abierto se vuelve a leer del disco.
+                  for (const ruta of r.restaurados) {
+                    if (!useStore.getState().files[ruta]) continue;
+                    const { content } = await api.readFile(project.id, ruta);
+                    useStore.setState((s) => ({ files: { ...s.files, [ruta]: { content, saved: content } } }));
+                  }
+                  await scanProject();
+                  await buscar();
+                } catch (err) {
+                  setError((err as Error).message);
+                }
+              })()}
+            >
+              Deshacer el reemplazo
+            </button>
+          </div>
+        )}
 
         <div style={{ display: 'flex', gap: 4, paddingLeft: 32 }}>
           <input type="text" placeholder="Incluir: *.ts, src/**" value={include} onChange={(e) => setInclude(e.target.value)} />

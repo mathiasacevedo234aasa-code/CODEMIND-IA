@@ -200,6 +200,12 @@ router.post('/projects/:id/replace/preview', wrap(async (req, res) => {
   res.json(await search.reemplazar(req.params.id, req.body ?? {}, false));
 }));
 
+/** Deshace el ultimo "Reemplazar todo", si nada se ha tocado despues. */
+router.post('/projects/:id/replace/deshacer', wrap(async (req, res) => {
+  await getProject(req.params.id);
+  res.json(await search.deshacerReemplazo(req.params.id));
+}));
+
 /** Aplica el reemplazo. Llega aqui solo tras confirmarlo el usuario. */
 router.post('/projects/:id/replace/apply', wrap(async (req, res) => {
   await getProject(req.params.id);

@@ -18,6 +18,7 @@ import { BarraEstado } from './components/BarraEstado';
 import { RenombrarSimbolo } from './components/RenombrarSimbolo';
 import { ListaMarcadores } from './components/ListaMarcadores';
 import { useMarcadores } from './lib/marcadores';
+import { activarNavegacion, irAdelante, volverAtras } from './lib/navegacion';
 import { DocLectura, useDocumentadosDelArchivo } from './components/DocLectura';
 import { AssistantPanel } from './components/AssistantPanel';
 import { BottomPanel } from './components/BottomPanel';
@@ -123,6 +124,7 @@ export default function App() {
     else delete document.documentElement.dataset.contraste;
   }, [altoContraste]);
   useEffect(() => activarNavegacionTeclado(), []);
+  useEffect(() => activarNavegacion(), []);
 
   // Atajos globales. Se registran una vez y no dependen del foco.
   useEffect(() => {
@@ -131,6 +133,11 @@ export default function App() {
       if (ctrl && e.shiftKey && e.key.toLowerCase() === 'p') {
         e.preventDefault();
         setPaletteOpen(true);
+      }
+      // Atrás / adelante entre los sitios visitados.
+      if (e.altKey && !ctrl && (e.key === 'ArrowLeft' || e.key === 'ArrowRight')) {
+        e.preventDefault();
+        if (e.key === 'ArrowLeft') volverAtras(); else irAdelante();
       }
       if (ctrl && !e.shiftKey && !e.altKey && e.key.toLowerCase() === 'p') {
         e.preventDefault();

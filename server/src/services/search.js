@@ -1,6 +1,6 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
-import { HttpError, projectRootDir, resolveWithin } from './store.js';
+import { HttpError, projectRootDir, resolveWithin, projectDir, readJson, writeJson } from './store.js';
 
 /**
  * Busqueda y reemplazo en todos los archivos del proyecto.
@@ -106,7 +106,11 @@ export async function buscar(projectId, opciones) {
   let total = 0;
   let limitado = false;
 
+  // "Solo abiertos" o "solo modificados": la interfaz manda la lista.
+  const soloEn = Array.isArray(opciones.soloRutas) ? new Set(opciones.soloRutas) : null;
+
   for (const rel of archivos) {
+    if (soloEn && !soloEn.has(rel)) continue;
     if (incluir && !incluir(rel)) continue;
     if (excluir && excluir(rel)) continue;
     if (total >= MAX_RESULTADOS) {
@@ -172,6 +176,8 @@ export async function reemplazar(projectId, opciones, aplicar = false) {
 
   const cambios = [];
   let totalSustituciones = 0;
+  // Para poder deshacer: lo que habia y lo que quedo, de cada archivo tocado.
+  const copia = [];
 
   for (const rel of encontrados) {
     const abs = resolveWithin(raiz, rel);
@@ -189,8 +195,37 @@ export async function reemplazar(projectId, opciones, aplicar = false) {
     totalSustituciones += sustituciones;
     cambios.push({ path: rel, replacements: sustituciones });
 
-    if (aplicar) await fs.writeFile(abs, nuevo, 'utf8');
+    if (aplicar) {
+      await fs.writeFile(abs, nuevo, 'utf8');
+      copia.push({ path: rel, original, nuevo });
+    }
   }
 
+  if (aplicar && copia.length) {
+    await writeJson(path.join(projectDir(projectId), 'ultimo-reemplazo.json'), { en: new Date().toISOString(), archivos: copia });
+  }
   return { applied: aplicar, files: cambios, totalReplacements: totalSustituciones };
+}
+
+/**
+ * Deshace el último "Reemplazar todo". Solo si los archivos siguen exactamente
+ * como los dejó el reemplazo: si alguno se ha tocado después, no se pisa nada
+ * y se dice cuál.
+ */
+export async function deshacerReemplazo(projectId) {
+  const raiz = await projectRootDir(projectId);
+  const archivo = path.join(projectDir(projectId), 'ultimo-reemplazo.json');
+  const ultimo = await readJson(archivo, null);
+  if (!ultimo?.archivos?.length) throw new HttpError(404, 'No hay ningún reemplazo que deshacer.');
+  const cambiados = [];
+  for (const a of ultimo.archivos) {
+    const actual = await fs.readFile(resolveWithin(raiz, a.path), 'utf8').catch(() => null);
+    if (actual !== a.nuevo) cambiados.push(a.path);
+  }
+  if (cambiados.length) {
+    throw new HttpError(409, `No se deshace: estos archivos han cambiado después del reemplazo y se perdería ese trabajo: ${cambiados.join(', ')}.`);
+  }
+  for (const a of ultimo.archivos) await fs.writeFile(resolveWithin(raiz, a.path), a.original, 'utf8');
+  await fs.rm(archivo, { force: true });
+  return { restaurados: ultimo.archivos.map((a) => a.path) };
 }

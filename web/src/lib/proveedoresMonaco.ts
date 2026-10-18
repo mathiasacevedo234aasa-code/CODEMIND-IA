@@ -88,7 +88,8 @@ export function registrarProveedores(monaco: typeof Monaco) {
     typescript?: { typescriptDefaults: ModoTs; javascriptDefaults: ModoTs };
   }).typescript;
   for (const defaults of [ts?.typescriptDefaults, ts?.javascriptDefaults]) {
-    defaults?.setModeConfiguration({ ...defaults.modeConfiguration, definitions: false });
+    // Lo mismo con las referencias: las del analizador cubren el proyecto entero.
+    defaults?.setModeConfiguration({ ...defaults.modeConfiguration, definitions: false, references: false });
   }
   //
   // Funciona en los 22 lenguajes que entiende el analizador, no solo en los
@@ -181,6 +182,33 @@ export function registrarProveedores(monaco: typeof Monaco) {
             sortText: `0${s.prefijo}`,
           })),
       };
+    },
+  });
+
+  // ----------------------------------------------------- referencias
+  //
+  // Shift+F12 / "Ir a referencias": dónde aparece ese nombre en TODO el
+  // proyecto (palabra completa). Es por texto, como el renombrado: también
+  // encuentra el nombre en comentarios.
+  monaco.languages.registerReferenceProvider({ scheme: 'file' }, {
+    provideReferences(modelo, posicion) {
+      const palabra = modelo.getWordAtPosition(posicion)?.word;
+      if (!palabra || palabra.length < 2) return [];
+      const st = useStore.getState();
+      const fuentes: Record<string, string> = { ...st.sources };
+      for (const [r, f] of Object.entries(st.files)) if (!f.vista) fuentes[r] = f.content;
+      const re = new RegExp(`(?<![\\w$])${palabra.replace(/[$]/g, '\\$')}(?![\\w$])`, 'g');
+      const salida: Monaco.languages.Location[] = [];
+      for (const [ruta, texto] of Object.entries(fuentes)) {
+        texto.split('\n').forEach((linea, i) => {
+          for (const m of linea.matchAll(re)) {
+            if (salida.length >= 500) return;
+            const col = (m.index ?? 0) + 1;
+            salida.push({ uri: modelo.uri.with({ path: `/${ruta}` }), range: new monaco.Range(i + 1, col, i + 1, col + palabra.length) });
+          }
+        });
+      }
+      return salida;
     },
   });
 

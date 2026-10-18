@@ -411,6 +411,8 @@ export const api = {
     request<SearchResults>(`/api/projects/${id}/search`, { method: 'POST', ...json(opciones) }),
   replacePreview: (id: string, opciones: SearchOptions & { replacement: string; paths?: string[] }) =>
     request<ReplaceResult>(`/api/projects/${id}/replace/preview`, { method: 'POST', ...json(opciones) }),
+  deshacerReemplazo: (id: string) =>
+    request<{ restaurados: string[] }>(`/api/projects/${id}/replace/deshacer`, { method: 'POST' }),
   replaceApply: (id: string, opciones: SearchOptions & { replacement: string; paths?: string[] }) =>
     request<ReplaceResult>(`/api/projects/${id}/replace/apply`, { method: 'POST', ...json(opciones) }),
 

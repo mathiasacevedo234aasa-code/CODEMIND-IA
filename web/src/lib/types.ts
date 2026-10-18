@@ -187,6 +187,8 @@ export interface SearchOptions {
   /** Patrones separados por comas: "*.ts, src/**" */
   include?: string;
   exclude?: string;
+  /** Buscar solo en estas rutas (abiertos, modificados). */
+  soloRutas?: string[];
 }
 
 export interface SearchMatch {
