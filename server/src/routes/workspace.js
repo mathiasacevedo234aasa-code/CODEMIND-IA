@@ -157,6 +157,27 @@ router.get('/projects/:id/git/linea-tiempo', wrap(async (req, res) => {
   res.json({ commits });
 }));
 
+router.get('/projects/:id/git/stash/ver', wrap(async (req, res) => {
+  res.json(await git.stashVer(await rootOf(req), req.query.ref));
+}));
+
+router.get('/projects/:id/git/conflicto', wrap(async (req, res) => {
+  res.json(await git.versionesConflicto(await rootOf(req), req.query.path));
+}));
+
+router.post('/projects/:id/git/conflicto', wrap(async (req, res) => {
+  res.json({ status: await git.resolverConflicto(await rootOf(req), req.body?.path, req.body?.lado) });
+}));
+
+router.get('/projects/:id/github/prs', wrap(async (req, res) => {
+  res.json(await github.prsEIssues(await rootOf(req)));
+}));
+
+/** Clonar un repositorio en una carpeta del equipo (luego se abre como proyecto). */
+router.post('/git/clonar', wrap(async (req, res) => {
+  res.json(await github.clonar(req.body?.url, req.body?.carpeta, req.body?.nombre));
+}));
+
 router.get('/projects/:id/git/stash', wrap(async (req, res) => {
   res.json({ lista: await git.stashListar(await rootOf(req)) });
 }));
@@ -166,6 +187,7 @@ router.post('/projects/:id/git/stash', wrap(async (req, res) => {
   const b = req.body ?? {};
   let r;
   if (b.accion === 'recuperar') r = await git.stashRecuperar(cwd, b.ref);
+  else if (b.accion === 'aplicar') r = await git.stashAplicar(cwd, b.ref);
   else if (b.accion === 'descartar') r = await git.stashDescartar(cwd, b.ref);
   else r = await git.stashGuardar(cwd, b.mensaje);
   res.json({ ...r, status: await git.status(cwd) });

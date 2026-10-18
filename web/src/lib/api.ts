@@ -110,6 +110,13 @@ async function leerStream(
   return fin;
 }
 
+export interface PrIssue {
+  numero: number; titulo: string; autor: string; creado: string; url: string;
+  etiquetas: string[]; cuerpo: string; comentarios: number;
+  rama?: string; haciaRama?: string; borrador?: boolean;
+}
+export interface PrsIssuesResultado { repo: string; prs: PrIssue[]; issues: PrIssue[] }
+
 export const api = {
   health: () =>
     request<{
@@ -367,8 +374,17 @@ export const api = {
   gitDeshacerCommit: (id: string) =>
     request<{ deshecho: string; status: GitStatus }>(`/api/projects/${id}/git/deshacer-commit`, { method: 'POST' }),
   gitStashListar: (id: string) => request<{ lista: StashEntrada[] }>(`/api/projects/${id}/git/stash`),
-  gitStash: (id: string, cuerpo: { accion?: 'guardar' | 'recuperar' | 'descartar'; ref?: string; mensaje?: string }) =>
+  gitStash: (id: string, cuerpo: { accion?: 'guardar' | 'recuperar' | 'aplicar' | 'descartar'; ref?: string; mensaje?: string }) =>
     request<{ lista: StashEntrada[]; status: GitStatus }>(`/api/projects/${id}/git/stash`, { method: 'POST', ...json(cuerpo) }),
+  gitStashVer: (id: string, ref: string) =>
+    request<{ diff: string }>(`/api/projects/${id}/git/stash/ver?ref=${encodeURIComponent(ref)}`),
+  conflicto: (id: string, path: string) =>
+    request<{ base: string; mia: string; suya: string; actual: string }>(`/api/projects/${id}/git/conflicto?path=${encodeURIComponent(path)}`),
+  resolverConflicto: (id: string, path: string, lado: 'mia' | 'suya' | 'actual') =>
+    request<{ status: GitStatus }>(`/api/projects/${id}/git/conflicto`, { method: 'POST', ...json({ path, lado }) }),
+  prsIssues: (id: string) => request<PrsIssuesResultado>(`/api/projects/${id}/github/prs`),
+  clonar: (url: string, carpeta: string, nombre?: string) =>
+    request<{ carpeta: string; nombre: string }>('/api/git/clonar', { method: 'POST', ...json({ url, carpeta, nombre }) }),
 
   // ------------------------------------------------------------ ejecución
   runScripts: (id: string) => request<RunScriptsInfo>(`/api/projects/${id}/run/scripts`),

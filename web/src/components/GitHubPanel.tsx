@@ -3,6 +3,7 @@ import { useStore } from '../state/useStore';
 import { api, type PreviaPull } from '../lib/api';
 import type { ChangeKind, GitHubRepo, GitHubStatus, SyncPreview } from '../lib/types';
 import { Icon } from './Icon';
+import { PrsIssues } from './PrsIssues';
 
 const KIND_TAG: Record<ChangeKind, string> = {
   codigo: 'info',
@@ -383,6 +384,7 @@ export function GitHubPanel() {
           </p>
         </div>
       )}
+      {status?.user && <PrsIssues />}
     </div>
   );
 }

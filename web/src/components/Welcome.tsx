@@ -22,7 +22,10 @@ export function Welcome() {
   const [plantillas, setPlantillas] = useState<{ id: string; nombre: string; descripcion: string }[]>([]);
   useEffect(() => { api.plantillas().then((r) => setPlantillas(r.plantillas)).catch(() => {}); }, []);
   /** null = cerrado. "abrir" abre la carpeta ya; "elegir" solo rellena el formulario. */
-  const [picker, setPicker] = useState<'abrir' | 'elegir' | null>(null);
+  const [picker, setPicker] = useState<'abrir' | 'elegir' | 'clonar' | null>(null);
+  const [urlClon, setUrlClon] = useState('');
+  const [clonando, setClonando] = useState(false);
+  const [falloClon, setFalloClon] = useState<string | null>(null);
 
   const reset = () => {
     setCreating(false);
@@ -50,6 +53,13 @@ export function Welcome() {
                 <Icon name="folderOpen" size={14} /> {t('Abrir una carpeta del equipo')}
               </button>
             </div>
+            <div style={{ display: 'flex', gap: 6, marginTop: 8 }}>
+              <input value={urlClon} onChange={(e) => setUrlClon(e.target.value)} placeholder="https://github.com/usuario/repositorio.git" style={{ flex: 1 }} />
+              <button className="btn outline" disabled={!urlClon.trim() || clonando} onClick={() => setPicker('clonar')}>
+                {clonando ? <span className="spinner" /> : <Icon name="git" size={14} />} Clonar desde URL
+              </button>
+            </div>
+            {falloClon && <p className="hint" style={{ color: 'var(--bad)' }}>{falloClon}</p>}
             <p className="hint" style={{ marginTop: 8 }}>
               Puedes trabajar sobre una carpeta que ya tengas en el disco: CodeMind AI lee y escribe
               directamente en ella, y su documentación se guarda aparte, sin ensuciar tu proyecto.
@@ -175,8 +185,17 @@ export function Welcome() {
       <FolderPicker
         open={picker !== null}
         onClose={() => setPicker(null)}
-        title={picker === 'abrir' ? 'Abrir una carpeta como proyecto' : 'Elegir la carpeta del proyecto'}
+        title={picker === 'abrir' ? 'Abrir una carpeta como proyecto' : picker === 'clonar' ? 'Carpeta donde crear la copia' : 'Elegir la carpeta del proyecto'}
         onChoose={(path, suggested) => {
+          if (picker === 'clonar') {
+            setClonando(true);
+            setFalloClon(null);
+            api.clonar(urlClon.trim(), path)
+              .then((r) => { setUrlClon(''); return createProject(r.nombre, '', r.carpeta); })
+              .catch((e) => setFalloClon((e as Error).message))
+              .finally(() => setClonando(false));
+            return;
+          }
           if (picker === 'abrir') {
             // Abrir es abrir: no se obliga a pasar por el formulario.
             void createProject(suggested, '', path);

@@ -503,3 +503,68 @@ export async function pushEtiqueta(cwd, nombre) {
   }
   return { output };
 }
+
+// ------------------------------------------- PR e issues (solo lectura)
+
+/** "dueño/repo" del remoto origin, si es de GitHub. */
+async function repoDelProyecto(cwd) {
+  const r = await run(cwd, ['remote', 'get-url', 'origin'], { allowFailure: true });
+  const m = /github\.com[/:]([\w.-]+\/[\w.-]+?)(?:\.git)?$/.exec(r.stdout.trim());
+  if (!m) throw new HttpError(400, 'Este proyecto no esta vinculado a un repositorio de GitHub.');
+  return m[1];
+}
+
+/**
+ * Pull requests e issues abiertos del repositorio, para leerlos sin salir de
+ * la aplicacion. Solo lectura: aqui no se comenta, ni se cierra, ni se fusiona.
+ */
+export async function prsEIssues(cwd) {
+  const token = await getToken();
+  if (!token) throw new HttpError(400, 'Conecta tu cuenta de GitHub para ver los pull requests y las issues.');
+  const repo = await repoDelProyecto(cwd);
+  const [prs, issues] = await Promise.all([
+    ghFetch(`/repos/${repo}/pulls?state=open&per_page=50`, token).then((r) => r.json()),
+    ghFetch(`/repos/${repo}/issues?state=open&per_page=50`, token).then((r) => r.json()),
+  ]);
+  const resumen = (x) => ({
+    numero: x.number,
+    titulo: x.title,
+    autor: x.user?.login ?? '',
+    creado: x.created_at,
+    url: x.html_url,
+    etiquetas: (x.labels ?? []).map((l) => l.name),
+    cuerpo: String(x.body ?? '').slice(0, 4000),
+    comentarios: x.comments ?? 0,
+  });
+  return {
+    repo,
+    prs: prs.map((p) => ({ ...resumen(p), rama: p.head?.ref, haciaRama: p.base?.ref, borrador: Boolean(p.draft) })),
+    // La API de issues incluye los PR: se quitan para no repetirlos.
+    issues: issues.filter((i) => !i.pull_request).map(resumen),
+  };
+}
+
+// --------------------------------------------------------------- clonar
+
+/**
+ * Clona un repositorio en una carpeta nueva. Si es de GitHub y hay cuenta
+ * conectada, usa el token (para los privados) sin dejarlo en la configuracion
+ * del repositorio.
+ */
+export async function clonar(url, carpetaPadre, nombre) {
+  const u = String(url ?? '').trim();
+  if (!/^(https:\/\/|git@)[\w.@:/~-]+$/.test(u)) throw new HttpError(400, 'Esa direccion no parece la de un repositorio git (https://... o git@...).');
+  const padre = path.resolve(String(carpetaPadre ?? ''));
+  const stat = await fs.stat(padre).catch(() => null);
+  if (!stat?.isDirectory()) throw new HttpError(400, 'Elige una carpeta donde crear la copia.');
+  const n = String(nombre || u.split('/').pop().replace(/\.git$/, '')).replace(/[^\w.-]+/g, '-');
+  const destino = path.join(padre, n);
+  if (await fs.stat(destino).catch(() => null)) throw new HttpError(409, `Ya existe la carpeta "${destino}". Elige otro nombre.`);
+  const token = /github\.com/.test(u) ? await getToken() : null;
+  const res = await run(padre, ['clone', '--', u, n], { allowFailure: true, env: token ? await authEnv(token) : {}, timeout: 600000 });
+  if (res.code !== 0) {
+    const salida = token ? redact(`${res.stderr}`, token) : res.stderr;
+    throw new HttpError(502, `No se pudo clonar: ${salida.trim().split('\n').slice(-2).join(' ')}`);
+  }
+  return { carpeta: destino, nombre: n };
+}

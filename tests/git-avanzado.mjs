@@ -133,6 +133,26 @@ ok(Boolean(await lanza(() => git.crearEtiqueta(h, 'v1.0.0', 'otra vez'))), 'no p
 ok(Boolean(await lanza(() => git.crearEtiqueta(h, '--force', 'x'))), 'rechaza nombres de etiqueta raros');
 ok((await git.borrarEtiqueta(h, 'v1.0.0')).length === 0, 'borra la etiqueta');
 
+console.log('Conflictos en tres columnas y stash completo');
+const c3 = path.join(tmp, 'conflicto');
+g(tmp, 'init', '-q', '-b', 'main', c3);
+g(c3, 'config', 'user.email', 'p@p'); g(c3, 'config', 'user.name', 'P'); g(c3, 'config', 'core.autocrlf', 'false');
+await escribir(c3, 'x.txt', 'base\n'); g(c3, 'add', '.'); g(c3, 'commit', '-qm', 'base');
+g(c3, 'checkout', '-q', '-b', 'otra'); await escribir(c3, 'x.txt', 'suya\n'); g(c3, 'commit', '-qam', 'suya');
+g(c3, 'checkout', '-q', 'main'); await escribir(c3, 'x.txt', 'mia\n'); g(c3, 'commit', '-qam', 'mia');
+await lanza(async () => g(c3, 'merge', 'otra'));
+const v3 = await git.versionesConflicto(c3, 'x.txt');
+ok(v3.base === 'base\n' && v3.mia === 'mia\n' && v3.suya === 'suya\n' && v3.actual.includes('<<<<<<<'), 'las tres versiones del conflicto (base, mía y suya)');
+ok(Boolean(await lanza(() => git.resolverConflicto(c3, 'x.txt', 'actual'))), 'no marca como resuelto un archivo con marcas de conflicto');
+await git.resolverConflicto(c3, 'x.txt', 'suya');
+ok((await fs.readFile(path.join(c3, 'x.txt'), 'utf8')) === 'suya\n' && !(await git.status(c3)).conflicts.length, 'quedarse con la suya resuelve y prepara el archivo');
+g(c3, 'commit', '-qm', 'fusion');
+await escribir(c3, 'x.txt', 'apartado\n');
+await git.stashGuardar(c3, 'prueba');
+ok((await git.stashVer(c3, 'stash@{0}')).diff.includes('+apartado'), 'ver el contenido de un stash');
+await git.stashAplicar(c3, 'stash@{0}');
+ok((await git.stashListar(c3)).length === 1 && (await fs.readFile(path.join(c3, 'x.txt'), 'utf8')) === 'apartado\n', 'aplicar un stash sin borrarlo');
+
 console.log('Un proyecto interno no ve el repositorio de fuera');
 // La carpeta de datos (y con ella los proyectos internos) dentro de otro
 // repositorio: es lo que pasa en desarrollo, con los datos dentro del repo de

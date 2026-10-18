@@ -4,6 +4,7 @@ import { api, type StashEntrada } from '../lib/api';
 import { BotonResumen } from './Resumenes';
 import { GrafoRamas } from './GrafoRamas';
 import { Etiquetas } from './Etiquetas';
+import { Conflicto3 } from './Conflicto3';
 // Usa Monaco: se carga junto con él, solo si se pide la comparación.
 const DiffLadoALado = lazy(() =>
   import('../lib/monaco').then(() => import('./DiffLadoALado')).then((m) => ({ default: m.DiffLadoALado })));
@@ -136,6 +137,9 @@ export function GitPanel() {
   const [stashes, setStashes] = useState<StashEntrada[]>([]);
   const [diffStaged, setDiffStaged] = useState(false);
   const [verRamas, setVerRamas] = useState(false);
+  const [conflicto, setConflicto] = useState<string | null>(null);
+  const [stashVisto, setStashVisto] = useState<{ ref: string; diff: string } | null>(null);
+  const [tipoCommit, setTipoCommit] = useState('');
 
   const alive = useRef(true);
   useEffect(() => {
@@ -306,9 +310,9 @@ export function GitPanel() {
         )}
 
         <Section
-          title="Conflictos" items={status.conflicts} tone="danger" actionLabel="Preparar"
-          onAction={(p) => void guard(() => api.gitStage(project.id, [p]))}
-          onActionAll={() => void guard(() => api.gitStage(project.id, status.conflicts.map((c) => c.path)))}
+          title="Conflictos" items={status.conflicts} tone="danger" actionLabel="Resolver"
+          onAction={(p) => setConflicto(p)}
+          onActionAll={() => setConflicto(status.conflicts[0]?.path ?? null)}
           onSelect={(c) => void selectChange(c, false)} selected={selected?.path ?? null} onOpen={(p) => void openFile(p)}
         />
         <Section
@@ -362,6 +366,17 @@ export function GitPanel() {
           ) : (
             <p className="hint" style={{ margin: '6px 0' }}>Prepara primero los archivos que quieras incluir.</p>
           )}
+          <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', margin: '4px 0' }} title="Plantilla opcional: añade el tipo delante del mensaje">
+            {TIPOS_COMMIT.map(([t, d]) => (
+              <button key={t} type="button" className={`btn sm ${tipoCommit === t ? 'primary' : 'outline'}`} title={d}
+                onClick={() => {
+                  const sinTipo = message.replace(/^\w+(\([^)]*\))?!?:\s*/, '');
+                  const nuevo = tipoCommit === t ? '' : t;
+                  setTipoCommit(nuevo);
+                  setMessage(nuevo ? `${nuevo}: ${sinTipo}` : sinTipo);
+                }}>{t}</button>
+            ))}
+          </div>
           <textarea
             placeholder="Mensaje del commit"
             value={message}
@@ -437,6 +452,14 @@ export function GitPanel() {
               >
                 Recuperar
               </button>
+              <button className="btn sm outline" disabled={busy} title="Ver qué guarda"
+                onClick={() => void api.gitStashVer(project.id, st.ref).then((r) => setStashVisto({ ref: st.ref, diff: r.diff })).catch((e) => setNotice((e as Error).message))}>
+                Ver
+              </button>
+              <button className="btn sm outline" disabled={busy} title="Aplicarlo sin borrarlo de la lista"
+                onClick={() => void guard(() => api.gitStash(project.id, { accion: 'aplicar', ref: st.ref }))}>
+                Aplicar
+              </button>
               <button
                 className="btn icon sm"
                 disabled={busy}
@@ -470,9 +493,28 @@ export function GitPanel() {
         )}
       </div>
       )}
+      {conflicto && <Conflicto3 ruta={conflicto} alCerrar={() => setConflicto(null)} alResolver={() => void load()} />}
+      {stashVisto && (
+        <div className="overlay" onClick={() => setStashVisto(null)}>
+          <div className="modal diff-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-head">
+              <h2 style={{ fontSize: 14 }}>Contenido de {stashVisto.ref}</h2>
+              <span style={{ flex: 1 }} />
+              <button className="btn icon" onClick={() => setStashVisto(null)}><Icon name="close" /></button>
+            </div>
+            <pre className="log-raw" style={{ maxHeight: '70vh', overflow: 'auto' }}>{stashVisto.diff || '(vacío)'}</pre>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
+
+/** Tipos de commit convencionales; solo una ayuda para escribir el mensaje. */
+const TIPOS_COMMIT: [string, string][] = [
+  ['feat', 'Algo nuevo'], ['fix', 'Corrige un fallo'], ['docs', 'Documentación'], ['style', 'Formato, sin cambiar la lógica'],
+  ['refactor', 'Reorganiza sin cambiar el comportamiento'], ['test', 'Pruebas'], ['chore', 'Mantenimiento'],
+];
 
 /**
  * Nombres de rama sugeridos a partir de los cambios que tienes: el tipo
