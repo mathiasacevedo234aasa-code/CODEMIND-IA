@@ -1,4 +1,5 @@
 import { MODELO_GROQ_ENV } from '../env.js';
+import { comprobarLimite, registrar } from './contabilidad.js';
 import { HttpError, getApiKey, readSettings } from './store.js';
 
 /**
@@ -291,6 +292,7 @@ export async function completar({ messages, proveedor: idProveedor, modelo, temp
       : `No hay ningun modelo elegido para ${proveedor.nombre}.`);
   }
 
+  await comprobarLimite();
   const comun = { proveedor, baseUrl, key, modelo: model, messages, temperature, maxTokens };
   let { res, raw } = await pedir({ ...comun, jsonMode });
 
@@ -316,6 +318,7 @@ export async function completar({ messages, proveedor: idProveedor, modelo, temp
         : `${proveedor.nombre} devolvio una respuesta sin contenido utilizable.`,
     );
   }
+  await registrar({ proveedor: proveedor.id, modelo: devuelto ?? model, messages, respuesta: texto, usage: uso });
   return { content: texto, usage: uso, model: devuelto ?? model, proveedor: proveedor.id };
 }
 
@@ -434,6 +437,7 @@ export async function completarStream(
   }
   const model = await resolverModelo(proveedor.id, modelo);
   if (!model) throw new HttpError(400, `No hay ningun modelo elegido para ${proveedor.nombre}.`);
+  await comprobarLimite();
 
   const anthropic = proveedor.protocolo === 'anthropic';
   const headers = { 'Content-Type': 'application/json' };
@@ -507,5 +511,7 @@ export async function completarStream(
   if (!texto.trim()) {
     throw new HttpError(502, `${proveedor.nombre} termino sin enviar ningun texto.`);
   }
+  // El streaming no siempre informa de los tokens: se estiman.
+  await registrar({ proveedor: proveedor.id, modelo: modeloDevuelto, messages, respuesta: texto });
   return { content: texto, model: modeloDevuelto, proveedor: proveedor.id };
 }

@@ -1,6 +1,8 @@
 import { Router } from 'express';
 import * as cacheDocs from '../services/cacheDocs.js';
 import { comoPreferencias } from '../services/valoraciones.js';
+import { modeloDeTarea } from '../services/tareas.js';
+import * as contabilidad from '../services/contabilidad.js';
 import { generateFunctionDoc, chat, chatStream, listModels, testConnection } from '../services/ia.js';
 import { listaProveedores } from '../services/proveedores.js';
 import { comoTexto as glosarioComoTexto } from '../services/glosario.js';
@@ -13,7 +15,10 @@ router.post('/document', async (req, res, next) => {
   try {
     const { projectId, code, context = {}, model, extraInstruction, forzar } = req.body ?? {};
     // Respaldo: el usuario eligio reintentar con otro proveedor configurado.
-    const proveedor = typeof req.body?.proveedor === 'string' && req.body.proveedor ? req.body.proveedor : null;
+    // Respaldo (el usuario eligio otro) o, si no, el modelo elegido para "documentar".
+    const deTarea = modeloDeTarea(await readSettings(), 'documentar');
+    const proveedor = typeof req.body?.proveedor === 'string' && req.body.proveedor ? req.body.proveedor : deTarea.proveedor;
+    const modeloTarea = req.body?.proveedor ? null : deTarea.modelo;
     const settings = await readSettings();
 
     if (projectId) {
@@ -60,7 +65,7 @@ router.post('/document', async (req, res, next) => {
     const result = await generateFunctionDoc({
       code,
       context,
-      model: model ?? null,
+      model: model ?? modeloTarea,
       proveedor,
       temperature: settings.temperature,
       maxTokens: settings.maxTokens,
@@ -114,12 +119,53 @@ async function prepararChat(body) {
     contextText: material,
     idioma: settings.idioma ?? 'es',
     historial,
-    proveedor: typeof proveedor === 'string' && proveedor ? proveedor : null,
-    model: model ?? null,
+    // El proveedor pedido (respaldo, comparar) o el elegido para el asistente.
+    ...(typeof proveedor === 'string' && proveedor
+      ? { proveedor, model: model ?? null }
+      : { proveedor: modeloDeTarea(settings, 'asistente').proveedor, model: model ?? modeloDeTarea(settings, 'asistente').modelo }),
     temperature: settings.temperature,
     maxTokens: settings.maxTokens,
   };
 }
+
+/**
+ * La misma pregunta a dos proveedores a la vez, para comparar respuestas.
+ * Cada uno cuenta en el gasto como un envio normal.
+ */
+router.post('/comparar', async (req, res, next) => {
+  try {
+    const proveedores = Array.isArray(req.body?.proveedores) ? req.body.proveedores.slice(0, 2) : [];
+    if (proveedores.length !== 2) return res.status(400).json({ error: 'Elige dos proveedores.' });
+    const resultados = await Promise.allSettled(
+      proveedores.map(async (p) => chat(await prepararChat({ ...req.body, proveedor: p.proveedor, model: p.modelo || null }))),
+    );
+    res.json({
+      respuestas: resultados.map((r, i) => (r.status === 'fulfilled'
+        ? { proveedor: proveedores[i].proveedor, ...r.value }
+        : { proveedor: proveedores[i].proveedor, error: r.reason?.message ?? String(r.reason) })),
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
+/** Lo enviado a la IA, tal cual, y el gasto del mes. Todo local. */
+router.get('/envios', async (_req, res, next) => {
+  try {
+    res.json({ envios: await contabilidad.listarEnvios(), gasto: await contabilidad.gastoDelMes() });
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.delete('/envios', async (_req, res, next) => {
+  try {
+    await contabilidad.borrarEnvios();
+    res.json({ ok: true });
+  } catch (err) {
+    next(err);
+  }
+});
 
 /** Asistente en sus cuatro modos. El modo "context" usa la memoria del proyecto. */
 router.post('/chat', async (req, res, next) => {

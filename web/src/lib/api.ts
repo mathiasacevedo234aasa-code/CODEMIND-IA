@@ -410,6 +410,10 @@ export const api = {
     request<{ filename: string; mime: string; content: string; documented: number }>(
       `/api/projects/${id}/docs/export?format=${format}${bilingue ? '&bilingue=1' : ''}`,
     ),
+  envios: () => request<{ envios: EnvioIA[]; gasto: { usd: number; tokens: number; envios: number; sinPrecio: number } }>('/api/ai/envios'),
+  borrarEnvios: () => request<{ ok: true }>('/api/ai/envios', { method: 'DELETE' }),
+  comparar: (payload: Record<string, unknown>) =>
+    request<{ respuestas: { proveedor: string; answer?: string; model?: string; error?: string }[] }>('/api/ai/comparar', { method: 'POST', ...json(payload) }),
   revisionIA: (id: string, functionId: string, code?: string) =>
     request<{ observaciones: { campo: string; tipo: string; detalle: string }[]; veredicto: string }>(
       `/api/projects/${id}/docs/${encodeURIComponent(functionId)}/revision-ia`, { method: 'POST', ...json({ code }) }),
@@ -448,3 +452,13 @@ export interface Conversacion {
 export interface VersionLocal { id: string; en: string; bytes: number; lineas: number }
 
 export interface EjecucionResumen { id: string; etiqueta: string; comando: string; inicio: string; fin: string; ms: number; codigo: number | null; lineas: number }
+
+export interface EnvioIA {
+  en: string;
+  proveedor: string;
+  modelo: string;
+  tokens: { entrada: number; salida: number; estimado: boolean };
+  usd: number | null;
+  mensajes: { role: string; content: string }[];
+  respuesta: string;
+}

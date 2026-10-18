@@ -498,6 +498,12 @@ export interface AppSettings {
   precios?: Record<string, { entrada: number; salida: number }>;
   /** Snippets creados por el usuario. */
   snippets?: SnippetPropio[];
+  /** Proveedor y modelo por tarea (documentar, asistente, traducir, revisar). */
+  modelosPorTarea?: Record<string, { proveedor: string; modelo: string }>;
+  /** Límite de gasto mensual en USD; 0 = sin límite. */
+  limiteGasto?: number;
+  /** Prompts guardados por el usuario. */
+  prompts?: { nombre: string; texto: string }[];
   maxTokens: number;
   editor: EditorSettings;
 }

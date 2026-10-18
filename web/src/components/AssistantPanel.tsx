@@ -3,6 +3,7 @@ import { useStore } from '../state/useStore';
 import { api, type Conversacion } from '../lib/api';
 import { esFalloDelServicio, siguienteProveedor } from '../lib/respaldo';
 import { numerarLineas, TextoConCitas } from './TextoConCitas';
+import { CompararProveedores } from './CompararProveedores';
 import { Icon } from './Icon';
 
 type Mode = 'comprehension' | 'principiante' | 'clase' | 'repaso' | 'context' | 'technical' | 'documentation';
@@ -53,6 +54,7 @@ export function AssistantPanel() {
   const [question, setQuestion] = useState('');
   const [busy, setBusy] = useState(false);
   const [messages, setMessages] = useState<Message[]>([]);
+  const [comparando, setComparando] = useState<Record<string, unknown> | null>(null);
   /** La última pregunta falló por el servicio y hay otro proveedor configurado. */
   const [reintento, setReintento] = useState<{ texto: string; contextoDirecto?: string; proveedor: string; nombre: string } | null>(null);
 
@@ -452,6 +454,28 @@ export function AssistantPanel() {
           }}
           style={{ minHeight: 60 }}
         />
+        <div className="prompts-fila">
+          {(settings.prompts?.length ?? 0) > 0 && (
+            <select
+              value=""
+              onChange={(e) => { const p = settings.prompts?.[Number(e.target.value)]; if (p) setQuestion(p.texto); }}
+              title="Tus prompts guardados (Configuración)"
+            >
+              <option value="">Mis prompts…</option>
+              {settings.prompts!.map((p, i) => <option key={i} value={i}>{p.nombre}</option>)}
+            </select>
+          )}
+          <span style={{ flex: 1 }} />
+          <button
+            className="btn sm outline"
+            disabled={!question.trim() || busy}
+            title="Hacer esta misma pregunta a dos proveedores y ver las respuestas lado a lado"
+            onClick={() => setComparando({ projectId: project?.id, mode, question: question.trim(), contextText: construirContexto() })}
+          >
+            Comparar proveedores
+          </button>
+        </div>
+        {comparando && <CompararProveedores payload={comparando} alCerrar={() => setComparando(null)} />}
         {question.trim() && (
           <p className="hint estimacion" title="Estimación: unos 4 caracteres por token. El coste usa el precio que pusiste para este modelo en Configuración.">
             ≈ {estimacion.entrada.toLocaleString()} tokens de entrada · hasta {estimacion.salidaMax.toLocaleString()} de respuesta

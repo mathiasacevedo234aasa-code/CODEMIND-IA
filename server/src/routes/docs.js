@@ -10,6 +10,7 @@ import {
 } from '../services/store.js';
 import { validateDoc, traducirDoc, revisarDoc } from '../services/ia.js';
 import * as valoraciones from '../services/valoraciones.js';
+import { modeloDeTarea } from '../services/tareas.js';
 import * as glosario from '../services/glosario.js';
 
 const router = Router();
@@ -177,7 +178,8 @@ router.post('/:id/docs/:functionId/traduccion', async (req, res, next) => {
     if (!entry) return res.status(404).json({ error: 'Ese elemento no tiene documentacion aprobada.' });
     const idioma = req.body?.idioma === 'es' ? 'es' : 'en';
     const settings = await readSettings();
-    res.json(await traducirDoc({ doc: entry.doc, idioma, temperature: settings.temperature, maxTokens: settings.maxTokens }));
+    const t = modeloDeTarea(settings, 'traducir');
+    res.json(await traducirDoc({ doc: entry.doc, idioma, proveedor: t.proveedor, model: t.modelo, temperature: settings.temperature, maxTokens: settings.maxTokens }));
   } catch (err) {
     next(err);
   }
@@ -208,7 +210,10 @@ router.post('/:id/docs/:functionId/revision-ia', async (req, res, next) => {
     const entry = store.approved[req.params.functionId];
     if (!entry) return res.status(404).json({ error: 'Ese elemento no tiene documentacion aprobada.' });
     const settings = await readSettings();
+    const t = modeloDeTarea(settings, 'revisar');
     res.json(await revisarDoc({
+      proveedor: t.proveedor,
+      model: t.modelo,
       code: req.body?.code || entry.code,
       doc: entry.doc,
       idioma: project.idiomaDoc ?? settings.idioma ?? 'es',

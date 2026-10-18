@@ -302,7 +302,7 @@ export const resolveModel = (proveedor, pedido) => resolverModelo(proveedor, ped
  * bilingue. Mismas claves, mismos datos: solo cambia el idioma del texto.
  * Los nombres de codigo (funciones, parametros, tipos) no se traducen.
  */
-export async function traducirDoc({ doc, idioma, model, temperature, maxTokens }) {
+export async function traducirDoc({ doc, idioma, model, proveedor, temperature, maxTokens }) {
   if (!doc || typeof doc !== 'object') throw new HttpError(400, 'No hay documentacion que traducir.');
   const destino = idioma === 'en' ? 'ingles' : 'espanol';
   const messages = [
@@ -317,7 +317,7 @@ export async function traducirDoc({ doc, idioma, model, temperature, maxTokens }
     },
     { role: 'user', content: JSON.stringify(doc) },
   ];
-  const result = await completar({ messages, modelo: model, temperature: Math.min(temperature ?? 0.2, 0.3), maxTokens, jsonMode: true });
+  const result = await completar({ messages, proveedor, modelo: model, temperature: Math.min(temperature ?? 0.2, 0.3), maxTokens, jsonMode: true });
   const traducido = extractJson(result.content);
   if (!traducido || typeof traducido !== 'object') throw new HttpError(502, 'La traduccion no vino en el formato esperado. Puedes volver a intentarlo.');
   // Las claves que no vinieran se dejan como estaban: nunca se pierde un campo.
@@ -331,7 +331,7 @@ export async function traducirDoc({ doc, idioma, model, temperature, maxTokens }
  * observa: dice que parece incorrecto, impreciso o que falta. No reescribe
  * nada; si el usuario quiere otra version, la pide aparte y pasa por Revision.
  */
-export async function revisarDoc({ code, doc, idioma, model, temperature, maxTokens }) {
+export async function revisarDoc({ code, doc, idioma, model, proveedor, temperature, maxTokens }) {
   if (!code || !doc) throw new HttpError(400, 'Faltan el codigo o la documentacion.');
   const messages = [
     {
@@ -342,7 +342,7 @@ export async function revisarDoc({ code, doc, idioma, model, temperature, maxTok
     },
     { role: 'user', content: `Codigo:\n\`\`\`\n${String(code).slice(0, 8000)}\n\`\`\`\n\nDocumentacion:\n${JSON.stringify(doc).slice(0, 8000)}` },
   ];
-  const result = await completar({ messages, modelo: model, temperature: Math.min(temperature ?? 0.2, 0.3), maxTokens, jsonMode: true });
+  const result = await completar({ messages, proveedor, modelo: model, temperature: Math.min(temperature ?? 0.2, 0.3), maxTokens, jsonMode: true });
   const r = extractJson(result.content);
   if (!r || !Array.isArray(r.observaciones)) throw new HttpError(502, 'La revision no vino en el formato esperado. Vuelve a intentarlo.');
   return { observaciones: r.observaciones.slice(0, 20), veredicto: String(r.veredicto ?? ''), model: result.model };

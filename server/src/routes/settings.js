@@ -55,6 +55,19 @@ router.put('/', async (req, res, next) => {
     // Un proveedor desconocido dejaria la aplicacion sin poder llamar a nadie.
     descriptor(next_.proveedor);
     if (!['es', 'en'].includes(next_.idioma)) next_.idioma = 'es';
+    // Modelo por tarea: un proveedor que no existe se descarta en vez de
+    // dejar una tarea sin poder llamar a nadie.
+    const porTarea = {};
+    for (const [tarea, v] of Object.entries(next_.modelosPorTarea ?? {})) {
+      if (!v?.proveedor) continue;
+      try { descriptor(v.proveedor); porTarea[tarea] = { proveedor: v.proveedor, modelo: String(v.modelo ?? '').trim() }; } catch { /* se ignora */ }
+    }
+    next_.modelosPorTarea = porTarea;
+    next_.limiteGasto = Math.max(0, Number(next_.limiteGasto) || 0);
+    next_.prompts = (Array.isArray(next_.prompts) ? next_.prompts : [])
+      .filter((p) => p?.nombre && p?.texto)
+      .slice(0, 100)
+      .map((p) => ({ nombre: String(p.nombre).slice(0, 80), texto: String(p.texto).slice(0, 4000) }));
     next_.modelos = { ...(current.modelos ?? {}), ...(incoming.modelos ?? {}) };
     await writeSettings(next_);
     res.json({ settings: next_ });

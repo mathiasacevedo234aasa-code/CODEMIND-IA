@@ -4,6 +4,7 @@ import { EditorAppearance } from './EditorAppearance';
 import { ProveedorIADialog } from './ProveedorIADialog';
 import { useT } from '../lib/i18n';
 import { SnippetsPropios } from './SnippetsPropios';
+import { IAAvanzado } from './IAAvanzado';
 import { convertirTemaVsCode, registrarTemaImportado } from '../lib/tema';
 import { useState } from 'react';
 import { exportarDiagnostico } from '../lib/diagnostico';
@@ -39,6 +40,8 @@ export function SettingsDialog() {
           </div>
 
           <ProveedorIADialog />
+
+          <IAAvanzado />
 
           <div className="field">
             <label>{t('Nivel de las explicaciones')}</label>
