@@ -306,6 +306,12 @@ router.post('/projects/:id/ejecutar/archivo', wrap(async (req, res) => {
 
 // ----------------------------------------------------------------- consola
 
+/** Nombre y correo de git del usuario (para cabeceras de licencia). */
+router.get('/git/usuario', wrap(async (_req, res) => {
+  const leer = async (clave) => (await git.run(process.cwd(), ['config', '--global', clave], { allowFailure: true }).catch(() => ({ stdout: '' }))).stdout.trim() || null;
+  res.json({ nombre: await leer('user.name'), correo: await leer('user.email') });
+}));
+
 router.get('/terminal/disponibilidad', wrap(async (_req, res) => {
   res.json(await terminal.disponibilidad());
 }));

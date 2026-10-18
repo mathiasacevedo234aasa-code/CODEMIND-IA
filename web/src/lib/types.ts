@@ -461,6 +461,9 @@ export interface EditorSettings {
   altoContraste?: boolean;
   /** Formatear con Prettier al guardar a mano. */
   formatearAlGuardar?: boolean;
+  /** Extensiones con ajuste de línea siempre / nunca (separadas por comas). */
+  ajusteSiempre?: string;
+  ajusteNunca?: string;
   fontSize: number;
   tabSize: number;
   wordWrap: boolean;

@@ -150,6 +150,16 @@ export function EditorAppearance() {
         </div>
       </div>
 
+      <div className="grid2" style={{ marginTop: 8 }}>
+        <div className="field">
+          <label>Ajustar línea siempre en</label>
+          <input placeholder="md, txt" defaultValue={editor.ajusteSiempre ?? ''} onBlur={(e) => set({ ajusteSiempre: e.target.value } as Partial<EditorSettings>)} />
+        </div>
+        <div className="field">
+          <label>Nunca ajustar en</label>
+          <input placeholder="csv, log, min.js" defaultValue={editor.ajusteNunca ?? ''} onBlur={(e) => set({ ajusteNunca: e.target.value } as Partial<EditorSettings>)} />
+        </div>
+      </div>
       {editor.autoSave && (
         <div className="field">
           <label>Guardar tras {(editor.autoSaveDelay / 1000).toFixed(1)} s sin escribir</label>

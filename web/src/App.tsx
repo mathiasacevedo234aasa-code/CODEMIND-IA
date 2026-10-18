@@ -16,6 +16,8 @@ import { ColaCarpetaFlotante, OfertaBorrador } from './components/DocArchivoBarr
 import { ComparacionAbierta } from './components/Comparacion';
 import { BarraEstado } from './components/BarraEstado';
 import { RenombrarSimbolo } from './components/RenombrarSimbolo';
+import { ListaMarcadores } from './components/ListaMarcadores';
+import { useMarcadores } from './lib/marcadores';
 import { DocLectura, useDocumentadosDelArchivo } from './components/DocLectura';
 import { AssistantPanel } from './components/AssistantPanel';
 import { BottomPanel } from './components/BottomPanel';
@@ -111,6 +113,7 @@ export default function App() {
   useEffect(() => { void boot(); }, [boot]);
   useEffect(() => { document.documentElement.dataset.theme = theme; }, [theme]);
   useEffect(() => { document.documentElement.lang = idioma; }, [idioma]);
+  useEffect(() => { if (project?.id) void useMarcadores.getState().cargar(project.id); }, [project?.id]);
   const zoom = useStore((s) => s.settings.editor.zoomInterfaz ?? 1);
   const altoContraste = useStore((s) => Boolean(s.settings.editor.altoContraste));
   // Zoom de TODA la interfaz, no solo del texto del editor.
@@ -249,6 +252,7 @@ export default function App() {
       )}
 
       <BarraEstado />
+      <ListaMarcadores />
       {renombrando && <RenombrarSimbolo nombre={renombrando} alCerrar={() => setRenombrando(null)} />}
       {docCenterOpen && <Suspense fallback={null}><DocCenter /></Suspense>}
       <SettingsDialog />

@@ -204,6 +204,37 @@ router.get('/:id/tramo', async (req, res, next) => {
   }
 });
 
+// ------------------------------------------------------------ marcadores
+//
+// Marcadores (con nota opcional) en lineas de archivos. Viven en los datos del
+// proyecto: nada se escribe en el codigo.
+
+const marcadoresDe = (id) => path.join(projectDir(id), 'marcadores.json');
+
+router.get('/:id/marcadores', async (req, res, next) => {
+  try {
+    await getProject(req.params.id);
+    const datos = JSON.parse(await fs.readFile(marcadoresDe(req.params.id), 'utf8').catch(() => '{"marcadores":[]}'));
+    res.json(datos);
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.put('/:id/marcadores', async (req, res, next) => {
+  try {
+    await getProject(req.params.id);
+    const lista = (Array.isArray(req.body?.marcadores) ? req.body.marcadores : [])
+      .filter((m) => typeof m?.ruta === 'string' && Number.isInteger(m?.linea) && m.linea > 0)
+      .slice(0, 1000)
+      .map((m) => ({ ruta: m.ruta.slice(0, 500), linea: m.linea, nota: String(m.nota ?? '').slice(0, 500), en: m.en ?? new Date().toISOString() }));
+    await fs.writeFile(marcadoresDe(req.params.id), JSON.stringify({ marcadores: lista }, null, 2), 'utf8');
+    res.json({ marcadores: lista });
+  } catch (err) {
+    next(err);
+  }
+});
+
 // --------------------------------------------------------------- borrador
 //
 // Un bloc de notas por proyecto, fuera de la carpeta del proyecto: lo que

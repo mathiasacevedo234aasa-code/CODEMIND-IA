@@ -6,6 +6,7 @@ import { exportarDiagnostico } from '../lib/diagnostico';
 import { puntuar } from '../lib/difuso';
 import { accionEditor } from '../lib/editorActivo';
 import { BORRADOR } from '../lib/borrador';
+import { fechaHoy, fechaHora, insertarEnCursor, insertarLicencia } from '../lib/insertar';
 
 interface Comando {
   id: string;
@@ -118,6 +119,14 @@ export function CommandPalette() {
       { id: 'renombrar', titulo: 'Renombrar en todo el proyecto (palabra bajo el cursor)', grupo: 'Editor', atajo: 'F2', icono: 'edit', accion: () => { accionEditor('codemind.renombrar'); } },
       { id: 'borrador', titulo: 'Abrir el borrador del proyecto (notas que no van al código)', grupo: 'Archivo', icono: 'edit', accion: () => void openFile(BORRADOR) },
       { id: 'juntar-grupos', titulo: 'Juntar todos los grupos del editor en uno', grupo: 'Editor', icono: 'columns', accion: () => useStore.getState().unirEditor() },
+      { id: 'marcadores', titulo: 'Marcadores: ver todos', grupo: 'Editor', atajo: 'Ctrl+Alt+K marca', icono: 'history', accion: () => { window.dispatchEvent(new Event('codemind:marcadores')); } },
+      { id: 'sel-terminal', titulo: 'Ejecutar la selección en el Terminal', grupo: 'Ejecutar', atajo: 'Ctrl+Shift+Enter', icono: 'terminal', accion: () => { accionEditor('codemind.ejecutar-seleccion'); } },
+      { id: 'fecha', titulo: `Insertar la fecha de hoy (${fechaHoy()})`, grupo: 'Insertar', icono: 'edit', accion: () => { insertarEnCursor(fechaHoy()); } },
+      { id: 'fecha-hora', titulo: 'Insertar fecha y hora', grupo: 'Insertar', icono: 'edit', accion: () => { insertarEnCursor(fechaHora()); } },
+      ...(['MIT', 'Apache-2.0', 'GPL-3.0-or-later', 'BSD-3-Clause'] as const).map((l) => ({
+        id: `licencia-${l}`, titulo: `Insertar cabecera de licencia ${l}`, grupo: 'Insertar', icono: 'docs',
+        accion: () => { void insertarLicencia(l); },
+      })),
       { id: 'plegar-todo', titulo: 'Plegar todo', grupo: 'Editor', icono: 'columns', accion: () => { accionEditor('editor.foldAll'); } },
       { id: 'desplegar-todo', titulo: 'Desplegar todo', grupo: 'Editor', icono: 'columns', accion: () => { accionEditor('editor.unfoldAll'); } },
       { id: 'diagnostico', titulo: 'Exportar diagnóstico (para reportar un fallo)', grupo: 'Ayuda', icono: 'docs', accion: () => { void exportarDiagnostico(); } },

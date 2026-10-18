@@ -161,6 +161,10 @@ export const api = {
     request<{ contenido: string }>(`/api/projects/${id}/historial-local/version?path=${encodeURIComponent(path)}&v=${encodeURIComponent(v)}`),
   tramo: (id: string, path: string, desde: number) =>
     request<{ desde: number; hasta: number; total: number; texto: string }>(`/api/projects/${id}/tramo?path=${encodeURIComponent(path)}&desde=${desde}`),
+  marcadores: (id: string) => request<{ marcadores: { ruta: string; linea: number; nota: string; en?: string }[] }>(`/api/projects/${id}/marcadores`),
+  guardarMarcadores: (id: string, marcadores: { ruta: string; linea: number; nota: string }[]) =>
+    request<{ marcadores: unknown[] }>(`/api/projects/${id}/marcadores`, { method: 'PUT', ...json({ marcadores }) }),
+  usuarioGit: () => request<{ nombre: string | null; correo: string | null }>('/api/git/usuario'),
   leerBorrador: (id: string) => request<{ content: string }>(`/api/projects/${id}/borrador`),
   guardarBorrador: (id: string, content: string) =>
     request<{ ok: true }>(`/api/projects/${id}/borrador`, { method: 'PUT', ...json({ content }) }),

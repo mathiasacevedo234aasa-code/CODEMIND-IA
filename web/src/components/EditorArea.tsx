@@ -13,6 +13,9 @@ import { HistorialLocal } from './HistorialLocal';
 import { Esquema } from './Esquema';
 import { VisorMedio, VisorTramos } from './Visores';
 import { BarraMarkdown } from './BarraMarkdown';
+import { useMarcadores } from '../lib/marcadores';
+import { ejecutarSeleccion } from '../lib/ejecutarSeleccion';
+import { ask } from '../lib/dialogs';
 import { esBorrador } from '../lib/borrador';
 import { fijarEditorActivo } from '../lib/editorActivo';
 import type * as Monaco from 'monaco-editor';
@@ -84,6 +87,8 @@ function MitadEditor({ mitad, dividido }: { mitad: Mitad; dividido: boolean }) {
   const projectId = useStore((s) => s.project?.id);
   const analysisMarcas = useStore((s) => s.analysis);
   const approvedMarcas = useStore((s) => s.approved);
+  const marcadores = useMarcadores((s) => s.lista);
+  const glifos = useRef<{ id: string; linea: number }[]>([]);
   const fijarTab = useStore((s) => s.fijarTab);
 
   // El editor vivo, junto al archivo para el que se creó. Guardar también la
@@ -148,6 +153,68 @@ function MitadEditor({ mitad, dividido }: { mitad: Mitad; dividido: boolean }) {
 
     // "Explícame esto" sobre cualquier trozo de código, no solo funciones
     // detectadas. Aparece en el menú contextual y tiene atajo propio.
+    // Marcadores: Ctrl+Alt+K marca o desmarca la línea; con Mayúsculas, con nota.
+    const lineaActual = () => editor.getPosition()?.lineNumber ?? 1;
+    editor.addAction({
+      id: 'codemind.marcador',
+      label: 'Marcar o desmarcar esta línea',
+      keybindings: [monaco.KeyMod.CtrlCmd | monaco.KeyMod.Alt | monaco.KeyCode.KeyK],
+      run: () => { if (rutaMontada) useMarcadores.getState().alternar(rutaMontada, lineaActual()); },
+    });
+    editor.addAction({
+      id: 'codemind.marcador-nota',
+      label: 'Marcar esta línea con una nota…',
+      keybindings: [monaco.KeyMod.CtrlCmd | monaco.KeyMod.Alt | monaco.KeyMod.Shift | monaco.KeyCode.KeyK],
+      contextMenuGroupId: 'navigation',
+      contextMenuOrder: 1.7,
+      run: async () => {
+        if (!rutaMontada) return;
+        const linea = lineaActual();
+        const previa = useMarcadores.getState().lista.find((m) => m.ruta === rutaMontada && m.linea === linea);
+        const nota = await ask({ title: 'Nota del marcador', label: `${rutaMontada}:${linea}`, value: previa?.nota ?? '', confirmText: 'Guardar', allowEmpty: true });
+        if (nota !== null) useMarcadores.getState().alternar(rutaMontada, linea, nota);
+      },
+    });
+    // Siguiente / anterior marcador, en todo el proyecto.
+    const saltar = (paso: 1 | -1) => {
+      const lista = [...useMarcadores.getState().lista].sort((a, b) => a.ruta.localeCompare(b.ruta) || a.linea - b.linea);
+      if (!lista.length || !rutaMontada) return;
+      const aqui = lista.findIndex((m) => m.ruta.localeCompare(rutaMontada) * paso > 0 || (m.ruta === rutaMontada && (m.linea - lineaActual()) * paso > 0));
+      const destino = paso === 1 ? lista[aqui === -1 ? 0 : aqui] : [...lista].reverse().find((m) => m.ruta.localeCompare(rutaMontada) < 0 || (m.ruta === rutaMontada && m.linea < lineaActual())) ?? lista[lista.length - 1];
+      const st = useStore.getState();
+      void st.openFile(destino.ruta).then(() => st.jumpToLine(destino.ruta, destino.linea));
+    };
+    editor.addAction({ id: 'codemind.marcador-siguiente', label: 'Ir al siguiente marcador', keybindings: [monaco.KeyMod.CtrlCmd | monaco.KeyMod.Alt | monaco.KeyCode.KeyL], run: () => saltar(1) });
+    editor.addAction({ id: 'codemind.marcador-anterior', label: 'Ir al marcador anterior', keybindings: [monaco.KeyMod.CtrlCmd | monaco.KeyMod.Alt | monaco.KeyCode.KeyJ], run: () => saltar(-1) });
+    // Mientras se escribe, los marcadores siguen a su línea.
+    editor.onDidChangeModelContent(() => {
+      const modelo = editor.getModel();
+      if (!modelo || !rutaMontada || !glifos.current.length) return;
+      const cambios = glifos.current
+        .map((g) => ({ antes: g.linea, ahora: modelo.getDecorationRange(g.id)?.startLineNumber ?? g.linea }))
+        .filter((c) => c.antes !== c.ahora);
+      if (cambios.length) {
+        glifos.current = glifos.current.map((g) => ({ ...g, linea: cambios.find((c) => c.antes === g.linea)?.ahora ?? g.linea }));
+        useMarcadores.getState().recolocar(rutaMontada, cambios);
+      }
+    });
+
+    // Ejecutar solo la selección (o la línea) en el Terminal.
+    editor.addAction({
+      id: 'codemind.ejecutar-seleccion',
+      label: 'Ejecutar la selección en el Terminal',
+      keybindings: [monaco.KeyMod.CtrlCmd | monaco.KeyMod.Shift | monaco.KeyCode.Enter],
+      contextMenuGroupId: 'navigation',
+      contextMenuOrder: 1.8,
+      run: (ed) => {
+        const sel = ed.getSelection();
+        const modelo = ed.getModel();
+        if (!sel || !modelo) return;
+        const texto = sel.isEmpty() ? modelo.getLineContent(sel.startLineNumber) : modelo.getValueInRange(sel);
+        void ejecutarSeleccion(texto);
+      },
+    });
+
     // Renombrar en todo el proyecto, con vista previa (F2).
     editor.addAction({
       id: 'codemind.renombrar',
@@ -259,6 +326,26 @@ ${texto.slice(0, 8000)}
       });
     marcas.current = montado.editor.deltaDecorations(marcas.current, nuevas);
   }, [analysisMarcas, approvedMarcas, active, montajes]);
+
+  // Los marcadores, como estrella en el margen (con su nota al pasar el cursor).
+  useEffect(() => {
+    const montado = editorRef.current;
+    const monaco = monacoRef.current;
+    if (!montado || !monaco || active?.kind !== 'file' || montado.path !== active.path) return;
+    const propios = marcadores.filter((m) => m.ruta === active.path);
+    const ids = montado.editor.deltaDecorations(glifos.current.map((g) => g.id), propios.map((m) => ({
+      range: new monaco.Range(m.linea, 1, m.linea, 1),
+      options: {
+        isWholeLine: true,
+        glyphMarginClassName: 'marcador-glifo',
+        glyphMarginHoverMessage: { value: m.nota ? `★ ${m.nota}` : '★ Marcador (Ctrl+Alt+K para quitarlo)' },
+        stickiness: monaco.editor.TrackedRangeStickiness.NeverGrowsWhenTypingAtEdges,
+        overviewRuler: { color: '#5b8cff', position: monaco.editor.OverviewRulerLane.Right },
+        minimap: { color: '#5b8cff', position: monaco.editor.MinimapPosition.Gutter },
+      },
+    })));
+    glifos.current = ids.map((id, i) => ({ id, linea: propios[i].linea }));
+  }, [marcadores, active, montajes]);
 
   useEffect(() => {
     if (active?.kind !== 'file') editorRef.current = null;
@@ -378,7 +465,8 @@ ${texto.slice(0, 8000)}
               letterSpacing: settings.editor.letterSpacing,
               fontLigatures: settings.editor.fontLigatures,
               tabSize: settings.editor.tabSize,
-              wordWrap: settings.editor.wordWrap ? 'on' : 'off',
+              wordWrap: ajusteDeLinea(active.path, settings.editor) ? 'on' : 'off',
+              glyphMargin: true,
               minimap: { enabled: settings.editor.minimap && !dividido },
               lineNumbers: settings.editor.lineNumbers,
               guides: { indentation: settings.editor.indentGuides },
@@ -431,4 +519,16 @@ function Migas({ ruta }: { ruta: string }) {
       ))}
     </div>
   );
+}
+
+/**
+ * Ajuste de línea por tipo de archivo: las listas de Configuración mandan
+ * sobre el ajuste general (p. ej. siempre en .md, nunca en .csv).
+ */
+function ajusteDeLinea(ruta: string, editor: { wordWrap: boolean; ajusteSiempre?: string; ajusteNunca?: string }) {
+  const ext = ruta.split('.').pop()?.toLowerCase() ?? '';
+  const lista = (t?: string) => (t ?? '').split(',').map((x) => x.trim().replace(/^\./, '').toLowerCase()).filter(Boolean);
+  if (lista(editor.ajusteNunca).includes(ext)) return false;
+  if (lista(editor.ajusteSiempre).includes(ext)) return true;
+  return editor.wordWrap;
 }
