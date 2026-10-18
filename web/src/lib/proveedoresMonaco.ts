@@ -184,6 +184,77 @@ export function registrarProveedores(monaco: typeof Monaco) {
     },
   });
 
+  // ------------------------------------------- imágenes al pasar el cursor
+  //
+  // Sobre una ruta de imagen ("img/logo.png", src="...", url(...)) se ve la
+  // imagen. Solo si el archivo existe en el proyecto.
+  monaco.languages.registerHoverProvider({ scheme: 'file' }, {
+    provideHover(modelo, posicion) {
+      const st = useStore.getState();
+      if (!st.project) return null;
+      const linea = modelo.getLineContent(posicion.lineNumber);
+      const re = /["'(]([^"'()\s]+\.(?:png|jpe?g|gif|webp|svg|ico|avif|bmp))["')]/gi;
+      for (const m of linea.matchAll(re)) {
+        const inicio = (m.index ?? 0) + 2;
+        const fin = inicio + m[1].length;
+        if (posicion.column < inicio || posicion.column > fin) continue;
+        // Relativa al archivo, y si no, desde la raíz del proyecto.
+        const base = rutaDe(modelo).split('/').slice(0, -1);
+        const partes = [...(m[1].startsWith('/') ? [] : base), ...m[1].replace(/^\.?\//, '').split('/')];
+        const pila: string[] = [];
+        for (const p of partes) { if (p === '..') pila.pop(); else if (p && p !== '.') pila.push(p); }
+        const ruta = pila.join('/');
+        const existe = (nodos: typeof st.tree): boolean => nodos.some((n) => (n.type === 'dir' ? existe(n.children) : n.path === ruta));
+        if (!existe(st.tree)) return null;
+        const url = `${location.origin}/api/projects/${st.project.id}/raw?path=${encodeURIComponent(ruta)}`;
+        return {
+          range: new monaco.Range(posicion.lineNumber, inicio, posicion.lineNumber, fin),
+          contents: [{ value: `![${ruta}](${url}|width=220)\n\n\`${ruta}\``, isTrusted: false, supportHtml: false }],
+        };
+      }
+      return null;
+    },
+  });
+
+  // ------------------------------------------------- selector de color
+  //
+  // #hex, rgb() y hsl() en cualquier archivo muestran su color y, al pulsar
+  // el cuadradito, un selector. En CSS ya lo hace Monaco por su cuenta.
+  const SIN_SELECTOR_PROPIO = new Set(['css', 'scss', 'less']);
+  const hexA = (h: string) => {
+    const x = h.length <= 5 ? h.slice(1).split('').map((c) => c + c).join('') : h.slice(1);
+    const n = (i: number) => parseInt(x.slice(i, i + 2), 16) / 255;
+    return { red: n(0), green: n(2), blue: n(4), alpha: x.length === 8 ? n(6) : 1 };
+  };
+  for (const lenguaje of ['javascript', 'typescript', 'html', 'json', 'markdown', 'python', 'plaintext', 'xml', 'yaml']) {
+    if (SIN_SELECTOR_PROPIO.has(lenguaje)) continue;
+    monaco.languages.registerColorProvider(lenguaje, {
+      provideDocumentColors(modelo) {
+        const colores: Monaco.languages.IColorInformation[] = [];
+        const texto = modelo.getValue();
+        if (texto.length > 500000) return colores;
+        for (const m of texto.matchAll(/#(?:[0-9a-fA-F]{8}|[0-9a-fA-F]{6}|[0-9a-fA-F]{3,4})\b|rgba?\(\s*(\d{1,3})\s*,\s*(\d{1,3})\s*,\s*(\d{1,3})\s*(?:,\s*([\d.]+)\s*)?\)/g)) {
+          const ini = modelo.getPositionAt(m.index ?? 0);
+          const fin = modelo.getPositionAt((m.index ?? 0) + m[0].length);
+          const color = m[0].startsWith('#')
+            ? hexA(m[0])
+            : { red: Number(m[1]) / 255, green: Number(m[2]) / 255, blue: Number(m[3]) / 255, alpha: m[4] ? Number(m[4]) : 1 };
+          colores.push({ color, range: new monaco.Range(ini.lineNumber, ini.column, fin.lineNumber, fin.column) });
+        }
+        return colores;
+      },
+      provideColorPresentations(_modelo, info) {
+        const { red, green, blue, alpha } = info.color;
+        const h = (v: number) => Math.round(v * 255).toString(16).padStart(2, '0');
+        const r = Math.round(red * 255), g = Math.round(green * 255), b = Math.round(blue * 255);
+        return [
+          { label: `#${h(red)}${h(green)}${h(blue)}${alpha < 1 ? h(alpha) : ''}` },
+          { label: alpha < 1 ? `rgba(${r}, ${g}, ${b}, ${alpha.toFixed(2)})` : `rgb(${r}, ${g}, ${b})` },
+        ];
+      },
+    });
+  }
+
   // Saltar a OTRO archivo lo tiene que hacer la aplicación: Monaco por sí solo
   // no sabe abrir pestañas. Se abre el archivo y se lleva el cursor a la línea.
   monaco.editor.registerEditorOpener({

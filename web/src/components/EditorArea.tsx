@@ -11,6 +11,8 @@ import { Icon } from './Icon';
 import { VistaMarkdown } from './VistaMarkdown';
 import { HistorialLocal } from './HistorialLocal';
 import { Esquema } from './Esquema';
+import { VisorMedio, VisorTramos } from './Visores';
+import { BarraMarkdown } from './BarraMarkdown';
 import { esBorrador } from '../lib/borrador';
 import { fijarEditorActivo } from '../lib/editorActivo';
 import type * as Monaco from 'monaco-editor';
@@ -336,6 +338,7 @@ ${texto.slice(0, 8000)}
       </div>
 
       {active?.kind === 'file' && <Migas ruta={active.path} />}
+      {active?.kind === 'file' && /\.(md|mdx|markdown)$/i.test(active.path) && !activeFile?.vista && <BarraMarkdown />}
       <div className={`editor-host ${esMdConVista ? 'con-vista-md' : ''}`}>
         {!active ? (
           <div className="empty">
@@ -352,6 +355,10 @@ ${texto.slice(0, 8000)}
             title={active.title}
             onUrlChange={(url) => updateWebTab(active.id, url)}
           />
+        ) : activeFile?.vista === 'medio' ? (
+          <VisorMedio ruta={active.path} />
+        ) : activeFile?.vista === 'tramos' ? (
+          <VisorTramos ruta={active.path} />
         ) : activeFile ? (
           <Editor
             key={`${mitad}:${active.path}`}

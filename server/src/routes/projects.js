@@ -25,6 +25,8 @@ import {
   HttpError,
   workspaceDir,
   projectDir,
+  archivoDeMedios,
+  tramoDeArchivo,
 } from '../services/store.js';
 
 const router = Router();
@@ -171,6 +173,32 @@ router.put('/:id/session', async (req, res, next) => {
     const { tabs = [], activeTabId = null, leftView = 'explorador' } = req.body?.session ?? {};
     await writeSession(req.params.id, { tabs, activeTabId, leftView });
     res.json({ ok: true });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// ------------------------------------------------------- medios y tramos
+
+/** Imagenes, PDF, fuentes, audio y video del proyecto, tal cual, para verlos. */
+router.get('/:id/raw', async (req, res, next) => {
+  try {
+    await getProject(req.params.id);
+    const { abs, tipo } = await archivoDeMedios(req.params.id, String(req.query.path ?? ''));
+    res.type(tipo);
+    // Un SVG puede llevar scripts: se sirve sin permitir que se ejecuten.
+    if (tipo === 'image/svg+xml') res.set('Content-Security-Policy', "default-src 'none'; style-src 'unsafe-inline'; sandbox");
+    res.sendFile(abs);
+  } catch (err) {
+    next(err);
+  }
+});
+
+/** Un trozo de un archivo de texto grande (mas de 2 MB), de solo lectura. */
+router.get('/:id/tramo', async (req, res, next) => {
+  try {
+    await getProject(req.params.id);
+    res.json(await tramoDeArchivo(req.params.id, String(req.query.path ?? ''), req.query.desde, req.query.bytes));
   } catch (err) {
     next(err);
   }

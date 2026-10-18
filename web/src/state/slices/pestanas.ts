@@ -1,3 +1,4 @@
+import { tipoMedio } from '../../lib/medios';
 import { esBorrador } from '../../lib/borrador';
 import { formatear, sePuedeFormatear } from '../../lib/formatear';
 import { api } from '../../lib/api';
@@ -34,6 +35,18 @@ export const crearPestanas = (set: PonerTienda, get: ObtenerTienda) => ({
       }));
       return;
     }
+    // Imágenes, PDF, fuentes...: se ven, no se leen como texto.
+    const abrirSinTexto = (vista: 'medio' | 'tramos') => set((s) => ({
+      files: { ...s.files, [path]: { content: '', saved: '', vista } },
+      tabs: s.tabs.some((t) => t.id === id) ? s.tabs : [...s.tabs, { kind: 'file', id, path, panel: s.panelActivo }],
+      activeTabId: id,
+      ultimoPorPanel: { ...s.ultimoPorPanel, [s.panelActivo]: id },
+    }));
+    if (tipoMedio(path)) {
+      abrirSinTexto('medio');
+      get().persistSession();
+      return;
+    }
     try {
       const { content } = esBorrador(path) ? await api.leerBorrador(project.id) : await api.readFile(project.id, path);
       set((s) => ({
@@ -50,6 +63,12 @@ export const crearPestanas = (set: PonerTienda, get: ObtenerTienda) => ({
       }
       get().persistSession();
     } catch (err) {
+      // Más de 2 MB: se abre por tramos, de solo lectura, en vez de no abrirlo.
+      if (/demasiado grande/i.test((err as Error).message)) {
+        abrirSinTexto('tramos');
+        get().persistSession();
+        return;
+      }
       set({ error: (err as Error).message });
     }
   },

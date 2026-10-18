@@ -5,6 +5,8 @@ import type { StoreApi } from 'zustand';
 export interface OpenFile {
   content: string;
   saved: string;
+  /** 'medio': imagen, PDF... se ve, no se edita. 'tramos': texto de más de 2 MB, por partes. */
+  vista?: 'medio' | 'tramos';
 }
 
 export interface RelinkSuggestion {

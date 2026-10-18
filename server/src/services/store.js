@@ -487,3 +487,47 @@ export async function getApiKey(proveedor = 'groq') {
   if (process.env[variable]) return { key: process.env[variable], source: 'variable del sistema' };
   return { key: null, source: null };
 }
+
+// ------------------------------------------------------- medios y tramos
+
+const TIPOS_MEDIO = {
+  png: 'image/png', jpg: 'image/jpeg', jpeg: 'image/jpeg', gif: 'image/gif', webp: 'image/webp',
+  svg: 'image/svg+xml', ico: 'image/x-icon', bmp: 'image/bmp', avif: 'image/avif',
+  pdf: 'application/pdf',
+  woff: 'font/woff', woff2: 'font/woff2', ttf: 'font/ttf', otf: 'font/otf',
+  mp4: 'video/mp4', webm: 'video/webm', mp3: 'audio/mpeg', wav: 'audio/wav', ogg: 'audio/ogg',
+};
+
+/** Ruta absoluta y tipo de un archivo de medios del proyecto, para servirlo tal cual. */
+export async function archivoDeMedios(projectId, relPath) {
+  const abs = await resolveInProject(projectId, relPath);
+  const stat = await fs.stat(abs).catch(() => null);
+  if (!stat || !stat.isFile()) throw new HttpError(404, `No se encontro el archivo "${relPath}".`);
+  const tipo = TIPOS_MEDIO[path.extname(relPath).slice(1).toLowerCase()];
+  if (!tipo) throw new HttpError(415, 'Ese tipo de archivo no se puede previsualizar.');
+  return { abs, tipo, size: stat.size };
+}
+
+/**
+ * Un tramo de un archivo de texto demasiado grande para el editor. Se lee
+ * por bytes y se ajusta al salto de línea siguiente, para no partir líneas.
+ */
+export async function tramoDeArchivo(projectId, relPath, desde = 0, bytes = 512 * 1024) {
+  const abs = await resolveInProject(projectId, relPath);
+  const stat = await fs.stat(abs).catch(() => null);
+  if (!stat || !stat.isFile()) throw new HttpError(404, `No se encontro el archivo "${relPath}".`);
+  const inicio = Math.max(0, Math.min(Number(desde) || 0, stat.size));
+  const tam = Math.max(1024, Math.min(Number(bytes) || 512 * 1024, 2 * 1024 * 1024));
+  const fh = await fs.open(abs, 'r');
+  try {
+    const buf = Buffer.alloc(Math.min(tam, stat.size - inicio));
+    const { bytesRead } = await fh.read(buf, 0, buf.length, inicio);
+    let trozo = buf.subarray(0, bytesRead);
+    // Se corta en el último salto de línea para no partir una línea (ni un carácter UTF-8).
+    const corte = trozo.lastIndexOf(0x0a);
+    if (inicio + bytesRead < stat.size && corte > 0) trozo = trozo.subarray(0, corte + 1);
+    return { path: relPath, desde: inicio, hasta: inicio + trozo.length, total: stat.size, texto: trozo.toString('utf8') };
+  } finally {
+    await fh.close();
+  }
+}
