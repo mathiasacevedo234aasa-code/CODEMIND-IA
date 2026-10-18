@@ -1388,3 +1388,17 @@ textarea { resize: vertical; min-height: 64px; line-height: 1.5; }
 .col-conflicto-cab { padding: 4px 8px; border-bottom: 1px solid var(--border); font-size: 12px; }
 .col-conflicto pre { margin: 0; padding: 6px; font-size: 12px; overflow: auto; flex: 1; }
 @media (max-width: 760px) { .conflicto-3 { grid-template-columns: 1fr; } }
+
+/* Lista de autocompletado más legible */
+.monaco-editor .suggest-widget { border-radius: 8px; overflow: hidden; box-shadow: 0 8px 28px rgba(0, 0, 0, 0.35); }
+.monaco-editor .suggest-widget .monaco-list .monaco-list-row { border-radius: 4px; }
+.monaco-editor .suggest-widget .monaco-list .monaco-list-row.focused { font-weight: 500; }
+.monaco-editor .suggest-details { border-radius: 8px; }
+.monaco-editor .parameter-hints-widget, .monaco-hover { border-radius: 8px; }
+.monaco-editor .suggest-widget .codicon-symbol-function, .monaco-editor .suggest-widget .codicon-symbol-method { color: #7aa2f7 !important; }
+.monaco-editor .suggest-widget .codicon-symbol-variable, .monaco-editor .suggest-widget .codicon-symbol-field { color: #73daca !important; }
+.monaco-editor .suggest-widget .codicon-symbol-class, .monaco-editor .suggest-widget .codicon-symbol-interface { color: #e0af68 !important; }
+.monaco-editor .suggest-widget .codicon-symbol-keyword { color: #bb9af7 !important; }
+.monaco-editor .suggest-widget .codicon-symbol-snippet { color: #9ece6a !important; }
+.monaco-editor .suggest-widget .codicon-symbol-constant { color: #ff9e64 !important; }
+.monaco-editor .suggest-widget .codicon-symbol-property { color: #7dcfff !important; }

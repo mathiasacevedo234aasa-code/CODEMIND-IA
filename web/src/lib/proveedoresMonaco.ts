@@ -1,5 +1,6 @@
 import type * as Monaco from 'monaco-editor';
 import { useStore } from '../state/useStore';
+import { registrarColorSemantico } from './colores';
 import type { DetectedSymbol } from './types';
 
 /**
@@ -36,6 +37,7 @@ export function definicionDe(nombre: string, rutaActual: string | null): Detecte
 export function registrarProveedores(monaco: typeof Monaco) {
   if (registrados) return;
   registrados = true;
+  registrarColorSemantico(monaco);
 
   // ---------------------------------------------------- documentación
   monaco.languages.registerHoverProvider({ scheme: 'file' }, {

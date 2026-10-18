@@ -497,7 +497,26 @@ ${texto.slice(0, 8000)}
               cursorBlinking: 'smooth',
               padding: { top: 10 },
               // El editor no interrumpe: sin sugerencias automáticas de IA.
-              quickSuggestions: { other: true, comments: false, strings: false },
+              quickSuggestions: { other: true, comments: false, strings: true },
+              quickSuggestionsDelay: 40,
+              'semanticHighlighting.enabled': true,
+              suggestSelection: 'recentlyUsedByPrefix',
+              snippetSuggestions: 'inline',
+              tabCompletion: 'on',
+              wordBasedSuggestions: 'allDocuments',
+              suggestOnTriggerCharacters: true,
+              acceptSuggestionOnEnter: 'smart',
+              parameterHints: { enabled: true, cycle: true },
+              inlayHints: { enabled: 'onUnlessPressed' },
+              suggest: {
+                preview: true,
+                previewMode: 'subwordSmart',
+                localityBonus: true,
+                showStatusBar: true,
+                filterGraceful: true,
+                insertMode: 'replace',
+                selectionMode: 'whenQuickSuggestion',
+              },
             }}
           />
         ) : null}

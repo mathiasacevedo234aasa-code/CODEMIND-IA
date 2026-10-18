@@ -53,3 +53,14 @@ monaco.languages.typescript.typescriptDefaults.setCompilerOptions({
   allowNonTsExtensions: true,
   jsx: monaco.languages.typescript.JsxEmit.React,
 });
+
+// Pistas en línea discretas: el nombre del parámetro al llamar a una función
+// y el tipo deducido de las variables. Se ocultan pulsando Ctrl+Alt.
+for (const d of [monaco.languages.typescript.typescriptDefaults, monaco.languages.typescript.javascriptDefaults]) {
+  d.setInlayHintsOptions({
+    includeInlayParameterNameHints: 'literals',
+    includeInlayFunctionParameterTypeHints: false,
+    includeInlayVariableTypeHints: false,
+    includeInlayEnumMemberValueHints: true,
+  });
+}

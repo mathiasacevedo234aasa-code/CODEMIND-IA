@@ -2,6 +2,7 @@ import { useSyncExternalStore } from 'react';
 import type * as Monaco from 'monaco-editor';
 import { useStore } from '../state/useStore';
 import type { TemaVsCode } from './types';
+import { registrarTemasPropios, TEMA_CLARO, TEMA_OSCURO } from './colores';
 
 /**
  * El tema de la aplicación: oscuro, claro, o el que tenga el sistema (y que
@@ -30,13 +31,14 @@ export function useTemaMonaco(): string {
   // El alto contraste manda: es una necesidad, no una preferencia de estilo.
   if (altoContraste) return oscuro ? 'hc-black' : 'hc-light';
   if (importado) return NOMBRE_IMPORTADO;
-  return oscuro ? 'vs-dark' : 'light';
+  return oscuro ? TEMA_OSCURO : TEMA_CLARO;
 }
 
 export const NOMBRE_IMPORTADO = 'codemind-vscode';
 
 /** Registra en Monaco el tema importado (si lo hay). Se llama al montar un editor. */
 export function registrarTemaImportado(monaco: typeof Monaco, tema?: TemaVsCode) {
+  registrarTemasPropios(monaco);
   const t = tema ?? useStore.getState().settings.editor.temaVsCode;
   if (!t) return;
   monaco.editor.defineTheme(NOMBRE_IMPORTADO, {
