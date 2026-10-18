@@ -20,7 +20,7 @@ import { fileURLToPath } from 'node:url';
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const usarPaquete = process.argv.includes('--paquete');
 
-const empaquetado = path.join(ROOT, 'release', 'win-unpacked', 'CodeMind AI.exe');
+const empaquetado = path.join(ROOT, process.env.CODEMIND_SALIDA || 'release', 'win-unpacked', 'CodeMind AI.exe');
 if (usarPaquete && !(await fs.access(empaquetado).then(() => true).catch(() => false))) {
   console.error(`No existe ${empaquetado}. Ejecuta "npm run desktop:build" antes.`);
   process.exit(1);
@@ -29,7 +29,10 @@ if (usarPaquete && !(await fs.access(empaquetado).then(() => true).catch(() => f
 const ejecutable = usarPaquete
   ? empaquetado
   : path.join(ROOT, 'node_modules', 'electron', 'dist', 'electron.exe');
-const argumentos = usarPaquete ? [] : [path.join(ROOT, 'desktop')];
+// Con CODEMIND_PERFIL se usa otra carpeta de datos: asi la prueba funciona
+// aunque CodeMind este abierto (solo se permite una instancia por carpeta).
+const perfil = process.env.CODEMIND_PERFIL ? [`--user-data-dir=${process.env.CODEMIND_PERFIL}`] : [];
+const argumentos = usarPaquete ? perfil : [path.join(ROOT, 'desktop'), ...perfil];
 const proceso = usarPaquete ? 'CodeMind AI.exe' : 'electron.exe';
 
 console.log(`=== ${usarPaquete ? 'Aplicacion empaquetada' : 'Aplicacion en desarrollo'}`);

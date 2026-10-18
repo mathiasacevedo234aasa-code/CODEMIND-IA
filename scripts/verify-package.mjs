@@ -14,7 +14,8 @@ import { fileURLToPath } from 'node:url';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 // Cada sistema deja la aplicacion sin empaquetar en un sitio distinto.
-const RELEASE = path.join(root, 'release');
+// CODEMIND_SALIDA: otra carpeta de salida (si "release" esta bloqueada por Windows).
+const RELEASE = path.join(root, process.env.CODEMIND_SALIDA || 'release');
 async function buscarPaquete() {
   if (process.platform === 'win32') return path.join(RELEASE, 'win-unpacked', 'resources', 'app');
   if (process.platform === 'linux') return path.join(RELEASE, 'linux-unpacked', 'resources', 'app');

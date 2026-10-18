@@ -4,6 +4,80 @@ Todo lo que aparece aquí está comprobado ejecutándolo, no solo escrito.
 
 ---
 
+## 1.5.0
+
+### Editor
+
+- **Un color para cada cosa.** Temas propios oscuro y claro: palabras clave,
+  control de flujo (`if`, `for`, `return`), variables, parámetros (en cursiva),
+  propiedades, funciones, métodos, clases, constantes, cadenas y números, cada
+  uno con su color. Los nombres se distinguen por su contexto en casi cualquier
+  lenguaje; es una aproximación, no un compilador.
+- **Autocompletado mejor**: vista previa de lo que se va a completar, primero lo
+  usado hace poco y lo cercano, palabras de todos los archivos abiertos, Tab
+  para aceptar y pistas con el nombre del parámetro al llamar a una función.
+- **Navegación**: plegar por nivel, esquema flotante, cursor y scroll
+  recordados por archivo, Ctrl+P con búsqueda difusa, atrás/adelante (Alt+←/→)
+  y referencias en todo el proyecto (Shift+F12).
+- **Edición**: multicursor guiado, hasta cuatro grupos de editor, borrador por
+  proyecto, renombrar en todo el proyecto con vista previa (F2) y formatear al
+  guardar con Prettier.
+- **Medios**: imágenes, PDF, fuentes, vídeo y audio dentro del editor; archivos
+  de más de 2 MB por tramos; selector de color; barra de Markdown.
+- **Utilidades**: marcadores con nota, ejecutar la selección en el Terminal,
+  ajuste de línea por tipo de archivo, insertar fecha y cabecera de licencia.
+- **Calidad del código** (informativa): TODO/FIXME, código repetido,
+  complejidad, sangría mezclada y caracteres invisibles.
+
+### Documentación y asistente
+
+- Sección **Incompleta** con lotes y **versión bilingüe** con traducción
+  aprobada.
+- **Calidad de la documentación**: avisos de textos vagos, revisión por IA sin
+  cambios, marcar como revisada y valoraciones que ajustan las siguientes.
+- El asistente **cita archivo y línea** con enlace, y tiene modos principiante,
+  clase paso a paso y repaso. Los archivos fijados como contexto ahora sí se
+  envían.
+- **Proveedores**: modelo por tarea, comparar dos proveedores, límite de gasto
+  mensual, prompts propios e historial exacto de lo enviado.
+- **Glosario y resúmenes**: términos inconsistentes, importar el glosario de
+  otro proyecto, resumen de commits y resumen semanal.
+
+### Búsqueda, mapa y análisis
+
+- Historial y plantillas de expresiones regulares, buscar solo en abiertos o
+  modificados y deshacer el último reemplazo.
+- Mapa con llamadas entre funciones, color por carpeta y línea de tiempo.
+- `import()` dinámicos, `require()`, YAML, SQL y Dockerfile en el analizador, y
+  un informe de estadísticas del proyecto.
+
+### Git
+
+- Historia de un archivo con autoría por línea, grafo de ramas con
+  cherry-pick, nombres de rama sugeridos y versiones (etiquetas).
+- **Conflictos en tres columnas** (base, la tuya, la que llega), ver y aplicar
+  un stash sin borrarlo, tipo de commit (feat, fix, docs…), pull requests e
+  issues en lectura y **clonar desde una URL**.
+- Un proyecto interno ya no ve el repositorio que contiene la carpeta de datos.
+
+### Interfaz
+
+- La documentación ya no se solapa con sus botones; las etiquetas no se parten
+  en dos líneas; ninguna barra horizontal en la ventana; las pestañas se
+  desplazan cuando no caben; los botones bajan de línea en vez de salirse.
+- **Escape cierra la ventana que esté encima.**
+- Consola compacta, foco visible en los campos, transiciones suaves y barras de
+  desplazamiento discretas.
+
+### Correcciones
+
+- **Bash** se detecta en Windows: antes se preguntaba al lanzador de WSL, que
+  falla si WSL no está instalado, aunque Git Bash sí lo estuviera.
+- **Versión portable**: cachés, registros e informes de fallos también se
+  guardan junto al .exe.
+
+---
+
 ## 1.4.0
 
 ### El asistente
