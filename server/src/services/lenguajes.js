@@ -1,5 +1,6 @@
 import { exec } from 'node:child_process';
 import fs from 'node:fs/promises';
+import { existsSync } from 'node:fs';
 import path from 'node:path';
 import { HttpError } from './store.js';
 
@@ -24,6 +25,18 @@ import { HttpError } from './store.js';
  */
 
 const WINDOWS = process.platform === 'win32';
+
+/**
+ * En Windows, "bash" en el PATH suele ser el lanzador de WSL de System32, que
+ * falla si no hay una distribucion instalada. Se prefiere el de Git para
+ * Windows, que es el que tiene casi todo el mundo.
+ */
+const BASH_GIT = WINDOWS
+  ? [
+    path.join(process.env.ProgramFiles ?? 'C:\Program Files', 'Git', 'bin', 'bash.exe'),
+    path.join(process.env.LOCALAPPDATA ?? '', 'Programs', 'Git', 'bin', 'bash.exe'),
+  ].find((r) => existsSync(r)) ?? null
+  : null;
 
 /**
  * Como se pregunta la version a cada herramienta y que respuesta vale.
@@ -86,8 +99,8 @@ const POR_EXTENSION = {
     comando: (f) => `java ${f}`,
   },
 
-  sh: { lenguaje: 'Bash', herramienta: 'bash', comando: (f) => `bash ${f}` },
-  bash: { lenguaje: 'Bash', herramienta: 'bash', comando: (f) => `bash ${f}` },
+  sh: { lenguaje: 'Bash', herramienta: 'bash', comando: (f) => (BASH_GIT ? `& "${BASH_GIT}" ${f}` : `bash ${f}`) },
+  bash: { lenguaje: 'Bash', herramienta: 'bash', comando: (f) => POR_EXTENSION.sh.comando(f) },
   ps1: { lenguaje: 'PowerShell', herramienta: 'powershell', comando: (f) => `& ${f}` },
 
   // Los compilados dejan un ejecutable al lado; se le pone un nombre propio
@@ -147,7 +160,7 @@ function preguntarVersion(binario) {
   // constantes de este archivo, nunca texto del usuario.
   return new Promise((resolve) => {
     exec(
-      `${binario} ${args.join(' ')}`,
+      `${binario === 'bash' && BASH_GIT ? `"${BASH_GIT}"` : binario} ${args.join(' ')}`,
       { windowsHide: true, timeout: 8000 },
       (err, stdout, stderr) => {
         // Varias herramientas escriben su version en la salida de error.
