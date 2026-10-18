@@ -3,6 +3,8 @@ import { useStore } from '../state/useStore';
 import type { FunctionDoc } from '../lib/types';
 import { DocView } from './DocView';
 import { AvisosCalidad, Valorar } from './CalidadDoc';
+import { api } from '../lib/api';
+import type { Proposal } from '../lib/types';
 import { Icon } from './Icon';
 import { ask } from '../lib/dialogs';
 
@@ -161,6 +163,11 @@ export function ReviewPanel() {
             <span style={{ flex: 1 }} />
             <Valorar key={proposal.id} functionId={proposal.functionId} />
           </div>
+          <ComentariosPropuesta
+            proposal={proposal}
+            puedeRegenerar={Boolean(liveFunction) && !generating}
+            regenerar={(texto) => liveFunction && void generateDoc(liveFunction, texto, { forzar: true })}
+          />
           <div className="review-actions">
             <button className="btn ok" onClick={() => void approveProposal(proposal.id)}>
               <Icon name="check" size={13} /> Aprobar y guardar
@@ -183,6 +190,52 @@ export function ReviewPanel() {
             </button>
           </div>
         </>
+      )}
+    </div>
+  );
+}
+
+/**
+ * Comentarios de revisión en una propuesta: notas tuyas ("el retorno está
+ * mal explicado"). Sirven de recordatorio y, si quieres, para pedir otra
+ * versión que los tenga en cuenta.
+ */
+function ComentariosPropuesta({ proposal, puedeRegenerar, regenerar }: {
+  proposal: Proposal;
+  puedeRegenerar: boolean;
+  regenerar: (texto: string) => void;
+}) {
+  const project = useStore((s) => s.project);
+  const [texto, setTexto] = useState('');
+  const comentarios = proposal.comentarios ?? [];
+  const enviar = async () => {
+    if (!project || !texto.trim()) return;
+    const { proposals } = await api.comentarPropuesta(project.id, proposal.id, texto.trim());
+    useStore.setState({ proposals });
+    setTexto('');
+  };
+  return (
+    <div className="comentarios">
+      <span className="panel-title">Comentarios de revisión</span>
+      {comentarios.map((c, i) => (
+        <div key={i} className="comentario">
+          <span className="hint">{new Date(c.en).toLocaleString()}</span> {c.texto}
+        </div>
+      ))}
+      <div style={{ display: 'flex', gap: 4, marginTop: 4 }}>
+        <input placeholder="Añade una nota sobre esta propuesta…" value={texto} onChange={(e) => setTexto(e.target.value)}
+          onKeyDown={(e) => { if (e.key === 'Enter') void enviar(); }} />
+        <button className="btn sm outline" disabled={!texto.trim()} onClick={() => void enviar()}>Comentar</button>
+      </div>
+      {comentarios.length > 0 && (
+        <button
+          className="btn sm outline"
+          style={{ marginTop: 4 }}
+          disabled={!puedeRegenerar}
+          onClick={() => regenerar(`Ten en cuenta estos comentarios de revisión del usuario:\n${comentarios.map((c) => `- ${c.texto}`).join('\n')}`)}
+        >
+          Pedir otra versión con estos comentarios
+        </button>
       )}
     </div>
   );

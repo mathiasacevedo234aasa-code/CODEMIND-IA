@@ -286,3 +286,63 @@ export async function comoTexto(projectId) {
     ...glosario.terminos.map((t) => `- ${t.termino}: ${t.definicion}${t.notas ? ` (${t.notas})` : ''}`),
   ].join('\n');
 }
+
+// ------------------------------------------------- coherencia y reutilizar
+
+/** Sin mayúsculas ni tildes: "Pedido en firme" y "pedido en FIRME" son lo mismo. */
+const normal = (t) => String(t ?? '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().trim();
+
+/**
+ * Términos inconsistentes: la documentación aprobada usa un sinónimo (alias)
+ * donde el glosario fija otra palabra, o el glosario tiene dos términos que
+ * son el mismo escrito distinto. Solo se señala; no se cambia nada.
+ */
+export async function inconsistencias(projectId) {
+  const glosario = await obtener(projectId);
+  const docs = await readDocs(projectId);
+  const resultado = [];
+
+  const vistos = new Map();
+  for (const t of glosario.terminos) {
+    const n = normal(t.termino);
+    if (vistos.has(n)) resultado.push({ tipo: 'duplicado', termino: t.termino, otro: vistos.get(n) });
+    else vistos.set(n, t.termino);
+  }
+
+  for (const t of glosario.terminos) {
+    for (const alias of t.aliases ?? []) {
+      const escapado = normal(alias).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      const patron = new RegExp(`(^|[^\\p{L}])${escapado}($|[^\\p{L}])`, 'u');
+      for (const entrada of Object.values(docs.approved)) {
+        for (const [campo, valor] of Object.entries(entrada.doc ?? {})) {
+          if (typeof valor === 'string' && patron.test(normal(valor))) {
+            resultado.push({ tipo: 'sinonimo', termino: t.termino, alias, elemento: entrada.name, functionId: entrada.functionId, campo });
+          }
+        }
+      }
+    }
+  }
+  return resultado;
+}
+
+/** Trae a este proyecto los términos de otro que aquí no estén. Nunca pisa ninguno. */
+export async function importarDe(projectId, desdeId) {
+  if (projectId === desdeId) throw new HttpError(400, 'Elige otro proyecto.');
+  await getProject(desdeId);
+  const origen = await obtener(desdeId);
+  const destino = await obtener(projectId);
+  const yaEstan = new Set(destino.terminos.map((t) => normal(t.termino)));
+  const nuevos = origen.terminos
+    .filter((t) => !yaEstan.has(normal(t.termino)))
+    .map((t) => ({
+      ...t,
+      id: crypto.randomUUID(),
+      // Las apariciones eran rutas del OTRO proyecto: aquí no significan nada.
+      apariciones: [],
+      origen: 'importado',
+      creado: new Date().toISOString(),
+      actualizado: new Date().toISOString(),
+    }));
+  await guardar(projectId, { ...destino, terminos: [...destino.terminos, ...nuevos] });
+  return { importados: nuevos.length, omitidos: origen.terminos.length - nuevos.length };
+}

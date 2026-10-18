@@ -481,3 +481,4 @@ kbd {
 .msg .cita { background: var(--accent-soft); color: var(--accent); border: 0; border-radius: 4px; padding: 0 4px; font-family: var(--mono); font-size: 0.92em; cursor: pointer; }
 .msg .cita:hover { text-decoration: underline; }
 .prompts-fila { display: flex; gap: 6px; align-items: center; margin: 4px 0; } .prompts-fila select { width: auto; max-width: 60%; }
+.comentarios { margin: 10px 0; padding: 8px 0; border-top: 1px dashed var(--border); } .comentario { font-size: 12.5px; padding: 2px 0; }

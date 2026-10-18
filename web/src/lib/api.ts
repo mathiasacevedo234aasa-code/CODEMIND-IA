@@ -410,6 +410,14 @@ export const api = {
     request<{ filename: string; mime: string; content: string; documented: number }>(
       `/api/projects/${id}/docs/export?format=${format}${bilingue ? '&bilingue=1' : ''}`,
     ),
+  glosarioInconsistencias: (id: string) =>
+    request<{ inconsistencias: { tipo: string; termino: string; alias?: string; otro?: string; elemento?: string; campo?: string }[] }>(`/api/projects/${id}/glosario/inconsistencias`),
+  glosarioImportar: (id: string, desde: string) =>
+    request<{ importados: number; omitidos: number }>(`/api/projects/${id}/glosario/importar`, { method: 'POST', ...json({ desde }) }),
+  resumen: (id: string, tipo: 'commits' | 'semanal') =>
+    request<{ resumen: string; model: string }>(`/api/projects/${id}/resumen`, { method: 'POST', ...json({ tipo }) }),
+  comentarPropuesta: (id: string, proposalId: string, texto: string) =>
+    request<{ proposals: Proposal[] }>(`/api/projects/${id}/proposals/${encodeURIComponent(proposalId)}/comentarios`, { method: 'POST', ...json({ texto }) }),
   envios: () => request<{ envios: EnvioIA[]; gasto: { usd: number; tokens: number; envios: number; sinPrecio: number } }>('/api/ai/envios'),
   borrarEnvios: () => request<{ ok: true }>('/api/ai/envios', { method: 'DELETE' }),
   comparar: (payload: Record<string, unknown>) =>

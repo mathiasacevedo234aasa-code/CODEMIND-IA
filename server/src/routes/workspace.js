@@ -6,6 +6,7 @@ import * as git from '../services/git.js';
 import * as github from '../services/github.js';
 import * as runner from '../services/runner.js';
 import * as ejecuciones from '../services/ejecuciones.js';
+import { resumir } from '../services/resumenes.js';
 import * as search from '../services/search.js';
 import * as quality from '../services/quality.js';
 import * as terminal from '../services/terminal.js';
@@ -169,6 +170,11 @@ router.get('/projects/:id/github/pull/previa', wrap(async (req, res) => {
 
 router.post('/projects/:id/github/pull/abortar', wrap(async (req, res) => {
   res.json(await github.abortarPull(await rootOf(req)));
+}));
+
+router.post('/projects/:id/resumen', wrap(async (req, res) => {
+  await getProject(req.params.id);
+  res.json(await resumir(req.params.id, await rootOf(req), req.body?.tipo === 'semanal' ? 'semanal' : 'commits'));
 }));
 
 router.get('/projects/:id/ejecuciones', wrap(async (req, res) => {

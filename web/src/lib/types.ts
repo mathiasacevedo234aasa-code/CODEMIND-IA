@@ -401,6 +401,8 @@ export interface ApprovedDoc {
 
 export interface Proposal {
   id: string;
+  /** Notas de revisión del usuario sobre esta propuesta. */
+  comentarios?: { texto: string; en: string }[];
   functionId: string;
   name: string;
   kind?: SymbolKind;

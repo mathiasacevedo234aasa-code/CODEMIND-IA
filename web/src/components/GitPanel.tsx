@@ -1,6 +1,7 @@
 import { lazy, Suspense, useCallback, useEffect, useRef, useState } from 'react';
 import { useStore } from '../state/useStore';
 import { api, type StashEntrada } from '../lib/api';
+import { BotonResumen } from './Resumenes';
 // Usa Monaco: se carga junto con él, solo si se pide la comparación.
 const DiffLadoALado = lazy(() =>
   import('../lib/monaco').then(() => import('./DiffLadoALado')).then((m) => ({ default: m.DiffLadoALado })));
@@ -436,7 +437,11 @@ export function GitPanel() {
 
         {commits.length > 0 && (
           <div style={{ padding: 10, borderTop: '1px solid var(--border)' }}>
-            <span className="panel-title">Historial</span>
+            <div style={{ display: 'flex', alignItems: 'center' }}>
+              <span className="panel-title">Historial</span>
+              <span style={{ flex: 1 }} />
+              <BotonResumen tipo="commits" etiqueta="Resumir" />
+            </div>
             {commits.map((c) => (
               <div key={c.hash} className="commit-row" title={c.body || c.subject}>
                 <code>{c.short}</code>

@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { GlosarioHerramientas } from './GlosarioHerramientas';
 import { useStore } from '../state/useStore';
 import { api } from '../lib/api';
 import type { Glosario, PropuestaGlosario, TerminoGlosario } from '../lib/types';
@@ -35,10 +36,11 @@ export function GlosarioPanel() {
   const [editando, setEditando] = useState<string | null>(null);
   const [borrador, setBorrador] = useState('');
 
+  const [recargas, setRecargas] = useState(0);
   useEffect(() => {
     if (!project) return;
     api.glosario(project.id).then(setGlosario).catch((e: Error) => setError(e.message));
-  }, [project]);
+  }, [project, recargas]);
 
   // El inventario que se manda: nombres, tipos y archivos. Ni una línea de
   // código, que para reconocer vocabulario no hace ninguna falta.
@@ -105,6 +107,7 @@ export function GlosarioPanel() {
 
   return (
     <>
+      <GlosarioHerramientas alCambiar={() => setRecargas((n) => n + 1)} />
       <p className="hint" style={{ marginBottom: 10 }}>
         Las palabras propias de este proyecto, con su significado y con los archivos donde aparecen.
         La IA propone candidatos a partir de los nombres del código; <strong>ninguno entra aquí hasta

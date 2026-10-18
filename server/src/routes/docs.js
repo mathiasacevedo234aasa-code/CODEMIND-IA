@@ -299,6 +299,27 @@ router.post('/:id/glosario/proponer', wrap(async (req, res) => {
   }));
 }));
 
+router.get('/:id/glosario/inconsistencias', wrap(async (req, res) => {
+  res.json({ inconsistencias: await glosario.inconsistencias(req.params.id) });
+}));
+
+router.post('/:id/glosario/importar', wrap(async (req, res) => {
+  res.json(await glosario.importarDe(req.params.id, String(req.body?.desde ?? '')));
+}));
+
+/** Comentarios de revisión en una propuesta: notas del usuario, para él o para regenerar. */
+router.post('/:id/proposals/:proposalId/comentarios', wrap(async (req, res) => {
+  await getProject(req.params.id);
+  const store = await readDocs(req.params.id);
+  const p = store.proposals.find((x) => x.id === req.params.proposalId);
+  if (!p) return res.status(404).json({ error: 'Propuesta no encontrada.' });
+  const texto = String(req.body?.texto ?? '').trim().slice(0, 1000);
+  if (!texto) return res.status(400).json({ error: 'El comentario esta vacio.' });
+  p.comentarios = [...(p.comentarios ?? []), { texto, en: new Date().toISOString() }];
+  await writeDocs(req.params.id, store);
+  res.json({ proposals: store.proposals });
+}));
+
 router.post('/:id/glosario', wrap(async (req, res) => {
   res.status(201).json(await glosario.anadirTermino(req.params.id, req.body ?? {}));
 }));

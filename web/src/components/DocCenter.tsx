@@ -6,6 +6,7 @@ import { DocView } from './DocView';
 import { Icon } from './Icon';
 import { DiagramaArquitectura } from './DiagramaArquitectura';
 import { DocIncompleta } from './DocIncompleta';
+import { BotonResumen } from './Resumenes';
 import { pedirBorrador, type Borrador } from '../lib/borradorGeneral';
 const ProjectMap = lazy(() => import('./ProjectMap').then((m) => ({ default: m.ProjectMap })));
 import { GlosarioPanel } from './GlosarioPanel';
@@ -446,6 +447,9 @@ function ProgressSection() {
 
   return (
     <>
+      <div style={{ marginBottom: 10 }}>
+        <BotonResumen tipo="semanal" etiqueta="Resumen de la semana" />
+      </div>
       <div className="card">
         <h4>Estado de la documentacion (calculado del codigo actual)</h4>
         <p className="meta">
