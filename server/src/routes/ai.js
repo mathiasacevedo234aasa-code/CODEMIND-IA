@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import * as cacheDocs from '../services/cacheDocs.js';
+import { comoPreferencias } from '../services/valoraciones.js';
 import { generateFunctionDoc, chat, chatStream, listModels, testConnection } from '../services/ia.js';
 import { listaProveedores } from '../services/proveedores.js';
 import { comoTexto as glosarioComoTexto } from '../services/glosario.js';
@@ -32,6 +33,11 @@ router.post('/document', async (req, res, next) => {
     context.level ??= settings.explanationLevel;
     context.estilo ??= settings.estiloDoc ?? 'normal';
     context.idioma ??= settings.idioma ?? 'es';
+    // Lo que el usuario dijo con 👎 en este proyecto, para no repetirlo.
+    if (projectId && !context.preferencias) {
+      const pref = await comoPreferencias(projectId);
+      if (pref) context.preferencias = pref;
+    }
     // El glosario aprobado tambien vale al documentar: si "pedido en firme"
     // significa algo concreto en este proyecto, la explicacion debe usarlo asi.
     if (projectId && !context.glosario) {

@@ -8,7 +8,8 @@ import {
   newId,
   readSettings,
 } from '../services/store.js';
-import { validateDoc, traducirDoc } from '../services/ia.js';
+import { validateDoc, traducirDoc, revisarDoc } from '../services/ia.js';
+import * as valoraciones from '../services/valoraciones.js';
 import * as glosario from '../services/glosario.js';
 
 const router = Router();
@@ -194,6 +195,50 @@ router.put('/:id/docs/:functionId/traduccion', async (req, res, next) => {
     entry.traducciones = { ...(entry.traducciones ?? {}), [idioma]: { doc: req.body.doc, de: entry.versionId, en: new Date().toISOString() } };
     await writeDocs(req.params.id, store);
     res.json({ approved: store.approved });
+  } catch (err) {
+    next(err);
+  }
+});
+
+/** La IA revisa la documentacion aprobada frente al codigo actual. Solo observa. */
+router.post('/:id/docs/:functionId/revision-ia', async (req, res, next) => {
+  try {
+    const project = await getProject(req.params.id);
+    const store = await readDocs(req.params.id);
+    const entry = store.approved[req.params.functionId];
+    if (!entry) return res.status(404).json({ error: 'Ese elemento no tiene documentacion aprobada.' });
+    const settings = await readSettings();
+    res.json(await revisarDoc({
+      code: req.body?.code || entry.code,
+      doc: entry.doc,
+      idioma: project.idiomaDoc ?? settings.idioma ?? 'es',
+      temperature: settings.temperature,
+      maxTokens: settings.maxTokens,
+    }));
+  } catch (err) {
+    next(err);
+  }
+});
+
+/** El usuario confirma que la ha revisado: se apunta cuando. */
+router.post('/:id/docs/:functionId/revisada', async (req, res, next) => {
+  try {
+    await getProject(req.params.id);
+    const store = await readDocs(req.params.id);
+    const entry = store.approved[req.params.functionId];
+    if (!entry) return res.status(404).json({ error: 'Ese elemento no tiene documentacion aprobada.' });
+    entry.revisadaEn = new Date().toISOString();
+    await writeDocs(req.params.id, store);
+    res.json({ approved: store.approved });
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.post('/:id/valoraciones', async (req, res, next) => {
+  try {
+    await getProject(req.params.id);
+    res.json({ valoraciones: await valoraciones.anadir(req.params.id, req.body ?? {}) });
   } catch (err) {
     next(err);
   }

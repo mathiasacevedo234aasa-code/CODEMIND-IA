@@ -177,6 +177,7 @@ function buildContextBlock(context = {}) {
   if (context.classes?.length) lines.push(`Clases del archivo: ${context.classes.join(', ')}`);
   if (context.previousDoc) lines.push(`Documentacion aprobada anterior (referencia, puede estar desactualizada):\n${context.previousDoc}`);
   if (context.glosario) lines.push(context.glosario);
+  if (context.preferencias) lines.push(context.preferencias);
   return lines.join('\n');
 }
 
@@ -314,4 +315,26 @@ export async function traducirDoc({ doc, idioma, model, temperature, maxTokens }
   const faltan = Object.keys(doc).filter((k) => !(k in traducido));
   for (const k of faltan) traducido[k] = doc[k];
   return { doc: traducido, model: result.model, faltan };
+}
+
+/**
+ * La IA revisa una documentacion ya escrita frente al codigo actual. Solo
+ * observa: dice que parece incorrecto, impreciso o que falta. No reescribe
+ * nada; si el usuario quiere otra version, la pide aparte y pasa por Revision.
+ */
+export async function revisarDoc({ code, doc, idioma, model, temperature, maxTokens }) {
+  if (!code || !doc) throw new HttpError(400, 'Faltan el codigo o la documentacion.');
+  const messages = [
+    {
+      role: 'system',
+      content: `${reglasBase(idioma)}\n\nModo Revision de documentacion: comparas una documentacion con el codigo real y senalas problemas. ` +
+        'Responde SOLO con JSON: {"observaciones":[{"campo":"<nombre del campo>","tipo":"incorrecto"|"impreciso"|"falta"|"vago","detalle":"<una frase>"}],"veredicto":"<una frase>"}. ' +
+        'Si esta bien, devuelve observaciones vacias. No propongas el texto corregido.',
+    },
+    { role: 'user', content: `Codigo:\n\`\`\`\n${String(code).slice(0, 8000)}\n\`\`\`\n\nDocumentacion:\n${JSON.stringify(doc).slice(0, 8000)}` },
+  ];
+  const result = await completar({ messages, modelo: model, temperature: Math.min(temperature ?? 0.2, 0.3), maxTokens, jsonMode: true });
+  const r = extractJson(result.content);
+  if (!r || !Array.isArray(r.observaciones)) throw new HttpError(502, 'La revision no vino en el formato esperado. Vuelve a intentarlo.');
+  return { observaciones: r.observaciones.slice(0, 20), veredicto: String(r.veredicto ?? ''), model: result.model };
 }

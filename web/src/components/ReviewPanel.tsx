@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useStore } from '../state/useStore';
 import type { FunctionDoc } from '../lib/types';
 import { DocView } from './DocView';
+import { AvisosCalidad, Valorar } from './CalidadDoc';
 import { Icon } from './Icon';
 import { ask } from '../lib/dialogs';
 
@@ -137,7 +138,29 @@ export function ReviewPanel() {
         </>
       ) : (
         <>
+          <AvisosCalidad doc={proposal.doc} />
           <DocView doc={proposal.doc} kind={proposal.kind} />
+          <div className="ajustes-rapidos">
+            <span className="hint">Pedir otra versión:</span>
+            {[
+              ['Más técnica', 'Hazla más técnica: terminología precisa, detalles de implementación, casos límite.'],
+              ['Más sencilla', 'Hazla más sencilla: para alguien que empieza, sin jerga, con una analogía si ayuda.'],
+              ['Más breve', 'Hazla más breve: lo esencial en pocas frases por campo.'],
+              ['Mejor ejemplo', 'Mejora el ejemplo de uso: realista, completo y comentado.'],
+            ].map(([nombre, indicacion]) => (
+              <button
+                key={nombre}
+                className="btn sm outline"
+                disabled={generating || !liveFunction}
+                title={indicacion}
+                onClick={() => liveFunction && void generateDoc(liveFunction, indicacion, { forzar: true })}
+              >
+                {nombre}
+              </button>
+            ))}
+            <span style={{ flex: 1 }} />
+            <Valorar key={proposal.id} functionId={proposal.functionId} />
+          </div>
           <div className="review-actions">
             <button className="btn ok" onClick={() => void approveProposal(proposal.id)}>
               <Icon name="check" size={13} /> Aprobar y guardar

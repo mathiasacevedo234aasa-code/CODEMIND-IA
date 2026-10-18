@@ -3,6 +3,7 @@ import { useStore } from '../state/useStore';
 import { panelDe } from '../lib/types';
 import { DocView } from './DocView';
 import { TraduccionDoc } from './TraduccionDoc';
+import { RevisionDoc } from './CalidadDoc';
 import { Icon } from './Icon';
 import { DocArchivoBarra } from './DocArchivoBarra';
 
@@ -123,6 +124,7 @@ export function DocLectura() {
       <div className="doc-lectura-cuerpo">
         <DocView doc={doc.doc} kind={doc.kind} />
       </div>
+      <RevisionDoc key={`r${doc.versionId}`} doc={doc} codigoActual={elegido?.code} />
       <TraduccionDoc key={doc.versionId} doc={doc} />
 
       <p className="hint" style={{ padding: '8px 0 0' }}>

@@ -410,6 +410,13 @@ export const api = {
     request<{ filename: string; mime: string; content: string; documented: number }>(
       `/api/projects/${id}/docs/export?format=${format}${bilingue ? '&bilingue=1' : ''}`,
     ),
+  revisionIA: (id: string, functionId: string, code?: string) =>
+    request<{ observaciones: { campo: string; tipo: string; detalle: string }[]; veredicto: string }>(
+      `/api/projects/${id}/docs/${encodeURIComponent(functionId)}/revision-ia`, { method: 'POST', ...json({ code }) }),
+  marcarRevisada: (id: string, functionId: string) =>
+    request<{ approved: Record<string, ApprovedDoc> }>(`/api/projects/${id}/docs/${encodeURIComponent(functionId)}/revisada`, { method: 'POST' }),
+  valorar: (id: string, v: { functionId: string; voto: 'bien' | 'mal'; nota?: string }) =>
+    request<{ valoraciones: unknown[] }>(`/api/projects/${id}/valoraciones`, { method: 'POST', ...json(v) }),
   traducirDoc: (id: string, functionId: string, idioma: 'es' | 'en') =>
     request<{ doc: FunctionDoc; model: string }>(`/api/projects/${id}/docs/${encodeURIComponent(functionId)}/traduccion`, { method: 'POST', ...json({ idioma }) }),
   guardarTraduccion: (id: string, functionId: string, idioma: 'es' | 'en', doc: FunctionDoc) =>

@@ -395,6 +395,8 @@ export interface ApprovedDoc {
   relinkedAt?: string;
   /** Traducciones guardadas; `de` es la versión aprobada que se tradujo. */
   traducciones?: Record<string, { doc: FunctionDoc; de: string; en: string }>;
+  /** Cuándo confirmó el usuario que la revisó. */
+  revisadaEn?: string;
 }
 
 export interface Proposal {
