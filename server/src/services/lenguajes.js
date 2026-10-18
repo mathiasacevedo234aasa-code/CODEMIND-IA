@@ -33,7 +33,7 @@ const WINDOWS = process.platform === 'win32';
  */
 const BASH_GIT = WINDOWS
   ? [
-    path.join(process.env.ProgramFiles ?? 'C:\Program Files', 'Git', 'bin', 'bash.exe'),
+    path.join(process.env.ProgramFiles ?? 'C:\\Program Files', 'Git', 'bin', 'bash.exe'),
     path.join(process.env.LOCALAPPDATA ?? '', 'Programs', 'Git', 'bin', 'bash.exe'),
   ].find((r) => existsSync(r)) ?? null
   : null;

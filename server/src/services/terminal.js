@@ -88,11 +88,11 @@ export function perfiles() {
   if (pwsh) lista.push({ id: 'pwsh', comando: pwsh, args: ['-NoLogo'], nombre: 'PowerShell 7' });
   lista.push({ id: 'cmd', comando: 'cmd.exe', args: [], nombre: 'CMD' });
   const bash = [
-    path.join(process.env.ProgramFiles ?? 'C:\Program Files', 'Git', 'bin', 'bash.exe'),
+    path.join(process.env.ProgramFiles ?? 'C:\\Program Files', 'Git', 'bin', 'bash.exe'),
     path.join(process.env.LOCALAPPDATA ?? '', 'Programs', 'Git', 'bin', 'bash.exe'),
   ].find((r) => fs.existsSync(r));
   if (bash) lista.push({ id: 'gitbash', comando: bash, args: ['--login', '-i'], nombre: 'Git Bash' });
-  const wsl = path.join(process.env.SystemRoot ?? 'C:\Windows', 'System32', 'wsl.exe');
+  const wsl = path.join(process.env.SystemRoot ?? 'C:\\Windows', 'System32', 'wsl.exe');
   if (fs.existsSync(wsl)) lista.push({ id: 'wsl', comando: wsl, args: [], nombre: 'WSL' });
   return lista;
 }
