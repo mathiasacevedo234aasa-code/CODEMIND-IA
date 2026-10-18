@@ -34,6 +34,7 @@ const EN: Record<string, string> = {
   // Panel inferior
   'Consola': 'Console',
   'Errores': 'Problems',
+  'Calidad': 'Quality',
   'Comprobaciones': 'Checks',
   'Terminal': 'Terminal',
   'Vista previa': 'Preview',

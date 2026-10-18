@@ -7,6 +7,7 @@ import type { LogChannel } from '../lib/types';
 import { Icon } from './Icon';
 import { ChecksPanel } from './ChecksPanel';
 import { PanelProblemas } from './PanelProblemas';
+import { PanelCalidad } from './PanelCalidad';
 import { useT } from '../lib/i18n';
 import { explicarError } from '../lib/explicarError';
 // xterm solo hace falta cuando hay panel inferior: va en su propio trozo.
@@ -15,6 +16,7 @@ const TerminalPanel = lazy(() => import('./TerminalPanel').then((m) => ({ defaul
 const TABS: { id: BottomTab; label: string }[] = [
   { id: 'consola', label: 'Consola' },
   { id: 'errores', label: 'Errores' },
+  { id: 'calidad', label: 'Calidad' },
   { id: 'comprobaciones', label: 'Comprobaciones' },
   { id: 'terminal', label: 'Terminal' },
   { id: 'preview', label: 'Vista previa' },
@@ -192,6 +194,8 @@ export function BottomPanel() {
 
           {bottomTab === 'terminal' ? null : bottomTab === 'preview' ? (
             <Preview />
+          ) : bottomTab === 'calidad' ? (
+            <PanelCalidad />
           ) : bottomTab === 'errores' ? (
             <PanelProblemas />
           ) : bottomTab === 'comprobaciones' ? (

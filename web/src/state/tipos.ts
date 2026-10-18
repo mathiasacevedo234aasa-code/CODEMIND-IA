@@ -36,7 +36,7 @@ export interface ColaDoc {
 }
 
 export type RightTab = 'revision' | 'documentacion' | 'asistente';
-export type BottomTab = 'consola' | 'errores' | 'comprobaciones' | 'terminal' | 'preview' | 'documentacion' | 'git' | 'procesos';
+export type BottomTab = 'consola' | 'errores' | 'calidad' | 'comprobaciones' | 'terminal' | 'preview' | 'documentacion' | 'git' | 'procesos';
 
 export interface State {
   projects: Project[];
